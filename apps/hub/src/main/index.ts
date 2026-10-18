@@ -3,14 +3,16 @@
  * tray popover only renders snapshots and sends intents.
  */
 import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, systemPreferences, Tray } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
+import { electronNotifier } from './electron-notifier';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
+import { startQuestionNotifications } from './question-notifications';
 import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
 import { createSessions } from './sessions/sessions';
@@ -100,6 +102,11 @@ app.whenReady().then(async () => {
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
   };
   inbox.subscribe(publish);
+
+  // Question banners: answered from Options / Reply, removed once the Ask resolves anywhere.
+  if (Notification.isSupported()) {
+    startQuestionNotifications({ inbox, notifier: electronNotifier(), onOpen: showPopover });
+  }
 
   hubSocket = await listenForShims({ path: socketPath, inbox });
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
