@@ -26,3 +26,8 @@ export function runningLabel(since: number, now: number): string {
   if (minutes < 60) return `running ${minutes}m`;
   return `running ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
+
+/** "1 account", "3 accounts". */
+export function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
