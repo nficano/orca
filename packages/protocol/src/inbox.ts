@@ -1,3 +1,5 @@
+import type { SessionView } from './sessions';
+
 /**
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
  * every change (never diffs). Renderers key rows by Ask id.
@@ -30,4 +32,9 @@ export interface InboxSnapshot {
     /** Open Asks across every Account: the tray title and the Inbox badge. */
     pending: number;
   };
+  /**
+   * Top-level Sessions the hub can see, except Ended ones (hidden). A Session
+   * with an open Ask is Blocked. Absent until the transcript tailers run.
+   */
+  sessions?: SessionView[];
 }
