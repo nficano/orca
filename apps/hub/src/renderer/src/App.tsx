@@ -106,7 +106,9 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   const canOpenInCursor = typeof bridge.openInCursor === 'function';
   const openInCursor = useCallback((id: string) => void bridge.openInCursor?.({ id }), [bridge]);
-  const askMenu = useAskMenu(inbox.pending, openInCursor);
+  /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
+  const cards: AskView[] = [...inbox.pending, ...(inbox.handedBack ?? [])].sort((a, b) => a.openedAt - b.openedAt);
+  const askMenu = useAskMenu(cards, openInCursor);
   const openSessionInCursor = useCallback((sessionKey: string) => void bridge.openInCursor?.({ sessionKey }), [bridge]);
   const approveBatch = useCallback(
     async (ids: string[]) => {
@@ -121,8 +123,6 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
 
   const count = inbox.counts.pending;
-  /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
-  const cards: AskView[] = [...inbox.pending, ...(inbox.handedBack ?? [])].sort((a, b) => a.openedAt - b.openedAt);
   const batch = typeof bridge.approveBatch === 'function' ? batchLines(inbox.pending) : [];
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
@@ -194,7 +194,12 @@ export function App({ bridge, now = Date.now }: AppProps) {
               ask.kind === 'question' ? (
                 <QuestionCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onAnswer={answer} />
               ) : ask.handedBackAt !== undefined ? (
-                <HandedBackCard key={ask.id} ask={ask} handedBackAt={ask.handedBackAt} />
+                <HandedBackCard
+                  key={ask.id}
+                  ask={ask}
+                  handedBackAt={ask.handedBackAt}
+                  {...(canOpenInCursor ? { onOpenInCursor: openInCursor } : {})}
+                />
               ) : (
                 <ApprovalCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onDecide={decide} />
               ),
@@ -356,10 +361,19 @@ function moveCardFocus(e: KeyboardEvent<HTMLElement>): boolean {
  * with no decision (Storyboard F6; Errors · "inbox stopped asking"). It can't
  * be decided here any more; the Session stays Blocked until the editor answers.
  */
-function HandedBackCard({ ask, handedBackAt }: { ask: ApprovalView; handedBackAt: number }) {
+function HandedBackCard({
+  ask,
+  handedBackAt,
+  onOpenInCursor,
+}: {
+  ask: ApprovalView;
+  handedBackAt: number;
+  onOpenInCursor?: (id: string) => void;
+}) {
   return (
     <article
       className="card"
+      data-ask-id={ask.id}
       tabIndex={-1}
       aria-label={`${ask.toolName}: ${ask.command}, Cursor is asking now`}
       onKeyDown={(e) => void moveCardFocus(e)}
@@ -371,6 +385,13 @@ function HandedBackCard({ ask, handedBackAt }: { ask: ApprovalView; handedBackAt
       </div>
       <div className="code">{ask.command}</div>
       <p className="handed-back">{handedBackText(ask.openedAt, handedBackAt)}</p>
+      {onOpenInCursor && (
+        <div className="actions">
+          <button className="btn primary" onClick={() => onOpenInCursor(ask.id)}>
+            Open in Cursor
+          </button>
+        </div>
+      )}
     </article>
   );
 }

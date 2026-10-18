@@ -20,3 +20,8 @@ export function withSessions(inbox: InboxSnapshot, sessions: SessionView[]): Inb
 function asksOf(ask: AskView, s: SessionView): boolean {
   return ask.sessionId === s.sessionId && (ask.account === '' || ask.account === s.account);
 }
+
+/** An open Ask by id, asking or handed back to the editor. */
+export function openAsk(inbox: InboxSnapshot, id: string): AskView | undefined {
+  return inbox.pending.find((ask) => ask.id === id) ?? inbox.handedBack?.find((ask) => ask.id === id);
+}

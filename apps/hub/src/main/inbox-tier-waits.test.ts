@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { ApprovalAskMessage, ApprovalDecision, ApprovalView, PermissionRequestPayload, SessionView } from '@orca/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileDecisionsLog } from './decisions-log';
-import { withSessions } from './hub-snapshot';
+import { openAsk, withSessions } from './hub-snapshot';
 import { createInbox, type Inbox, type InboxOptions } from './inbox';
 
 const START = Date.parse('2026-10-18T10:00:00Z');
@@ -244,5 +244,18 @@ describe('a wait running out never allows anything', () => {
 
     expect(result).toMatchObject({ ok: true, approved: [] });
     expect(conn.sent).toEqual([]);
+  });
+});
+
+describe('finding a handed-back Approval', () => {
+  it('openAsk finds asking and handed-back Asks alike, so Open in Cursor works on both', () => {
+    const inbox = inboxWith();
+    const back = inbox.open(approval(COMMANDS.green), () => {}, () => {});
+    vi.advanceTimersByTime(2 * MIN);
+    const asking = inbox.open(approval(COMMANDS.yellow), () => {}, () => {});
+
+    expect(openAsk(inbox.snapshot(), back)).toMatchObject({ id: back, handedBackAt: START + 2 * MIN });
+    expect(openAsk(inbox.snapshot(), asking)).toMatchObject({ id: asking });
+    expect(openAsk(inbox.snapshot(), 'gone')).toBeUndefined();
   });
 });

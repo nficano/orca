@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** The card's tier wait: "Inbox stops asking in Nm", then "Cursor is asking now" (spec › Timeouts; Storyboard F6). */
-import type { ApprovalDecideRequest, ApprovalView, InboxSnapshot } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, InboxSnapshot, OpenInCursorRequest } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -35,10 +35,12 @@ const handedBack = (...back: ApprovalView[]): InboxSnapshot => ({ pending: [], h
 let clock: number;
 let push: (s: InboxSnapshot) => void;
 let decisions: ApprovalDecideRequest[];
+let opened: OpenInCursorRequest[];
 
 async function renderApp(initial: InboxSnapshot) {
   const listeners = new Set<(s: InboxSnapshot) => void>();
   decisions = [];
+  opened = [];
   push = (s) => act(() => listeners.forEach((l) => l(s)));
   const bridge: OrcaBridge = {
     ...connectedAccountsBridge,
@@ -47,6 +49,7 @@ async function renderApp(initial: InboxSnapshot) {
     onPopoverOpened: () => () => {},
     decideApproval: async (req) => (decisions.push(req), { ok: true }),
     answerQuestion: async () => ({ ok: true }),
+    openInCursor: async (req) => (opened.push(req), { ok: true }),
   };
   render(<App bridge={bridge} now={() => clock} />);
   await act(async () => {});
@@ -134,6 +137,26 @@ describe('Cursor is asking now', () => {
     expect(within(card).queryByText(/Inbox stops asking/)).toBeNull();
     expect(within(card).queryByRole('button', { name: /Approve|Deny/ })).toBeNull();
     expect(within(card).queryByRole('img')).toBeNull();
+  });
+
+  it('Open in Cursor brings forward the window that is asking', async () => {
+    await renderApp(handedBack(approval({ id: 'back', handedBackAt: OPENED + 10 * MIN })));
+
+    fireEvent.click(within(screen.getByRole('article')).getByRole('button', { name: 'Open in Cursor' }));
+
+    expect(opened).toEqual([{ id: 'back' }]);
+  });
+
+  it('⌘O and the right-click menu open it in Cursor too', async () => {
+    await renderApp(handedBack(approval({ id: 'back', handedBackAt: OPENED + 10 * MIN })));
+    const card = screen.getByRole('article');
+    card.focus();
+
+    fireEvent.keyDown(card, { key: 'o', metaKey: true });
+    fireEvent.contextMenu(card);
+    fireEvent.click(screen.getByRole('menuitem', { name: /Open in Cursor/ }));
+
+    expect(opened).toEqual([{ id: 'back' }, { id: 'back' }]);
   });
 
   it('says how long the inbox asked, by tier', async () => {

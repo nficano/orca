@@ -24,7 +24,7 @@ import { startApprovalNotifications } from './approval-notifications';
 import { fileDecisionsLog } from './decisions-log';
 import { electronNotifier } from './electron-notifier';
 import { listenForShims, type HubSocket } from './hub-socket';
-import { withSessions } from './hub-snapshot';
+import { openAsk, withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
 import { startQuickAnswer } from './quick-answer-electron';
 import { startQuestionNotifications } from './question-notifications';
@@ -73,7 +73,7 @@ const sessions = createSessions();
 const cursor = createCursorLink({
   home: app.getPath('home'),
   resources,
-  findAsk: (id) => inbox.snapshot().pending.find((ask) => ask.id === id),
+  findAsk: (id) => openAsk(inbox.snapshot(), id),
   findSession: (key) => sessions.list().find((s) => s.key === key),
 });
 /** Hooks missing and the restart banner (Storyboard F9). The shim spools next to the socket. */
