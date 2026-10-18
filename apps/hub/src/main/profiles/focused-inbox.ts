@@ -18,7 +18,12 @@ export function focusedInbox(inbox: Inbox, { shows, onChange }: FocusedInboxOpti
   const filter = (s: InboxSnapshot): InboxSnapshot => {
     const show = shows();
     const pending = s.pending.filter((a) => show(a.account));
-    return pending.length === s.pending.length ? s : { ...s, pending, counts: { ...s.counts, pending: pending.length } };
+    const handedBack = (s.handedBack ?? []).filter((a) => show(a.account));
+    if (pending.length === s.pending.length && handedBack.length === (s.handedBack?.length ?? 0)) return s;
+    const next: InboxSnapshot = { ...s, pending, counts: { ...s.counts, pending: pending.length + handedBack.length } };
+    if (handedBack.length > 0) next.handedBack = handedBack;
+    else delete next.handedBack;
+    return next;
   };
   return {
     ...inbox,
