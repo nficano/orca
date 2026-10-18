@@ -12,12 +12,14 @@ interface DoneViewProps {
   now: number;
   busy: ReadonlySet<string>;
   onSendBack: (id: string, text: string) => void;
+  /** Absent when the bridge can't open Cursor. */
+  onOpenInCursor?: (sessionKey: string) => void;
   /** "still waiting in Inbox" and "Go to Running": both live in the Inbox view for now. */
   onShowInbox: () => void;
 }
 
 /** Done tab (design 3 · Done + recap; 8 · Empty for nothing finished). */
-export function DoneView({ done, now, busy, onSendBack, onShowInbox }: DoneViewProps) {
+export function DoneView({ done, now, busy, onSendBack, onOpenInCursor, onShowInbox }: DoneViewProps) {
   if (!done) return <div className="list done-list" />;
   const { recap, cards, earlier } = done;
 
@@ -50,7 +52,14 @@ export function DoneView({ done, now, busy, onSendBack, onShowInbox }: DoneViewP
     <div className="list done-list">
       <RecapBar done={done} now={now} onShowInbox={onShowInbox} />
       {cards.map((c) => (
-        <DoneCard key={c.id} card={c} now={now} busy={busy.has(c.id)} onSendBack={onSendBack} />
+        <DoneCard
+          key={c.id}
+          card={c}
+          now={now}
+          busy={busy.has(c.id)}
+          onSendBack={onSendBack}
+          {...(onOpenInCursor ? { onOpenInCursor } : {})}
+        />
       ))}
       {earlier.length > 0 && <Earlier cards={earlier} now={now} />}
     </div>
@@ -103,9 +112,10 @@ interface DoneCardProps {
   now: number;
   busy: boolean;
   onSendBack: (id: string, text: string) => void;
+  onOpenInCursor?: (sessionKey: string) => void;
 }
 
-function DoneCard({ card, now, busy, onSendBack }: DoneCardProps) {
+function DoneCard({ card, now, busy, onSendBack, onOpenInCursor }: DoneCardProps) {
   const [text, setText] = useState('');
   const send = () => {
     if (!busy) onSendBack(card.id, text.trim());
@@ -172,6 +182,14 @@ function DoneCard({ card, now, busy, onSendBack }: DoneCardProps) {
         <p className="resume-error" role="alert">
           Couldn't send it back: {card.resumeError}
         </p>
+      )}
+      {onOpenInCursor && card.sessionKey && (
+        <div className="actions">
+          {/* Primary unless Send back to fix is the card's main action (design 3). */}
+          <button className={card.needsFix ? 'btn' : 'btn primary'} onClick={() => onOpenInCursor(card.sessionKey!)}>
+            Open in Cursor
+          </button>
+        </div>
       )}
     </article>
   );

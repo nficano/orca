@@ -81,4 +81,9 @@ export interface InboxSnapshot {
   done?: DoneSnapshot;
   /** Setup errors: Hooks missing banners, the Settings pip and the restart banner. Absent until checked. */
   setup?: SetupView;
+  /** Orca's Cursor extension; `missing` shows the banner with Install. Absent until the hub checks. */
+  cursor?: { extension: CursorExtensionStatus };
 }
+
+/** Whether Orca's extension is installed in Cursor (it links windows for Open in Cursor). */
+export type CursorExtensionStatus = 'installed' | 'missing';

@@ -74,16 +74,21 @@ describe('headlessResumer', () => {
       logDir: join(dir, 'logs'),
       env: { PATH: `${dir}:/usr/bin:/bin`, CLAUDE_CONFIG_DIR: '/should/be/replaced', CODEX_HOME: '/should/be/unset' },
       shell: ['/bin/sh', '-c', 'exec "$@"', 'orca-resume'],
-      earlyExitMs: 300,
+      earlyExitMs: 1_500,
       ...over,
     });
 
   it('starts the agent in the Worktree with its Account and logs its output', async () => {
-    await fakeAgent('claude', `echo "$PWD|$CLAUDE_CONFIG_DIR|\${CODEX_HOME-unset}|$*"; sleep 1`);
+    await fakeAgent('claude', `echo "$PWD|$CLAUDE_CONFIG_DIR|\${CODEX_HOME-unset}|$*"; sleep 3`);
 
     await resumer()({ agent: 'claude', account: '/Users/me/.claude-work', sessionId: 's-1', cwd: dir, prompt: 'Fix it' });
 
-    const log = await readFile(join(dir, 'logs', 's-1.log'), 'utf8');
+    // The agent keeps running after the resume resolves; wait for its first line.
+    let log = '';
+    for (let i = 0; i < 100 && !log; i++) {
+      log = await readFile(join(dir, 'logs', 's-1.log'), 'utf8');
+      if (!log) await new Promise((r) => setTimeout(r, 20));
+    }
     expect(log).toContain(`${await realpath(dir)}|/Users/me/.claude-work|unset|--resume s-1 -p Fix it`);
   });
 

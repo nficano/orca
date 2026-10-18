@@ -34,7 +34,7 @@ export function plural(n: number, word: string): string {
 
 /** "6:10 AM" today, "Yesterday 6:40 PM", else "Oct 15 6:40 PM". */
 export function whenLabel(at: number, now: number): string {
-  const time = new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const time = clockTime(at);
   const day = (t: number) => new Date(t).toDateString();
   if (day(at) === day(now)) return time;
   const yesterday = new Date(now);

@@ -145,6 +145,7 @@ export function createDoneBoard({
       account: msg.account || s?.account || '',
       ...(name ? { accountName: name } : {}),
       sessionId: s?.sessionId ?? msg.sessionId,
+      ...(s ? { sessionKey: s.key } : {}),
       ...(s ? { agent: s.agent } : {}),
       title: titleOf(msg.summary),
       summary: msg.summary.trim(),

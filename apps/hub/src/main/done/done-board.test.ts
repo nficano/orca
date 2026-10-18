@@ -134,6 +134,7 @@ describe('handoff', () => {
         id: 'd1',
         account: WORK,
         sessionId: 's-1',
+        sessionKey: `${WORK}\u0000s-1`,
         agent: 'claude',
         title: 'Add rent-roll export',
         summary: 'Add rent-roll export',

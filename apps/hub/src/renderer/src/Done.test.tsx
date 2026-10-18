@@ -1,5 +1,13 @@
 // @vitest-environment jsdom
-import type { DoneCardView, DoneSnapshot, InboxSnapshot, IpcResult, SendBackRequest, SessionView } from '@orca/protocol';
+import type {
+  DoneCardView,
+  DoneSnapshot,
+  InboxSnapshot,
+  IpcResult,
+  OpenInCursorRequest,
+  SendBackRequest,
+  SessionView,
+} from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -17,6 +25,7 @@ function card(over: Partial<DoneCardView>): DoneCardView {
     account: WORK,
     accountName: 'Work',
     sessionId: 's-1',
+    sessionKey: `${WORK}\u0000s-1`,
     agent: 'claude',
     title: 'Add rent-roll export',
     summary: 'Add rent-roll export',
@@ -89,6 +98,7 @@ function snapshot(done: Partial<DoneSnapshot>, over: Partial<InboxSnapshot> = {}
 function fakeHub(initial: InboxSnapshot) {
   const inboxListeners = new Set<(s: InboxSnapshot) => void>();
   const sent: SendBackRequest[] = [];
+  const opened: OpenInCursorRequest[] = [];
   let reply: (r: IpcResult) => void = () => {};
   const bridge: OrcaBridge = {
     ...connectedAccountsBridge,
@@ -101,10 +111,15 @@ function fakeHub(initial: InboxSnapshot) {
       sent.push(req);
       return new Promise((resolve) => (reply = resolve));
     },
+    openInCursor: async (req) => {
+      opened.push(req);
+      return { ok: true };
+    },
   };
   return {
     bridge,
     sent,
+    opened,
     push: (s: InboxSnapshot) => act(() => inboxListeners.forEach((l) => l(s))),
     reply: (r: IpcResult) => act(async () => reply(r)),
   };
@@ -200,6 +215,27 @@ describe('Done tab', () => {
     expect(within(c).getByRole('textbox', { name: 'Instructions for the agent' }).getAttribute('placeholder')).toBe(
       'Suggested: fix the socket close race',
     );
+  });
+});
+
+describe('Open in Cursor', () => {
+  it("opens the card's Session in Cursor; primary on a passing card, secondary next to Send back to fix", async () => {
+    const hub = fakeHub(snapshot({ cards: [failing, card({})] }));
+    await openDone(hub);
+    const [failed, passed] = within(doneSection()).getAllByRole('article');
+    expect(within(failed!).getByRole('button', { name: 'Open in Cursor' }).className).toBe('btn');
+    const open = within(passed!).getByRole('button', { name: 'Open in Cursor' });
+    expect(open.className).toBe('btn primary');
+
+    fireEvent.click(open);
+
+    expect(hub.opened).toEqual([{ sessionKey: `${WORK}\u0000s-1` }]);
+  });
+
+  it('is not offered when Orca never found the Session', async () => {
+    const { sessionKey: _, ...unknown } = card({});
+    await openDone(fakeHub(snapshot({ cards: [unknown] })));
+    expect(screen.queryByRole('button', { name: 'Open in Cursor' })).toBeNull();
   });
 });
 

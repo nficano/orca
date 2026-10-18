@@ -29,6 +29,8 @@ export interface DoneCardView {
   accountName?: string;
   /** Empty until the hub can tell which Session handed off. */
   sessionId: string;
+  /** SessionView.key once the hub knows the Session: Open in Cursor uses it. */
+  sessionKey?: string;
   agent?: AgentKind;
   /** The handoff summary's first line. */
   title: string;

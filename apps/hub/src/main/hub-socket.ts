@@ -1,14 +1,17 @@
 import {
   encodeAnswer,
   encodeDecision,
+  encodeFocus,
   parseQuestionMessage,
   parseReportMessage,
   parseShimMessage,
+  parseWindowMessage,
   type ReportMessage,
 } from '@orca/protocol';
 import { chmod, mkdir, rm } from 'node:fs/promises';
 import { connect, createServer, type Socket } from 'node:net';
 import { dirname } from 'node:path';
+import type { CursorWindows, WindowConnection } from './cursor/windows';
 import type { Inbox } from './inbox';
 
 /** Hook payloads are small; anything this large is not a shim. */
@@ -27,14 +30,20 @@ export interface HubSocket {
  * Listens on the hub's Unix socket. Each connection carries one Ask: the
  * first line from the shim (an Approval) or the orca MCP server (a Question) opens it, the decision goes back down the same
  * connection, and the connection closing ends the Ask.
+ *
+ * A Cursor window's extension holds a long-lived connection instead: every
+ * line it sends (re)registers the window, focus goes back down it, and the
+ * connection closing unregisters the window.
  */
 export async function listenForShims({
   path,
   inbox,
+  windows,
   reports,
 }: {
   path: string;
   inbox: Inbox;
+  windows?: CursorWindows;
   reports?: ReportSink;
 }): Promise<HubSocket> {
   await mkdir(dirname(path), { recursive: true });
@@ -46,17 +55,31 @@ export async function listenForShims({
     sockets.add(socket);
     let buf = '';
     let askId: string | undefined;
+    let cursorWindow: WindowConnection | undefined;
 
     socket.setEncoding('utf8');
     socket.on('data', (chunk: string) => {
       if (askId) return; // one Ask per connection; ignore anything after it
       buf += chunk;
-      const nl = buf.indexOf('\n');
-      if (nl === -1) {
-        if (buf.length > MAX_LINE_BYTES) socket.destroy();
+      for (let nl = buf.indexOf('\n'); nl !== -1 && !askId && !socket.destroyed; nl = buf.indexOf('\n')) {
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        if (cursorWindow) {
+          const update = parseWindowMessage(line);
+          if (update) cursorWindow.update(update);
+          else socket.destroy();
+        } else onFirstLine(line);
+      }
+      if (buf.length > MAX_LINE_BYTES) socket.destroy();
+    });
+
+    function onFirstLine(line: string) {
+      const win = windows && parseWindowMessage(line);
+      if (windows && win) {
+        cursorWindow = windows.connect(() => socket.write(encodeFocus()));
+        cursorWindow.update(win);
         return;
       }
-      const line = buf.slice(0, nl);
       const msg = parseShimMessage(line);
       if (msg) {
         askId = inbox.open(msg, (decision) => socket.end(encodeDecision(decision)));
@@ -72,11 +95,12 @@ export async function listenForShims({
         return;
       }
       askId = inbox.openQuestion(question, (answer) => socket.end(encodeAnswer(answer)));
-    });
+    }
     socket.on('error', () => {});
     socket.on('close', () => {
       sockets.delete(socket);
       if (askId) inbox.close(askId);
+      cursorWindow?.close();
     });
   });
 

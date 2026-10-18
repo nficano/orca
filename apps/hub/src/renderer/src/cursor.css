@@ -1,0 +1,54 @@
+/* Design 9 · Errors: the info banner (Cursor extension missing). Base .banner rules live in app.css. */
+.banner.info {
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+}
+.banner.info .banner-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  color: var(--text-3);
+}
+.banner-error {
+  display: block;
+  margin-top: var(--s-2);
+  color: var(--risk-high);
+}
+
+/* Design 1 · card context menu (I6 §3): at the pointer, inside the popover. */
+.menu {
+  position: absolute;
+  z-index: 10;
+  width: 232px;
+  box-sizing: border-box;
+  padding: var(--s-6);
+  border-radius: var(--r-10);
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  box-shadow: var(--shadow-menu);
+  display: flex;
+  flex-direction: column;
+}
+.mi {
+  display: flex;
+  align-items: center;
+  gap: var(--s-10);
+  height: 30px;
+  padding: 0 var(--s-10);
+  border-radius: var(--r-7);
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-1);
+}
+.mi:hover,
+.mi:focus-visible {
+  background: var(--surface-3);
+  outline: none;
+}
+.mi kbd {
+  margin-left: auto;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+}

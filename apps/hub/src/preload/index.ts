@@ -1,4 +1,4 @@
-import { IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
+import { CURSOR_IPC, IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { OrcaBridge, QuickAnswerBridge, ShortcutBridge } from './api';
 
@@ -18,6 +18,8 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   approveBatch: (req) => ipcRenderer.invoke(IPC.approvalBatch, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
   sendBack: (req) => ipcRenderer.invoke(IPC.doneSendBack, req),
+  openInCursor: (req) => ipcRenderer.invoke(CURSOR_IPC.open, req),
+  installCursorExtension: () => ipcRenderer.invoke(CURSOR_IPC.installExtension),
   onQuickAnswerOpened(listener) {
     const handler = () => listener();
     ipcRenderer.on(IPC.quickAnswerOpened, handler);
