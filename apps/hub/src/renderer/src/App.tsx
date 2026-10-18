@@ -5,6 +5,7 @@ import { FirstRun } from './FirstRun';
 import { badgeText, baseName, runningLabel, waitLabel } from './format';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { focusLabel, nextTab, profileDot } from './profiles';
+import { ProfilesSettings } from './ProfilesSettings';
 import { Spinner } from './Spinner';
 
 const EMPTY: InboxSnapshot = { pending: [], counts: { pending: 0 } };
@@ -19,6 +20,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
+  /** The rail section on show. */
+  const [section, setSection] = useState<'inbox' | 'settings'>('inbox');
   /** The open Profile tab: 'all' or a Profile id. */
   const [tab, setTab] = useState('all');
   const inFlight = useRef(new Set<string>());
@@ -100,7 +103,12 @@ export function App({ bridge, now = Date.now }: AppProps) {
   return (
     <div className="pop">
       <nav className="rail" aria-label="Sections">
-        <button className="rail-item on" aria-current="page" aria-label={count ? `Inbox, ${count} waiting` : 'Inbox'}>
+        <button
+          className={section === 'inbox' ? 'rail-item on' : 'rail-item'}
+          aria-current={section === 'inbox' ? 'page' : undefined}
+          aria-label={count ? `Inbox, ${count} waiting` : 'Inbox'}
+          onClick={() => setSection('inbox')}
+        >
           <span className="tile">
             <InboxIcon />
             {badge && (
@@ -111,13 +119,38 @@ export function App({ bridge, now = Date.now }: AppProps) {
           </span>
           <span aria-hidden="true">Inbox</span>
         </button>
+        {!!accounts?.length && (
+          <button
+            className={section === 'settings' ? 'rail-item on rail-bottom' : 'rail-item rail-bottom'}
+            aria-current={section === 'settings' ? 'page' : undefined}
+            aria-label="Settings"
+            onClick={() => setSection('settings')}
+          >
+            <span className="tile">
+              <SettingsIcon />
+            </span>
+            <span aria-hidden="true">Settings</span>
+          </button>
+        )}
       </nav>
       {accounts?.length === 0 && (
         <section className="main">
           <FirstRun bridge={bridge} onConnected={setAccounts} />
         </section>
       )}
-      <section className="main" aria-label="Inbox" hidden={!accounts?.length}>
+      {section === 'settings' && !!accounts?.length && (
+        <section className="main" aria-label="Settings">
+          <div className="tabs-row">
+            <div className="tabs" role="tablist" aria-label="Settings">
+              <button className="tab on" role="tab" aria-selected="true">
+                Profiles
+              </button>
+            </div>
+          </div>
+          <ProfilesSettings bridge={bridge} />
+        </section>
+      )}
+      <section className="main" aria-label="Inbox" hidden={!accounts?.length || section !== 'inbox'}>
         <div className="tabs-row">
           <div className="tabs" role="tablist" aria-label="Profile">
             <button className={current === 'all' ? 'tab on' : 'tab'} role="tab" aria-selected={current === 'all'} onClick={() => setTab('all')}>
@@ -304,6 +337,14 @@ function useSystemTheme() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
+}
+
+function SettingsIcon() {
+  return (
+    <svg className="fa" viewBox="0 0 512 512" aria-hidden="true" style={{ width: 21, height: 21 }}>
+      <path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z" />
+    </svg>
+  );
 }
 
 function InboxIcon() {
