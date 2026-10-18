@@ -18,3 +18,11 @@ export function baseName(path: string | undefined): string {
   const parts = path.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? path;
 }
+
+/** "running 12m" since the Session's turn started. */
+export function runningLabel(since: number, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - since) / 60_000));
+  if (minutes < 1) return 'running <1m';
+  if (minutes < 60) return `running ${minutes}m`;
+  return `running ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
