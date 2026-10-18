@@ -2,7 +2,7 @@ import type { AgentKind, SessionState, SessionView } from '@orca/protocol';
 import { basename } from 'node:path';
 import { createClaudeReader } from './claude-transcript';
 import { createCodexReader } from './codex-rollout';
-import type { TranscriptReader, TranscriptUpdate } from './transcript';
+import { errorKey, errorMessage, type TranscriptReader, type TranscriptUpdate } from './transcript';
 
 /** One transcript file and the Account it belongs to. */
 export interface TranscriptSource {
@@ -43,6 +43,22 @@ export interface Sessions {
    * until its transcript says otherwise. False when the key is unknown.
    */
   resume(key: string, at: number): boolean;
+  /**
+   * Marks Stalled every Running Session whose transcript has not grown for its
+   * stall threshold (`thresholdFor`, in ms: 10m global or the Repo's override).
+   */
+  checkStalls(thresholdFor: (session: SessionView) => number): void;
+  /**
+   * The pid of the one live agent process that owns the Session: the process
+   * holding its log open, else the only one of its agent running in a
+   * directory it used. Undefined when none, or more than one, matches.
+   */
+  ownerOf(key: string, processes: AgentProcess[]): number | undefined;
+  /**
+   * The user stopped the Session: it is Done, "Stopped by you", until a new
+   * turn starts. False when it is unknown or already Done or Ended.
+   */
+  markStopped(key: string): boolean;
   /** Every Session seen, Ended ones included. */
   list(): SessionView[];
   subscribe(listener: () => void): () => void;
@@ -58,7 +74,12 @@ interface Tracked {
   /** Transcript files and working directories the Session has used. */
   paths: Set<string>;
   cwds: Set<string>;
+  /** The newest run of identical tool errors: its key and length. */
+  errorRun?: { key: string; count: number };
 }
+
+/** The same tool error this many times in a row is a loop. */
+export const LOOP_REPEATS = 3;
 
 const TITLE_MAX = 80;
 export const sessionKey = (account: string, sessionId: string) => `${account}\u0000${sessionId}`;
@@ -100,6 +121,19 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
     }
     if (u.branch) v.branch = u.branch;
     if (u.tokens) v.tokens = (v.tokens ?? 0) + u.tokens;
+    if (u.step) v.lastStep = u.step;
+    if (v.stoppedByYou) {
+      // Stopped from Orca: the interrupt and anything after it stay Done until a new turn.
+      if (u.turn !== 'started') return;
+      delete v.stoppedByYou;
+    }
+    if (u.toolResult) {
+      trackErrors(s, u.toolResult, at);
+    } else if (v.state === 'stalled' && v.stall?.kind === 'no-progress') {
+      // The transcript grew: it is making progress again.
+      delete v.stall;
+      enter(v, 'running', at);
+    }
     if (u.summary) {
       v.title = clamp(u.summary);
     } else if (u.prompt && !v.title) {
@@ -110,17 +144,20 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
       case 'started':
         // A new turn: Running counts from here, even if the last one never ended.
         s.handedOff = false;
+        delete s.errorRun;
+        delete v.stall;
         v.state = 'running';
         v.since = at;
         break;
       case 'working':
-        if (v.state !== 'running') enter(v, 'running', at);
+        if (v.state !== 'running' && v.stall?.kind !== 'loop') enter(v, 'running', at);
         break;
       case 'handoff':
         s.handedOff = true;
         if (v.state !== 'running') enter(v, 'running', at);
         break;
       case 'ended':
+        delete s.errorRun;
         enter(v, s.handedOff ? 'done' : 'waiting', at);
         break;
     }
@@ -144,17 +181,41 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
         const v = s.view;
         if (v.state !== 'running' && v.state !== 'waiting' && v.state !== 'stalled') continue;
         if (now() - v.lastActivityAt < ENDED_GRACE_MS) continue;
-        const alive = processes.some(
-          (p) =>
-            p.agent === v.agent &&
-            ((p.cwd !== undefined && s.cwds.has(p.cwd)) || p.openFiles.some((f) => s.paths.has(f))),
-        );
+        const alive = processes.some((p) => holdsLog(s, p) || runsIn(s, p));
         if (!alive) {
           enter(v, 'ended', now());
           changed = true;
         }
       }
       if (changed) emit();
+    },
+    checkStalls(thresholdFor) {
+      let changed = false;
+      for (const { view: v } of byKey.values()) {
+        if (v.state !== 'running') continue;
+        if (now() - v.lastActivityAt < thresholdFor({ ...v })) continue;
+        enter(v, 'stalled', now());
+        v.stall = { kind: 'no-progress' };
+        changed = true;
+      }
+      if (changed) emit();
+    },
+    ownerOf(key, processes) {
+      const s = byKey.get(key);
+      if (!s) return undefined;
+      const holding = processes.filter((p) => holdsLog(s, p));
+      const candidates = holding.length > 0 ? holding : processes.filter((p) => runsIn(s, p));
+      const pids = new Set(candidates.map((p) => p.pid));
+      return pids.size === 1 ? candidates[0]!.pid : undefined;
+    },
+    markStopped(key) {
+      const s = byKey.get(key);
+      if (!s || s.view.state === 'done' || s.view.state === 'ended') return false;
+      delete s.errorRun;
+      enter(s.view, 'done', now());
+      s.view.stoppedByYou = true;
+      emit();
+      return true;
     },
     forget(path) {
       readers.delete(path);
@@ -163,13 +224,15 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
       const s = byKey.get(key);
       if (!s) return false;
       s.handedOff = false;
+      delete s.view.stall;
+      delete s.view.stoppedByYou;
       s.view.state = 'running';
       s.view.since = at;
       s.view.lastActivityAt = Math.max(s.view.lastActivityAt, at);
       emit();
       return true;
     },
-    list: () => [...byKey.values()].map((s) => ({ ...s.view })),
+    list: () => [...byKey.values()].map((s) => ({ ...s.view, ...(s.view.stall ? { stall: { ...s.view.stall } } : {}) })),
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -177,8 +240,30 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
   };
 }
 
+const holdsLog = (s: Tracked, p: AgentProcess) => p.agent === s.view.agent && p.openFiles.some((f) => s.paths.has(f));
+const runsIn = (s: Tracked, p: AgentProcess) => p.agent === s.view.agent && p.cwd !== undefined && s.cwds.has(p.cwd);
+
+/** Loop detection: the same tool error LOOP_REPEATS times in a row Stalls the Session; any other result ends the run. */
+function trackErrors(s: Tracked, result: NonNullable<TranscriptUpdate['toolResult']>, at: number) {
+  const v = s.view;
+  if (result.error === undefined) {
+    delete s.errorRun;
+    if (v.state === 'stalled') enter(v, 'running', at);
+    return;
+  }
+  const key = errorKey(result.tool, result.error);
+  s.errorRun = s.errorRun?.key === key ? { key, count: s.errorRun.count + 1 } : { key, count: 1 };
+  if (s.errorRun.count >= LOOP_REPEATS) {
+    enter(v, 'stalled', at);
+    v.stall = { kind: 'loop', error: errorMessage(result.error), count: s.errorRun.count };
+  } else if (v.state === 'stalled') {
+    enter(v, 'running', at);
+  }
+}
+
 function enter(v: SessionView, state: SessionState, at: number) {
   if (v.state === state) return;
+  if (state !== 'stalled') delete v.stall;
   v.state = state;
   v.since = at;
 }

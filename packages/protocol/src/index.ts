@@ -6,3 +6,4 @@ export * from './question';
 export * from './sessions';
 export * from './report';
 export * from './done';
+export * from './setup';

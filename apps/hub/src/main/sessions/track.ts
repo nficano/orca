@@ -1,4 +1,6 @@
+import type { SessionView } from '@orca/protocol';
 import type { AgentProcess, Sessions } from './sessions';
+import { DEFAULT_STALL_THRESHOLD_MINUTES } from './stall-threshold';
 import { createTranscriptTailer, type TailedAccount } from './tailer';
 
 export interface SessionTracking {
@@ -11,13 +13,16 @@ export interface SessionTrackingOptions {
   /** Live agent processes, or undefined when it can't tell. */
   probe: () => Promise<AgentProcess[] | undefined>;
   now?: () => number;
+  /** Stall threshold in ms for one Session (10m global, per-Repo override). Checked on every probe. */
+  stallThresholdFor?: (session: SessionView) => number;
   probeEveryMs?: number;
   scanEveryMs?: number;
 }
 
 /**
- * Starts the transcript tailers and the liveness probe. Resolves once every
- * transcript has been read and gone processes are Ended, so the first
+ * Starts the transcript tailers, the liveness probe and stall checks (one
+ * each probe). Resolves once every transcript has been read and gone
+ * processes are Ended, so the first
  * snapshot doesn't flash Sessions that ended long ago.
  */
 export async function startSessionTracking({
@@ -25,6 +30,7 @@ export async function startSessionTracking({
   sessions,
   probe,
   now,
+  stallThresholdFor = () => DEFAULT_STALL_THRESHOLD_MINUTES * 60_000,
   probeEveryMs = 15_000,
   scanEveryMs = 15_000,
 }: SessionTrackingOptions): Promise<SessionTracking> {
@@ -32,6 +38,7 @@ export async function startSessionTracking({
   const reconcile = async () => {
     const processes = await probe();
     if (processes) sessions.reconcile(processes);
+    sessions.checkStalls(stallThresholdFor);
   };
 
   await tailer.scan();

@@ -54,7 +54,6 @@ function fakeHub(initial: InboxSnapshot) {
     onInbox: (l) => (inboxListeners.add(l), () => inboxListeners.delete(l)),
     onPopoverOpened: (l) => (openedListeners.add(l), () => openedListeners.delete(l)),
     decideApproval: async () => ({ ok: true }),
-    sendBack: async () => ({ ok: true }),
     answerQuestion: (req) => {
       answers.push(req);
       return new Promise((resolve) => (reply = resolve));

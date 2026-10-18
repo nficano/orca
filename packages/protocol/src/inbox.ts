@@ -1,5 +1,6 @@
 import type { DoneSnapshot } from './done';
 import type { SessionView } from './sessions';
+import type { SetupView } from './setup';
 
 /**
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
@@ -32,6 +33,11 @@ export interface ApprovalView {
   risk: RiskTier;
   /** The Approval was raised by a subagent of this Session. */
   viaSubagent: boolean;
+  /**
+   * Its cwd lies in no Worktree (or is unknown), so even a read-only command
+   * reads outside one. The batch row lists it unticked with the reason.
+   */
+  readsOutsideWorktree?: true;
   /** Epoch ms when the shim connected. */
   openedAt: number;
 }
@@ -73,4 +79,6 @@ export interface InboxSnapshot {
   sessions?: SessionView[];
   /** Done cards and the recap bar. Absent until the hub has a Done board. */
   done?: DoneSnapshot;
+  /** Setup errors: Hooks missing banners, the Settings pip and the restart banner. Absent until checked. */
+  setup?: SetupView;
 }

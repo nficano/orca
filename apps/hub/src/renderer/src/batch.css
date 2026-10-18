@@ -1,0 +1,97 @@
+/* Batch row (design 6 · States, busy inbox) and its report toast (I4).
+ * Colors and radii from tokens.css. */
+
+.batch {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-10) var(--s-12);
+  border-radius: var(--r-12);
+  background: color-mix(in oklch, var(--success) 10%, transparent);
+  border: 1px solid color-mix(in oklch, var(--success) 25%, transparent);
+}
+.batch[aria-busy='true'] {
+  opacity: 0.6;
+}
+.batch-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  padding-bottom: var(--s-4);
+}
+.batch-check {
+  width: 13px;
+  height: 13px;
+  color: var(--risk-low);
+}
+.batch-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.batch-line {
+  display: flex;
+  align-items: center;
+  gap: var(--s-10);
+  height: 30px;
+  padding: 0 var(--s-4);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.batch-line input {
+  margin: 0;
+  flex: none;
+  accent-color: var(--risk-low);
+}
+.batch-line input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.batch-cmd {
+  flex: 1;
+  font: 12px var(--font-mono);
+  white-space: nowrap;
+}
+.batch-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--s-6);
+}
+
+/* I4 · toast: padding 12, r12, 16 inside the popover's bottom, X on the title line. */
+.toast {
+  position: absolute;
+  left: var(--s-16);
+  right: var(--s-16);
+  bottom: var(--s-16);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-10);
+  padding: var(--s-12);
+  border-radius: var(--r-12);
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  box-shadow: var(--shadow-menu);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.toast-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-6);
+}
+.toast-code {
+  font: 12px var(--font-mono);
+  padding: 0 var(--s-6);
+  border-radius: var(--r-6);
+  background: var(--surface-inset);
+}
+.toast-x {
+  margin: -2px -4px 0 0;
+}
