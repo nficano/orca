@@ -10,9 +10,13 @@ import type {
   QuestionAnswerRequest,
   QuestionAskMessage,
   QuestionView,
+  RiskTier,
 } from '@orca/protocol';
 import { randomUUID } from 'node:crypto';
+import { homedir } from 'node:os';
 import type { DecisionsLog } from './decisions-log';
+import { riskTier } from './risk-tier';
+import { worktreeRoot } from './worktree';
 
 export const DEFAULT_DENY_MESSAGE = 'Denied in Orca';
 
@@ -49,6 +53,17 @@ export interface InboxOptions {
   now?: () => number;
   newId?: () => string;
   onLogError?: (err: unknown) => void;
+  /** The name of a connected Account, by config dir, to tag each Ask with. */
+  accountName?: (dir: string) => string | undefined;
+  /** The Worktree root that holds an Ask's cwd; paths outside it raise the Risk tier. */
+  worktreeOf?: (cwd: string | undefined) => string | undefined;
+  homeDir?: string;
+  /**
+   * Shows the Touch ID sheet before a red Approval is allowed. Resolves true
+   * only when the user passed it. Without one, red Approvals can't be allowed
+   * from the hub (the editor prompt still can).
+   */
+  confirmWithTouchId?: (ask: ApprovalView) => Promise<boolean>;
 }
 
 export function createInbox({
@@ -56,9 +71,15 @@ export function createInbox({
   now = Date.now,
   newId = randomUUID,
   onLogError = (err) => console.error('orca: could not append to the decisions log', err),
+  accountName = () => undefined,
+  worktreeOf = worktreeRoot,
+  homeDir = homedir(),
+  confirmWithTouchId = async () => false,
 }: InboxOptions): Inbox {
   // Map keeps insertion order, which is arrival order: oldest first.
   const open = new Map<string, OpenAsk>();
+  /** Red Approvals whose Touch ID sheet is up (I6 §1 "confirming"). */
+  const confirming = new Map<string, Promise<boolean>>();
   const questions = new Map<string, OpenQuestion>();
   const listeners = new Set<(s: InboxSnapshot) => void>();
 
@@ -77,14 +98,23 @@ export function createInbox({
   return {
     open(msg, reply) {
       const id = newId();
-      open.set(id, { view: approvalView(id, msg, now()), reply });
+      const cwd = typeof msg.hook.cwd === 'string' ? msg.hook.cwd : undefined;
+      const risk = riskTier(
+        { toolName: msg.hook.tool_name, toolInput: msg.hook.tool_input, cwd },
+        { worktree: worktreeOf(cwd), homeDir },
+      );
+      const view = approvalView(id, msg, risk, now());
+      const name = msg.account ? accountName(msg.account) : undefined;
+      open.set(id, { view: name ? { ...view, accountName: name } : view, reply });
       emit();
       return id;
     },
 
     openQuestion(msg, reply) {
       const id = newId();
-      questions.set(id, { view: questionView(id, msg, now()), reply });
+      const view = questionView(id, msg, now());
+      const name = msg.account ? accountName(msg.account) : undefined;
+      questions.set(id, { view: name ? { ...view, accountName: name } : view, reply });
       emit();
       return id;
     },
@@ -105,9 +135,24 @@ export function createInbox({
     },
 
     async decide({ id, decision, reason }) {
-      const ask = open.get(id);
+      let ask = open.get(id);
       if (!ask) return { ok: false, error: 'already-resolved' };
       if (decision !== 'allow' && decision !== 'deny') return { ok: false, error: 'invalid-request' };
+
+      if (decision === 'allow' && ask.view.risk === 'red') {
+        // One sheet per Ask: a second Approve waits on the sheet already up.
+        let sheet = confirming.get(id);
+        if (!sheet) {
+          sheet = confirmWithTouchId(ask.view).catch(() => false);
+          confirming.set(id, sheet);
+          void sheet.finally(() => confirming.delete(id));
+        }
+        if (!(await sheet)) return open.has(id) ? { ok: false, error: 'not-approved' } : { ok: false, error: 'already-resolved' };
+        // While the sheet was up, the Ask may have been decided elsewhere or its shim may have gone.
+        ask = open.get(id);
+        if (!ask) return { ok: false, error: 'already-resolved' };
+      }
+
       // Claim the Ask before any await so a racing decide sees it gone.
       open.delete(id);
 
@@ -122,6 +167,7 @@ export function createInbox({
           sessionId: view.sessionId,
           toolName: view.toolName,
           command: view.command,
+          risk: view.risk,
           ...answer,
           via: 'tray',
         })
@@ -167,7 +213,7 @@ function questionAnswer(view: QuestionView, optionIndex?: number, text?: string)
   return typed ? { text: typed } : null;
 }
 
-function approvalView(id: string, { account, hook }: ApprovalAskMessage, openedAt: number): ApprovalView {
+function approvalView(id: string, { account, hook }: ApprovalAskMessage, risk: RiskTier, openedAt: number): ApprovalView {
   const input = hook.tool_input;
   const reason = typeof input.description === 'string' && input.description.trim() ? input.description : undefined;
   return {
@@ -179,6 +225,7 @@ function approvalView(id: string, { account, hook }: ApprovalAskMessage, openedA
     command: describeToolCall(input),
     ...(reason ? { reason } : {}),
     ...(typeof hook.cwd === 'string' ? { cwd: hook.cwd } : {}),
+    risk,
     viaSubagent: typeof hook.agent_id === 'string' && hook.agent_id !== '',
     openedAt,
   };

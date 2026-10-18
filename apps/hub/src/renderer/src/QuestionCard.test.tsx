@@ -3,6 +3,7 @@ import type { ApprovalView, InboxSnapshot, IpcResult, QuestionAnswerRequest, Que
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
+import { connectedAccountsBridge } from './accounts-bridge.fixture';
 import { App } from './App';
 
 const NOW = Date.parse('2026-10-18T10:10:00Z');
@@ -30,6 +31,7 @@ const approval: ApprovalView = {
   account: '/Users/me/.claude-work',
   sessionId: 's-2',
   toolName: 'Bash',
+  risk: 'green',
   command: 'pnpm test',
   viaSubagent: false,
   openedAt: NOW - 60_000,
@@ -47,6 +49,7 @@ function fakeHub(initial: InboxSnapshot) {
   const answers: QuestionAnswerRequest[] = [];
   let reply: (r: IpcResult) => void = () => {};
   const bridge: OrcaBridge = {
+    ...connectedAccountsBridge,
     getInbox: async () => initial,
     onInbox: (l) => (inboxListeners.add(l), () => inboxListeners.delete(l)),
     onPopoverOpened: (l) => (openedListeners.add(l), () => openedListeners.delete(l)),
