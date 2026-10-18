@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { touchIdConfirmer, touchIdReason, type TouchIdPrompt } from './touch-id';
+import { touchIdConfirmer, touchIdPrompter, touchIdReason, type TouchIdPrompt } from './touch-id';
 
 const ask = { command: 'git push --force origin lease-sync' };
 
@@ -46,5 +46,21 @@ describe('touchIdReason', () => {
     expect(touchIdReason("cat > a.sh <<'EOF'\nrm -rf /\nEOF")).toBe("approve cat > a.sh <<'EOF' …");
     expect(touchIdReason(`psql -c "${'x'.repeat(200)}"`)).toHaveLength('approve '.length + 80);
     expect(touchIdReason(`psql -c "${'x'.repeat(200)}"`).endsWith('…')).toBe(true);
+  });
+});
+
+describe('touchIdPrompter', () => {
+  it('shows the sheet with any reason, such as turning off Touch ID for high risk', async () => {
+    const { prompt, reasons } = fakePrompt();
+    const sheets: boolean[] = [];
+    await expect(touchIdPrompter(prompt, (up) => sheets.push(up))('turn off Touch ID for high-risk Approvals')).resolves.toBe(true);
+    expect(reasons).toEqual(['turn off Touch ID for high-risk Approvals']);
+    expect(sheets).toEqual([true, false]);
+  });
+
+  it('fails without prompting on a Mac that cannot use Touch ID', async () => {
+    const { prompt, reasons } = fakePrompt({ canPromptTouchID: () => false });
+    await expect(touchIdPrompter(prompt)('turn off Touch ID for high-risk Approvals')).resolves.toBe(false);
+    expect(reasons).toEqual([]);
   });
 });

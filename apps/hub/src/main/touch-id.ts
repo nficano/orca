@@ -17,15 +17,15 @@ export function touchIdReason(command: string): string {
 }
 
 /**
- * The Touch ID gate for red Approvals (I6 §1 confirming). Resolves false on
- * cancel, a failed match, or a Mac without Touch ID: never allows by default.
+ * The Touch ID sheet, worded "Orca is trying to <reason>.". Resolves false on
+ * cancel, a failed match, or a Mac without Touch ID: never passes by default.
  */
-export function touchIdConfirmer(prompt: TouchIdPrompt, onSheet: (up: boolean) => void = () => {}) {
-  return async (ask: { command: string }): Promise<boolean> => {
+export function touchIdPrompter(prompt: TouchIdPrompt, onSheet: (up: boolean) => void = () => {}) {
+  return async (reason: string): Promise<boolean> => {
     if (!prompt.canPromptTouchID()) return false;
     onSheet(true);
     try {
-      await prompt.promptTouchID(touchIdReason(ask.command));
+      await prompt.promptTouchID(reason);
       return true;
     } catch {
       return false;
@@ -33,4 +33,10 @@ export function touchIdConfirmer(prompt: TouchIdPrompt, onSheet: (up: boolean) =
       onSheet(false);
     }
   };
+}
+
+/** The Touch ID gate for red Approvals (I6 §1 confirming). */
+export function touchIdConfirmer(prompt: TouchIdPrompt, onSheet: (up: boolean) => void = () => {}) {
+  const sheet = touchIdPrompter(prompt, onSheet);
+  return (ask: { command: string }): Promise<boolean> => sheet(touchIdReason(ask.command));
 }

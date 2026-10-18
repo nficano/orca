@@ -18,9 +18,11 @@ export interface QuickAnswerOptions {
   isPopoverVisible(): boolean;
   /** True while a system sheet (Touch ID) is up: the panel must not hide on blur. */
   holdOnBlur?(): boolean;
+  /** The saved shortcut (Settings › General); ⌥Space when absent. */
+  accelerator?: string;
 }
 
-export function startQuickAnswer({ inbox, preload, load, isPopoverVisible, holdOnBlur = () => false }: QuickAnswerOptions) {
+export function startQuickAnswer({ inbox, preload, load, isPopoverVisible, holdOnBlur = () => false, accelerator }: QuickAnswerOptions) {
   const win = new BrowserWindow({
     // An NSPanel: floats over full-screen apps and hands focus back on close (I6 §3).
     type: 'panel',
@@ -74,6 +76,7 @@ export function startQuickAnswer({ inbox, preload, load, isPopoverVisible, holdO
       unregister: (accelerator) => globalShortcut.unregister(accelerator),
     },
     onPress: () => panel.toggle(),
+    ...(accelerator ? { accelerator } : {}),
   });
   const started = shortcut.start();
   if (!started.ok) console.warn('orca: the quick-answer shortcut is held by another app; choose another in Settings');
@@ -83,5 +86,5 @@ export function startQuickAnswer({ inbox, preload, load, isPopoverVisible, holdO
   );
 
   load(win, 'quick-answer');
-  return { stop: () => shortcut.stop() };
+  return { stop: () => shortcut.stop(), shortcut };
 }
