@@ -15,6 +15,7 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
     return () => ipcRenderer.off(IPC.popoverOpened, handler);
   },
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
+  approveBatch: (req) => ipcRenderer.invoke(IPC.approvalBatch, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
   onQuickAnswerOpened(listener) {
     const handler = () => listener();

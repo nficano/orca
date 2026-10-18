@@ -1,9 +1,12 @@
 import type {
   ApprovalAskMessage,
+  ApprovalBatchRequest,
+  ApprovalBatchResult,
   ApprovalDecideRequest,
   ApprovalDecision,
   ApprovalView,
   AskView,
+  BatchSkip,
   InboxSnapshot,
   IpcResult,
   QuestionAnswer,
@@ -15,7 +18,7 @@ import type {
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import type { DecisionsLog } from './decisions-log';
-import { riskTier } from './risk-tier';
+import { riskTier, type ToolCall } from './risk-tier';
 import { TIER_WAITS_MS, type TierWaits } from './tier-waits';
 import { worktreeRoot } from './worktree';
 
@@ -40,6 +43,11 @@ export interface Inbox {
    */
   close(id: string): void;
   decide(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /**
+   * "Approve N" in the batch row. Re-checks each Approval's Risk tier now and
+   * allows only those still green; every other id is skipped with its reason.
+   */
+  approveBatch(req: ApprovalBatchRequest): Promise<ApprovalBatchResult>;
   /** Answer a Question with a picked option or typed text. */
   answer(req: QuestionAnswerRequest): Promise<IpcResult>;
   snapshot(): InboxSnapshot;
@@ -49,6 +57,8 @@ export interface Inbox {
 interface OpenAsk {
   view: ApprovalView;
   reply: (decision: ApprovalDecision) => void;
+  /** The tool call as the hook sent it, so its tier can be re-checked. */
+  call: ToolCall;
   /** Hands the Ask back to the editor when its tier wait runs out. */
   timer: ReturnType<typeof setTimeout>;
 }
@@ -106,26 +116,31 @@ export function createInbox({
     const pending: AskView[] = [
       ...[...open.values()].map((a) => a.view),
       ...[...questions.values()].map((q) => q.view),
-      ...handedBack.values(),
     ].sort((a, b) => a.openedAt - b.openedAt);
-    return { pending, counts: { pending: pending.length } };
+    const back = [...handedBack.values()].sort((a, b) => a.openedAt - b.openedAt);
+    return { pending, ...(back.length ? { handedBack: back } : {}), counts: { pending: pending.length + back.length } };
   };
   const emit = () => {
     const s = snapshot();
     for (const l of listeners) l(s);
+  };
+  /** The tier and Worktree facts for a tool call, as of now. */
+  const assess = (call: ToolCall): Pick<ApprovalView, 'risk' | 'readsOutsideWorktree'> => {
+    const worktree = worktreeOf(call.cwd);
+    const risk = riskTier(call, { worktree, homeDir });
+    return worktree === undefined ? { risk, readsOutsideWorktree: true } : { risk };
   };
 
   return {
     open(msg, reply, handBack) {
       const id = newId();
       const cwd = typeof msg.hook.cwd === 'string' ? msg.hook.cwd : undefined;
-      const risk = riskTier(
-        { toolName: msg.hook.tool_name, toolInput: msg.hook.tool_input, cwd },
-        { worktree: worktreeOf(cwd), homeDir },
-      );
+      const call: ToolCall = { toolName: msg.hook.tool_name, toolInput: msg.hook.tool_input, cwd };
+      const { risk, readsOutsideWorktree } = assess(call);
       const openedAt = now();
       const wait = tierWaits[risk];
-      const view = { ...approvalView(id, msg, risk, openedAt), waitEndsAt: openedAt + wait };
+      const view: ApprovalView = { ...approvalView(id, msg, risk, openedAt), waitEndsAt: openedAt + wait };
+      if (readsOutsideWorktree) view.readsOutsideWorktree = true;
       const name = msg.account ? accountName(msg.account) : undefined;
       // A wait running out never allows: the Ask leaves `open`, so nothing can decide it, and the shim gets no decision.
       const timer = setTimeout(() => {
@@ -138,7 +153,7 @@ export function createInbox({
       }, wait);
       // An open Ask alone never keeps the process alive.
       timer.unref?.();
-      open.set(id, { view: name ? { ...view, accountName: name } : view, reply, timer });
+      open.set(id, { view: name ? { ...view, accountName: name } : view, reply, call, timer });
       emit();
       return id;
     },
@@ -211,6 +226,61 @@ export function createInbox({
       ask.reply(answer);
       emit();
       return { ok: true };
+    },
+
+    async approveBatch(req) {
+      if (!req || !Array.isArray(req.ids) || !req.ids.every((id) => typeof id === 'string')) {
+        return { ok: false, error: 'invalid-request' };
+      }
+      const approved: OpenAsk[] = [];
+      const skipped: BatchSkip[] = [];
+      let changed = false;
+      // Claim every Approval synchronously, before any await, so nothing else decides it twice.
+      for (const id of new Set(req.ids)) {
+        const ask = open.get(id);
+        if (!ask) {
+          skipped.push({ id, reason: 'already-resolved' });
+          continue;
+        }
+        const { view } = ask;
+        if (view.risk !== 'green') {
+          skipped.push({ id, command: view.command, reason: 'not-green', risk: view.risk });
+          continue;
+        }
+        const current = assess(ask.call);
+        if (current.risk !== 'green') {
+          // The card shows its new tier from here on.
+          const { readsOutsideWorktree: _, ...rest } = view;
+          ask.view = { ...rest, ...current };
+          changed = true;
+          skipped.push({ id, command: view.command, reason: 'tier-changed', risk: current.risk });
+          continue;
+        }
+        open.delete(id);
+        clearTimeout(ask.timer);
+        approved.push(ask);
+      }
+
+      const at = new Date(now()).toISOString();
+      for (const { view } of approved) {
+        await log
+          .append({
+            at,
+            askId: view.id,
+            account: view.account,
+            sessionId: view.sessionId,
+            toolName: view.toolName,
+            command: view.command,
+            risk: view.risk,
+            behavior: 'allow',
+            via: 'tray',
+            batch: true,
+          })
+          .catch(onLogError);
+      }
+      for (const ask of approved) ask.reply({ behavior: 'allow' });
+      if (approved.length > 0 || changed) emit();
+      return { ok: true, approved: approved.map((a) => a.view.id), skipped };
     },
 
     snapshot,

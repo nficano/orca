@@ -4,6 +4,8 @@
  */
 import {
   IPC,
+  type ApprovalBatchRequest,
+  type ApprovalBatchResult,
   type ApprovalDecideRequest,
   type IpcResult,
   type PopoverTarget,
@@ -82,6 +84,7 @@ app.whenReady().then(async () => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
   });
+  ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => inbox.approveBatch(req));
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
