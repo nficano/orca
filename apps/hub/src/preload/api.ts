@@ -3,6 +3,11 @@ import type {
   ApprovalBatchResult,
   ApprovalDecideRequest,
   AskDismissRequest,
+  ApprovalDecideResult,
+  LearnedRuleView,
+  RuleRemoveRequest,
+  RulesResult,
+  RuleUndoRequest,
   InboxSnapshot,
   InstallExtensionResult,
   IpcResult,
@@ -61,14 +66,23 @@ export interface ProfilesBridge {
   setFocusFilter(req: FocusFilterRequest): Promise<ProfilesResult>;
 }
 
+/** Settings › Rules. */
+export interface RulesBridge {
+  listRules(): Promise<LearnedRuleView[]>;
+  removeRule(req: RuleRemoveRequest): Promise<RulesResult>;
+  /** Undo (8s toast): removes a just-saved rule or restores a just-removed one. */
+  undoRule(req: RuleUndoRequest): Promise<RulesResult>;
+}
+
 /** What the preload exposes to the renderer as `window.orca`. */
 /** Profiles methods are optional so renderer tests that aren't about Profiles can leave them out. */
-export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge, Partial<ProfilesBridge> {
+export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge, Partial<ProfilesBridge>, Partial<RulesBridge> {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   /** `target` is set when a notification opened the popover for one Ask. */
   onPopoverOpened(listener: (target?: PopoverTarget) => void): () => void;
-  decideApproval(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /** With `rule` ("Allow and approve"), the result says whether the Learned rule was saved. */
+  decideApproval(req: ApprovalDecideRequest): Promise<ApprovalDecideResult>;
   /** "Approve N" in the batch row: main re-checks each tier and reports what it skipped. Absent: no batch row. */
   approveBatch?(req: ApprovalBatchRequest): Promise<ApprovalBatchResult>;
   answerQuestion(req: QuestionAnswerRequest): Promise<IpcResult>;

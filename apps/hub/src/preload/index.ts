@@ -1,4 +1,4 @@
-import { CURSOR_IPC, IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
+import { CURSOR_IPC, IPC, RULES_IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { OrcaBridge, QuickAnswerBridge, ShortcutBridge } from './api';
 
@@ -15,6 +15,9 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
     return () => ipcRenderer.off(IPC.popoverOpened, handler);
   },
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
+  listRules: () => ipcRenderer.invoke(RULES_IPC.list),
+  removeRule: (req) => ipcRenderer.invoke(RULES_IPC.remove, req),
+  undoRule: (req) => ipcRenderer.invoke(RULES_IPC.undo, req),
   approveBatch: (req) => ipcRenderer.invoke(IPC.approvalBatch, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
   sendBack: (req) => ipcRenderer.invoke(IPC.doneSendBack, req),

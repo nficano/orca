@@ -5,10 +5,12 @@
 import {
   CURSOR_IPC,
   IPC,
+  RULES_IPC,
   type ApprovalBatchRequest,
   type ApprovalBatchResult,
   type ApprovalDecideRequest,
   type AskDismissRequest,
+  type ApprovalDecideResult,
   type IpcResult,
   type OpenInCursorRequest,
   type OpenInCursorResult,
@@ -63,6 +65,9 @@ import { profilesIpcHandlers } from './profiles/ipc';
 import { createProfiles } from './profiles/profiles';
 import { focusedInbox } from './profiles/focused-inbox';
 import { focusFilter, withProfiles } from './profiles/snapshot';
+import { createApprovalHistory, readApprovalHistory } from './rules/history';
+import { rulesIpcHandlers } from './rules/ipc';
+import { createLearnedRules } from './rules/learned-rules';
 import { touchIdConfirmer } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
@@ -96,8 +101,15 @@ const accounts = createAccounts({
 });
 /** The popover stays up behind the Touch ID sheet instead of hiding on blur (I6 §3). */
 let touchIdSheetUp = false;
+const decisionsPath = join(dataDir, 'decisions.jsonl');
+/** Learned rules, owned by the hub and applied to every Account's Approvals (spec › Decisions). */
+const rules = createLearnedRules({ storePath: join(dataDir, 'rules.json') });
+/** Earlier Approvals for the Always allow preview; filled from decisions.jsonl at startup. */
+const approvalHistory = createApprovalHistory();
 const inbox = createInbox({
-  log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')),
+  log: fileDecisionsLog(decisionsPath),
+  rules,
+  history: approvalHistory,
   accountName: accounts.nameOf,
   confirmWithTouchId: touchIdConfirmer(systemPreferences, (up) => {
     touchIdSheetUp = up;
@@ -168,14 +180,20 @@ app.whenReady().then(async () => {
   app.dock?.hide();
 
   ipcMain.handle(IPC.inboxGet, () => hubSnapshot());
-  ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
+  ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<ApprovalDecideResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
-    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
+    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via, ...(req.rule !== undefined ? { rule: req.rule } : {}) });
   });
   ipcMain.handle(IPC.askDismiss, (_e, req: AskDismissRequest): IpcResult => {
     if (!req || typeof req.id !== 'string') return { ok: false, error: 'invalid-request' };
     return inbox.dismiss(req.id);
   });
+  for (const [channel, handle] of Object.entries(rulesIpcHandlers(rules))) {
+    ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
+  }
+  // Rules load before any shim can connect, so the first matching Approval is already covered.
+  await rules.load();
+  for (const entry of await readApprovalHistory(decisionsPath)) approvalHistory.add(entry);
   ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => inbox.approveBatch(req));
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
