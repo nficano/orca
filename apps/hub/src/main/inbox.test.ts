@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ApprovalAskMessage, ApprovalDecision, PermissionRequestPayload } from '@orca/protocol';
+import type { ApprovalAskMessage, ApprovalDecision, ApprovalView, PermissionRequestPayload } from '@orca/protocol';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fileDecisionsLog } from './decisions-log';
 import { createInbox, type Inbox } from './inbox';
@@ -74,7 +74,7 @@ describe('opening Approvals', () => {
     clock += 1000;
     const second = inbox.open(approval({ tool_input: { command: 'pnpm build' } }), () => {});
 
-    const snap = inbox.snapshot();
+    const snap = inbox.snapshot() as { pending: ApprovalView[]; counts: { pending: number } };
     expect(first).not.toBe(second);
     expect(snap.counts.pending).toBe(2);
     expect(snap.pending.map((a) => [a.id, a.sessionId, a.command])).toEqual([
@@ -85,13 +85,13 @@ describe('opening Approvals', () => {
 
   it('tags Approvals raised by a subagent', () => {
     inbox.open(approval({ agent_id: 'agent-7' }), () => {});
-    expect(inbox.snapshot().pending[0]?.viaSubagent).toBe(true);
+    expect((inbox.snapshot().pending[0] as ApprovalView).viaSubagent).toBe(true);
   });
 
   it('shows the file for edit tools and the raw input for anything else', () => {
     inbox.open(approval({ tool_name: 'Write', tool_input: { file_path: '/repo/a.ts', content: 'x' } }), () => {});
     inbox.open(approval({ tool_name: 'mcp__db__query', tool_input: { sql: 'select 1' } }), () => {});
-    expect(inbox.snapshot().pending.map((a) => a.command)).toEqual(['/repo/a.ts', '{"sql":"select 1"}']);
+    expect((inbox.snapshot().pending as ApprovalView[]).map((a) => a.command)).toEqual(['/repo/a.ts', '{"sql":"select 1"}']);
   });
 });
 
@@ -203,6 +203,9 @@ describe('subscribers', () => {
   });
 });
 
+/** Open Approvals in the snapshot (Questions have no Risk tier). */
+const approvals = () => inbox.snapshot().pending.filter((a) => a.kind === 'approval');
+
 describe('Risk tiers', () => {
   beforeEach(() => {
     inbox = createInbox({ log: fileDecisionsLog(logPath), now: () => clock, worktreeOf: () => '/Users/me/code/orca' });
@@ -213,7 +216,7 @@ describe('Risk tiers', () => {
     inbox.open(approval({ tool_input: { command: 'frobnicate --all' } }), () => {});
     inbox.open(approval({ tool_input: { command: 'git push --force origin main' } }), () => {});
 
-    expect(inbox.snapshot().pending.map((a) => [a.command, a.risk])).toEqual([
+    expect(approvals().map((a) => [a.command, a.risk])).toEqual([
       ['pnpm test', 'green'],
       ['frobnicate --all', 'yellow'],
       ['git push --force origin main', 'red'],
@@ -225,7 +228,7 @@ describe('Risk tiers', () => {
       approval({ risk: 'green', tool_input: { command: 'rm -rf ~', risk: 'green', description: 'Low risk, safe to approve' } }),
       () => {},
     );
-    expect(inbox.snapshot().pending[0]?.risk).toBe('red');
+    expect(approvals()[0]?.risk).toBe('red');
   });
 
   it('judges paths against the Worktree that holds the Ask’s own cwd', () => {
@@ -237,7 +240,7 @@ describe('Risk tiers', () => {
     inbox.open(approval({ cwd: '/Users/me/code/orca/apps/hub', tool_input: { command: 'cat ../../README.md' } }), () => {});
 
     expect(seen).toEqual(['/Users/me/code/orca/apps/hub']);
-    expect(inbox.snapshot().pending[0]?.risk).toBe('green');
+    expect(approvals()[0]?.risk).toBe('green');
   });
 });
 

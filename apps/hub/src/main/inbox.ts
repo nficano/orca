@@ -3,8 +3,13 @@ import type {
   ApprovalDecideRequest,
   ApprovalDecision,
   ApprovalView,
+  AskView,
   InboxSnapshot,
   IpcResult,
+  QuestionAnswer,
+  QuestionAnswerRequest,
+  QuestionAskMessage,
+  QuestionView,
   RiskTier,
 } from '@orca/protocol';
 import { randomUUID } from 'node:crypto';
@@ -22,9 +27,13 @@ export const DEFAULT_DENY_MESSAGE = 'Denied in Orca';
 export interface Inbox {
   /** A shim connected: open one Ask. `reply` sends the decision back down that connection. */
   open(msg: ApprovalAskMessage, reply: (decision: ApprovalDecision) => void): string;
-  /** The shim's connection closed. The Ask leaves the inbox if it was still open. */
+  /** The orca MCP server connected: open one Question. `reply` sends the answer back down that connection. */
+  openQuestion(msg: QuestionAskMessage, reply: (answer: QuestionAnswer) => void): string;
+  /** The Ask's connection closed. The Ask leaves the inbox if it was still open. */
   close(id: string): void;
   decide(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /** Answer a Question with a picked option or typed text. */
+  answer(req: QuestionAnswerRequest): Promise<IpcResult>;
   snapshot(): InboxSnapshot;
   subscribe(listener: (snapshot: InboxSnapshot) => void): () => void;
 }
@@ -32,6 +41,11 @@ export interface Inbox {
 interface OpenAsk {
   view: ApprovalView;
   reply: (decision: ApprovalDecision) => void;
+}
+
+interface OpenQuestion {
+  view: QuestionView;
+  reply: (answer: QuestionAnswer) => void;
 }
 
 export interface InboxOptions {
@@ -63,10 +77,14 @@ export function createInbox({
   const open = new Map<string, OpenAsk>();
   /** Red Approvals whose Touch ID sheet is up (I6 §1 "confirming"). */
   const confirming = new Map<string, Promise<boolean>>();
+  const questions = new Map<string, OpenQuestion>();
   const listeners = new Set<(s: InboxSnapshot) => void>();
 
   const snapshot = (): InboxSnapshot => {
-    const pending = [...open.values()].map((a) => a.view).sort((a, b) => a.openedAt - b.openedAt);
+    // Oldest first, Approvals and Questions alike; urgency never changes the order.
+    const pending = [...open.values(), ...questions.values()]
+      .map((a): AskView => a.view)
+      .sort((a, b) => a.openedAt - b.openedAt);
     return { pending, counts: { pending: pending.length } };
   };
   const emit = () => {
@@ -87,8 +105,26 @@ export function createInbox({
       return id;
     },
 
+    openQuestion(msg, reply) {
+      const id = newId();
+      questions.set(id, { view: questionView(id, msg, now()), reply });
+      emit();
+      return id;
+    },
+
     close(id) {
-      if (open.delete(id)) emit();
+      if (open.delete(id) || questions.delete(id)) emit();
+    },
+
+    async answer({ id, optionIndex, text }) {
+      const q = questions.get(id);
+      if (!q) return { ok: false, error: 'already-resolved' };
+      const answer = questionAnswer(q.view, optionIndex, text);
+      if (!answer) return { ok: false, error: 'invalid-request' };
+      questions.delete(id);
+      q.reply(answer);
+      emit();
+      return { ok: true };
     },
 
     async decide({ id, decision, reason }) {
@@ -141,6 +177,33 @@ export function createInbox({
       return () => listeners.delete(listener);
     },
   };
+}
+
+function questionView(id: string, msg: QuestionAskMessage, openedAt: number): QuestionView {
+  return {
+    id,
+    kind: 'question',
+    account: msg.account,
+    sessionId: msg.sessionId,
+    ...(msg.cwd ? { cwd: msg.cwd } : {}),
+    question: msg.question,
+    options: [...msg.options],
+    ...(msg.default !== undefined && msg.default.trim() ? { default: msg.default } : {}),
+    ...(msg.context?.trim() ? { context: msg.context } : {}),
+    urgency: msg.urgency,
+    openedAt,
+  };
+}
+
+/** Exactly one of a real option or non-blank text; null otherwise. */
+function questionAnswer(view: QuestionView, optionIndex?: number, text?: string): QuestionAnswer | null {
+  if (optionIndex !== undefined) {
+    if (text !== undefined || !Number.isInteger(optionIndex)) return null;
+    const option = view.options[optionIndex];
+    return option === undefined ? null : { text: option, optionIndex };
+  }
+  const typed = typeof text === 'string' ? text.trim() : '';
+  return typed ? { text: typed } : null;
 }
 
 function approvalView(id: string, { account, hook }: ApprovalAskMessage, risk: RiskTier, openedAt: number): ApprovalView {

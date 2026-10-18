@@ -1,7 +1,10 @@
+import type { SessionView } from './sessions';
+
 /**
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
  * every change (never diffs). Renderers key rows by Ask id.
  */
+import type { Urgency } from './question';
 
 /**
  * Assigned to every Approval by the hub's fixed rules, never by a model.
@@ -30,7 +33,26 @@ export interface ApprovalView {
   openedAt: number;
 }
 
-export type AskView = ApprovalView;
+export interface QuestionView {
+  id: string;
+  kind: 'question';
+  account: string;
+  /** Empty when the MCP server can't tell. */
+  sessionId: string;
+  cwd?: string;
+  question: string;
+  /** Empty means the card shows a free-text field. */
+  options: string[];
+  /** The agent's suggested answer, ringed on the card. */
+  default?: string;
+  context?: string;
+  /** Notification loudness only; never changes the sort. */
+  urgency: Urgency;
+  /** Epoch ms when the MCP server connected. */
+  openedAt: number;
+}
+
+export type AskView = ApprovalView | QuestionView;
 
 export interface InboxSnapshot {
   /** Open Asks, oldest first. */
@@ -39,4 +61,9 @@ export interface InboxSnapshot {
     /** Open Asks across every Account: the tray title and the Inbox badge. */
     pending: number;
   };
+  /**
+   * Top-level Sessions the hub can see, except Ended ones (hidden). A Session
+   * with an open Ask is Blocked. Absent until the transcript tailers run.
+   */
+  sessions?: SessionView[];
 }
