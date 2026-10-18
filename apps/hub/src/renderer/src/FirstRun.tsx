@@ -1,4 +1,4 @@
-import type { AccountChoice, ConnectedAccount, DiffLine, FoundAccount, HookChange } from '@orca/protocol';
+import type { AccountChoice, AccountKind, ConnectedAccount, DiffLine, FileChange, FoundAccount, HookChange } from '@orca/protocol';
 import { useEffect, useId, useState } from 'react';
 import type { AccountsBridge } from '../../preload/api';
 import './first-run.css';
@@ -6,9 +6,11 @@ import { plural } from './format';
 
 /**
  * First run (Storyboard F1; design 8 · Empty, left artboard): find the
- * Claude Accounts on this Mac, name them, show each settings file and its
+ * Claude and Codex Accounts on this Mac, name them, show each file and its
  * diff, then write one hook per Account.
  */
+
+const AGENT: Record<AccountKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 export interface FirstRunProps {
   bridge: AccountsBridge;
   onConnected: (accounts: ConnectedAccount[]) => void;
@@ -125,7 +127,7 @@ export function FirstRun({ bridge, onConnected }: FirstRunProps) {
       {step.kind === 'scanning' ? (
         <p className="meta first-run-note">Looking for accounts on this Mac…</p>
       ) : rows.length === 0 ? (
-        <p className="meta first-run-note">No Claude Code accounts found in your home folder.</p>
+        <p className="meta first-run-note">No Claude Code or Codex accounts found in your home folder.</p>
       ) : (
         <div className="found">
           <p className="cap">FOUND ON THIS MAC</p>
@@ -134,7 +136,7 @@ export function FirstRun({ bridge, onConnected }: FirstRunProps) {
               <label className="chk">
                 <input type="checkbox" checked={r.checked} onChange={(e) => update(r.account.dir, { checked: e.target.checked })} />
                 <span className="chk-text">
-                  <span className="chk-title">Claude Code</span>
+                  <span className="chk-title">{AGENT[r.account.kind]}</span>
                   <span className="meta mono">
                     <span className="ellipsis">
                       {r.account.displayDir} · {plural(r.account.sessionCount, 'session')}
@@ -189,16 +191,46 @@ function HookChangeView({ change, error }: { change: HookChange; error?: string 
         <p className="first-run-error" role="alert">
           {error}
         </p>
-      ) : !change.changed ? (
-        <p className="meta">Hook already installed. Nothing to change.</p>
       ) : (
-        <figure className="diff" aria-label={`Changes to ${change.displayPath}`}>
-          {change.diff.map((line, i) => (
-            <DiffRow key={i} line={line} />
+        <>
+          {change.diff.length === 0 ? (
+            <p className="meta">Hook already installed. Nothing to change.</p>
+          ) : (
+            <Diff path={change.displayPath} diff={change.diff} />
+          )}
+          {change.extraFiles?.map((f) => (
+            <FileChangeView key={f.path} file={f} />
           ))}
-        </figure>
+          {change.extraFiles && (
+            <p className="meta change-note">Codex runs a new hook only once you trust it: run /hooks in Codex after connecting.</p>
+          )}
+        </>
       )}
     </section>
+  );
+}
+
+/** A Codex Account's config.toml, under its hooks.json. */
+function FileChangeView({ file }: { file: FileChange }) {
+  return (
+    <>
+      <div className="change-head">
+        <span className="meta mono">
+          <span className="ellipsis">{file.displayPath}</span>
+        </span>
+      </div>
+      {file.changed ? <Diff path={file.displayPath} diff={file.diff} /> : <p className="meta">Already set. Nothing to change.</p>}
+    </>
+  );
+}
+
+function Diff({ path, diff }: { path: string; diff: DiffLine[] }) {
+  return (
+    <figure className="diff" aria-label={`Changes to ${path}`}>
+      {diff.map((line, i) => (
+        <DiffRow key={i} line={line} />
+      ))}
+    </figure>
   );
 }
 

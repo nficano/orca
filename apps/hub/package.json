@@ -9,6 +9,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "build:shim": "go build -o resources/bin/agentd-hook ../../cmd/agentd-hook",
+    "build:mcp": "pnpm --filter @orca/mcp build && mkdir -p resources/bin && cp ../../packages/mcp/dist/orca-mcp.mjs resources/bin/orca-mcp.mjs",
     "start": "electron-vite preview",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json"
@@ -16,7 +17,8 @@
   "dependencies": {
     "@orca/protocol": "workspace:*",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "smol-toml": "1.8.0"
   },
   "devDependencies": {
     "@testing-library/react": "16.3.3",

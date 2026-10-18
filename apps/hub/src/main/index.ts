@@ -4,8 +4,10 @@
  */
 import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
+import { codexHookTimeout, TIMEOUT_MARGIN_S } from './accounts/codex-timeouts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
@@ -28,15 +30,22 @@ app.setPath('userData', dataDir);
 const socketPath = join(dataDir, 'hub.sock');
 /** Where Accounts are looked for. ORCA_ACCOUNTS_HOME points at a scratch home during development. */
 const accountsHome = process.env.ORCA_ACCOUNTS_HOME ?? app.getPath('home');
+// Packaged: Orca.app/Contents/Resources/bin. Development: `pnpm --filter @orca/hub build:shim build:mcp`.
+const binDir = join(app.isPackaged ? process.resourcesPath : resources, 'bin');
+/** The orca MCP server Codex Accounts register; Orca's own binary runs it as Node. */
+const mcpScript = process.env.ORCA_MCP ?? join(binDir, 'orca-mcp.mjs');
 const accounts = createAccounts({
   home: accountsHome,
   env: process.env,
   storePath: join(dataDir, 'accounts.json'),
-  // Packaged: Orca.app/Contents/Resources/bin. Development: `pnpm --filter @orca/hub build:shim`.
-  shimPath: process.env.ORCA_SHIM ?? join(app.isPackaged ? process.resourcesPath : resources, 'bin', 'agentd-hook'),
+  shimPath: process.env.ORCA_SHIM ?? join(binDir, 'agentd-hook'),
   // The shim's default socket is the real app-support dir; say so only when ORCA_HOME moved it.
   ...(process.env.ORCA_HOME ? { socketPath } : {}),
   hookTimeoutS: DEFAULT_HOOK_TIMEOUT_S,
+  codexHookTimeoutS: codexHookTimeout(DEFAULT_HOOK_TIMEOUT_S - TIMEOUT_MARGIN_S).timeoutS,
+  ...(existsSync(mcpScript)
+    ? { mcpServer: { command: process.execPath, args: [mcpScript], env: { ELECTRON_RUN_AS_NODE: '1' } } }
+    : {}),
 });
 const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')), accountName: accounts.nameOf });
 const sessions = createSessions();
@@ -156,7 +165,7 @@ async function pickAccountFolder(): Promise<string | null> {
   holdPopover = true;
   try {
     const { canceled, filePaths } = await dialog.showOpenDialog(popover, {
-      title: 'Choose a Claude Code folder',
+      title: 'Choose a Claude Code or Codex folder',
       buttonLabel: 'Choose',
       defaultPath: accountsHome,
       properties: ['openDirectory', 'showHiddenFiles'],
