@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ApprovalDecideRequest, ApprovalView, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -24,8 +24,10 @@ function approval(over: Partial<ApprovalView>): ApprovalView {
 
 const snapshotOf = (...pending: ApprovalView[]): InboxSnapshot => ({ pending, counts: { pending: pending.length } });
 
+const WORK: ConnectedAccount = { kind: 'claude', dir: '/Users/me/.claude-work', name: 'Work' };
+
 /** A stand-in for the main process: pushes snapshots, records decisions. */
-function fakeHub(initial: InboxSnapshot) {
+function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: ConnectedAccount[] } = {}) {
   const inboxListeners = new Set<(s: InboxSnapshot) => void>();
   const openedListeners = new Set<() => void>();
   const decisions: ApprovalDecideRequest[] = [];
@@ -39,6 +41,14 @@ function fakeHub(initial: InboxSnapshot) {
       return new Promise((resolve) => (answer = resolve));
     },
     answerQuestion: async () => ({ ok: true }),
+    listAccounts: async () => accounts,
+    scanAccounts: async () => [
+      { kind: 'claude', dir: WORK.dir, displayDir: '~/.claude-work', sessionCount: 6, suggestedName: 'Work', connected: false },
+    ],
+    chooseAccountFolder: async () => ({ kind: 'cancelled' }),
+    previewConnect: async (choices) =>
+      choices.map((c) => ({ ...c, settingsPath: `${c.dir}/settings.json`, displayPath: '~/.claude-work/settings.json', changed: true, diff: [] })),
+    connectAccounts: async (choices) => ({ connected: choices.map((c) => ({ kind: 'claude' as const, ...c })), failed: [] }),
   };
   return {
     bridge,
@@ -103,6 +113,11 @@ describe('Inbox', () => {
     hub.openPopover();
 
     expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
+  });
+
+  it("tags each card with its Account's name", async () => {
+    await renderApp(fakeHub(snapshotOf(approval({ account: '/Users/me/.claude-work', accountName: 'Work' }))));
+    expect(within(screen.getByRole('article')).getByText('Work')).toBeTruthy();
   });
 
   it('tags Approvals from a subagent', async () => {
@@ -172,6 +187,25 @@ describe('deciding from a card', () => {
       { id: 'new', decision: 'deny' },
       { id: 'old', decision: 'allow' },
     ]);
+  });
+});
+
+describe('first run', () => {
+  it('with no connected Accounts, shows first run instead of the inbox', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({})), { accounts: [] }));
+
+    expect(screen.getByRole('heading', { name: 'Connect your agent accounts' })).toBeTruthy();
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+
+  it('after connecting, shows the inbox', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({})), { accounts: [] }));
+
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Connect 1 account' })));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Add 1 hook' })));
+
+    expect(screen.queryByRole('heading', { name: 'Connect your agent accounts' })).toBeNull();
+    expect(screen.getByRole('article')).toBeTruthy();
   });
 });
 

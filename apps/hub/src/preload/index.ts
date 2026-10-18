@@ -16,6 +16,11 @@ const bridge: OrcaBridge = {
   },
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
+  listAccounts: () => ipcRenderer.invoke(IPC.accountsList),
+  scanAccounts: () => ipcRenderer.invoke(IPC.accountsScan),
+  chooseAccountFolder: () => ipcRenderer.invoke(IPC.accountsChooseFolder),
+  previewConnect: (choices) => ipcRenderer.invoke(IPC.accountsPreview, choices),
+  connectAccounts: (choices) => ipcRenderer.invoke(IPC.accountsConnect, choices),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);
