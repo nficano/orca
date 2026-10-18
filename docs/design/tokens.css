@@ -1,0 +1,98 @@
+/* Orca design tokens. Source of truth: docs/design/html/ImplShapes.html (I2).
+ * Theme follows nativeTheme; set data-theme="light" | "dark" on <html>.
+ * Do not add colors or radii that are not listed here. */
+
+:root,
+:root[data-theme="dark"] {
+  --surface-0: oklch(17% .003 70);      /* behind popover (screenshots only) */
+  --surface-1: oklch(21.8% .003 70);    /* popover, panel body */
+  --surface-2: oklch(28.4% .004 70);    /* rail, menus, sheets */
+  --surface-3: oklch(39% .002 70);      /* active tile, selected segment, pressed */
+  --surface-card: oklch(25% .003 70);   /* request cards */
+  --surface-inset: oklch(17% .003 70);  /* code blocks, inputs */
+  --control: oklch(34% .003 70);        /* secondary button, icon-button hover */
+  --border-1: oklch(38% .003 70);       /* popover, menu edges */
+  --border-2: oklch(32% .003 70);       /* card edge, dividers */
+  --text-1: oklch(97% .002 70);
+  --text-2: oklch(74% .008 70);         /* meta, captions; 4.5:1 checked */
+  --text-3: oklch(84% .005 70);         /* secondary body */
+  --primary-bg: oklch(97% .002 70);
+  --primary-fg: oklch(17% .003 70);
+  --risk-high: oklch(82% .11 25);       --risk-high-bg: oklch(58% .19 25 / .22);
+  --risk-medium: oklch(88% .12 85);     --risk-medium-bg: oklch(84% .14 85 / .16);
+  --risk-low: oklch(84% .1 150);        --risk-low-bg: oklch(62% .14 150 / .18);
+  --badge: oklch(58% .19 25);           /* text is #fff */
+  --pip: oklch(84% .14 85);             --pip-fg: oklch(22% .03 85);
+  --success: oklch(62% .14 150);
+  --focus: oklch(85% .08 250);
+  --link: oklch(85% .08 250);
+  --shadow-popover: 0 18px 60px oklch(0% 0 0 / .35);
+  --shadow-menu: 0 12px 36px oklch(0% 0 0 / .5);
+}
+
+:root[data-theme="light"] {
+  --surface-0: oklch(96% .003 70);
+  --surface-1: oklch(98.5% .002 70);
+  --surface-2: oklch(95% .003 70);
+  --surface-3: oklch(89% .004 70);
+  --surface-card: oklch(100% 0 0);
+  --surface-inset: oklch(95.5% .004 70);
+  --control: oklch(92% .004 70);
+  --border-1: oklch(85% .004 70);
+  --border-2: oklch(90% .003 70);
+  --text-1: oklch(20% .004 70);
+  --text-2: oklch(46% .008 70);
+  --text-3: oklch(32% .006 70);
+  --primary-bg: oklch(22% .004 70);
+  --primary-fg: oklch(98% .002 70);
+  --risk-high: oklch(50% .17 25);       --risk-high-bg: oklch(58% .19 25 / .12);
+  --risk-medium: oklch(50% .11 70);     --risk-medium-bg: oklch(80% .14 85 / .22);
+  --risk-low: oklch(48% .12 150);       --risk-low-bg: oklch(62% .14 150 / .14);
+  --badge: oklch(56% .2 25);
+  --pip: oklch(78% .15 80);             --pip-fg: oklch(22% .03 85);
+  --success: oklch(56% .14 150);
+  --focus: oklch(55% .15 250);
+  --link: oklch(50% .14 250);
+  --shadow-popover: 0 18px 50px oklch(30% .01 70 / .18);
+  --shadow-menu: 0 12px 36px oklch(30% .01 70 / .2);
+}
+
+/* Account colors: identical in both themes. */
+:root {
+  --acct-blue: oklch(72% .12 250);
+  --acct-orange: oklch(76% .13 55);
+  --acct-green: oklch(72% .13 150);
+  --acct-purple: oklch(68% .13 300);
+  --acct-pink: oklch(74% .12 0);
+  --acct-gray: oklch(72% .01 70);
+
+  /* Radius scale. These are the ONLY radii. No 50% except in circles.css, never 9999px or 100%. */
+  --r-3: 3px;   /* <mark>, annotation labels */
+  --r-5: 5px;   /* small number keys */
+  --r-6: 6px;   /* risk chip, kbd, tray count, segmented inner, answer key */
+  --r-7: 7px;   /* menu item, small input, picker */
+  --r-8: 8px;   /* code block, icon button, close X, segmented track */
+  --r-9: 9px;   /* buttons; also badge (18px tall → 9 = height/2) */
+  --r-10: 10px; /* context menu, text field, choice row, setting row */
+  --r-11: 11px; /* switch track only (22px tall → height/2) */
+  --r-12: 12px; /* banners, toast, account group */
+  --r-14: 14px; /* card, rail tile, sheet */
+  --r-16: 16px; /* notification mock, empty-state mark */
+  --r-18: 18px; /* quick-answer panel */
+  --r-20: 20px; /* popover shell */
+
+  /* Spacing steps */
+  --s-2: 2px; --s-4: 4px; --s-6: 6px; --s-8: 8px; --s-10: 10px; --s-12: 12px;
+  --s-14: 14px; --s-16: 16px; --s-20: 20px; --s-24: 24px;
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* circles.css — the circle allowlist. Each sets equal width/height and flex: none. */
+.dot      { width: 8px;  height: 8px;  border-radius: 50%; flex: none; }
+.dot-lg   { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.swatch   { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.knob     { width: 18px; height: 18px; border-radius: 50%; flex: none; }
+.pip      { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+.spinner  { width: 14px; height: 14px; flex: none; } /* SVG arc, not a bordered div */

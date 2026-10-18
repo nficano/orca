@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>Orca · controls</title>
+<!-- Orca design artboard · I5 · Buttons, switches, swatches, chips · 1440x1900 · generated from source/ImplControls.dc.html; edit the canvas, not this file -->
+<style>
+
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:oklch(74% .008 70)}
+h2{margin:0;font-size:18px;font-weight:650}
+.m{font:11.5px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(88% .02 250)}
+.dim{position:absolute;border:1px dashed oklch(66% .2 330);box-sizing:border-box;pointer-events:none}
+.dl{position:absolute;font:600 11px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(80% .15 330);white-space:nowrap}
+.panel{background:oklch(22% .003 70);border:1px solid oklch(32% .003 70);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lbl{width:120px;font-size:12px;color:oklch(78% .006 70);flex:none}
+.btn{height:32px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:oklch(34% .003 70);color:inherit;border:0;font-family:inherit;white-space:nowrap}
+.btn.p{background:oklch(97% .002 70);color:oklch(17% .003 70)}
+.btn.g{background:none;border:1px dashed oklch(42% .003 70);color:oklch(80% .006 70)}
+.btn.d{background:none;color:oklch(80% .13 25)}
+.btn.sm{height:30px;padding:0 12px;font-size:12.5px}
+.sw{position:relative;width:36px;height:22px;border-radius:11px;background:oklch(38% .003 70);flex:none;display:inline-block}
+.sw i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:oklch(90% .004 70)}
+.sw.on{background:oklch(62% .14 150)}.sw.on i{left:16px;background:#fff}
+.chip{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:5px}
+kbd{font:600 12px -apple-system,sans-serif;padding:3px 7px;border-radius:6px;background:oklch(34% .003 70);border:1px solid oklch(42% .003 70)}
+.key{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:oklch(34% .003 70);font-size:12px;font-weight:600}
+.seg{display:inline-flex;padding:2px;border-radius:8px;background:oklch(27% .003 70);gap:2px}
+.seg span{height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;color:oklch(80% .006 70)}
+.seg span.on{background:oklch(39% .002 70);color:oklch(97% .002 70)}
+.pick{height:28px;padding:0 10px;border-radius:7px;background:oklch(29% .003 70);border:1px solid oklch(38% .003 70);font-size:12.5px;display:inline-flex;align-items:center;gap:8px}
+.fld{height:38px;width:300px;box-sizing:border-box;padding:0 12px;border-radius:10px;background:oklch(19% .003 70);border:1px solid oklch(34% .003 70);display:flex;align-items:center;font-size:13px;color:oklch(70% .006 70)}
+.sw6{width:22px;height:22px;border-radius:50%;flex:none;display:inline-block}
+table{border-collapse:collapse;width:100%;font-size:12px}
+td,th{text-align:left;padding:7px 8px;border-bottom:1px solid oklch(30% .003 70);vertical-align:top}
+th{color:oklch(78% .006 70);font-weight:600}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+html{background:oklch(13% .003 70)}
+</style>
+</head>
+<body>
+<div style="width: 1440px; height: 1900px; box-sizing: border-box; background: oklch(17% .003 70); padding: 56px 64px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p class="cap">ORCA · I5 · BUTTONS, SWITCHES, SWATCHES, CHIPS</p>
+<h1 style="margin: 0; font-size: 34px; font-weight: 700">Every control, every state, with its exact shape.</h1>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: oklch(82% .005 70); max-width: 1000px">Only the switch track and the badge use a half-height radius (written in px). Only the knob and color swatches are circles. Buttons, chips, keys, fields and segments are rounded rectangles from the I2 scale.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<div class="panel">
+<h2>Buttons · 32h r9 (30h r9 in banners)</h2>
+<div class="row"><span class="lbl">Primary</span><span class="btn p">Approve</span><span class="btn p" style="opacity: .45">Approve</span><span class="m">disabled .45</span></div>
+<div class="row"><span class="lbl">Secondary</span><span class="btn">Deny</span><span class="btn" style="background: oklch(39% .002 70)">Deny</span><span class="m">hover 39%</span></div>
+<div class="row"><span class="lbl">Ghost (free text)</span><span class="btn g">Type an answer…</span><span class="m">1px dashed, transforms into a field on click</span></div>
+<div class="row"><span class="lbl">Destructive text</span><span class="btn d">Remove account…</span><span class="m">no fill; ellipsis = confirms next</span></div>
+<div class="row"><span class="lbl">Selected default</span><span class="btn" style="box-shadow: inset 0 0 0 1.5px oklch(97% .002 70)">Backfill now</span><span class="m">inset 1.5px ring = ask_user default</span></div>
+<div class="row"><span class="lbl">Banner size</span><span class="btn sm p">Reinstall</span><span class="btn sm">Install</span></div>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: oklch(84% .005 70)">Label 13/600, padding 0 14, gap 6 to an optional 14px icon on the left. Min width = content; never stretch to fill except in the quick-answer choice list. Press: <span class="m">transform: translateY(0.5px)</span>, no scale. Focus-visible: 2px ring, offset 2. Text never wraps (<span class="m">white-space: nowrap</span>); when space runs out, the row's status text truncates first.</p>
+</div>
+
+<div class="panel">
+<h2>Split button · Approve + options</h2>
+<div style="position: relative; height: 150px">
+<div style="position: absolute; left: 40px; top: 40px; display: flex; gap: 1px; transform: scale(2); transform-origin: 0 0">
+<span class="btn p" style="border-radius: 9px 0 0 9px">Approve</span><span class="btn p" style="border-radius: 0 9px 9px 0; padding: 0 9px"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+</div>
+<span class="dl" style="left: 40px; top: 8px">radius 9 0 0 9</span>
+<span class="dl" style="left: 220px; top: 8px">0 9 9 0</span>
+<span class="dl" style="left: 212px; top: 116px">1px seam (gap: 1px; drawn 2× here)</span>
+<span class="dl" style="left: 40px; top: 116px">chevron segment padding 0 9</span>
+</div>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: oklch(84% .005 70)">Two separate <span class="m">&lt;button&gt;</span>s in a flex wrapper with <span class="m">gap: 1px</span>; the seam is the card background showing through. Left: approves once (Enter when the card is focused). Right: <span class="m">aria-haspopup="menu"</span>, opens the Always-allow sheet <b>above</b> the button, right edges aligned, 8px gap; flips below if fewer than 360px above. Long-press on the left half for 500ms opens the same sheet.</p>
+</div>
+
+<div class="panel">
+<h2>Switch at 4×</h2>
+<div style="position: relative; height: 130px">
+<div style="position: absolute; left: 30px; top: 20px; width: 144px; height: 88px; border-radius: 44px; background: oklch(62% .14 150)"><div style="position: absolute; top: 8px; left: 64px; width: 72px; height: 72px; border-radius: 50%; background: #fff"></div></div>
+<div class="dim" style="left: 30px; top: 20px; width: 144px; height: 88px; border-radius: 44px"></div>
+<span class="dl" style="left: 196px; top: 24px">track 36 × 22 · radius 11px (h ÷ 2, px)</span>
+<span class="dl" style="left: 196px; top: 44px">knob 18 × 18 · 50% · inset 2</span>
+<span class="dl" style="left: 196px; top: 64px">off: left 2 · on: left 16</span>
+<span class="dl" style="left: 196px; top: 84px">left .15s ease · no bounce</span>
+</div>
+<div class="row"><span class="sw"><i></i></span><span class="m">off · track 38%</span><span class="sw on"><i></i></span><span class="m">on · --success</span><span class="sw on" style="opacity: .45"><i></i></span><span class="m">locked</span></div>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: oklch(84% .005 70)"><span class="m">&lt;button role="switch" aria-checked&gt;</span>, labelled by its row text. Click anywhere on the row label toggles it. Touch-ID-gated switches stay in their old position until <span class="m">promptTouchID()</span> resolves; on reject they don't move and the row shows "Not changed" for 3s.</p>
+</div>
+
+<div class="panel">
+<h2>Color swatches · account color</h2>
+<div style="position: relative; height: 100px">
+<div style="position: absolute; left: 30px; top: 10px; width: 88px; height: 88px; border-radius: 50%; background: oklch(72% .12 250); box-shadow: 0 0 0 8px oklch(22% .003 70), 0 0 0 16px oklch(97% .002 70)"></div>
+<span class="dl" style="left: 160px; top: 14px">22 × 22 · 50% · flex none</span>
+<span class="dl" style="left: 160px; top: 34px">selected: box-shadow 0 0 0 2px [row bg], 0 0 0 4px --text-1</span>
+<span class="dl" style="left: 160px; top: 54px">ring is outside the box: keep 12px gap between swatches</span>
+<span class="dl" style="left: 160px; top: 74px">drawn 4×</span>
+</div>
+<div class="row"><span class="sw6" style="background: oklch(72% .12 250); box-shadow: 0 0 0 2px oklch(22% .003 70), 0 0 0 4px oklch(97% .002 70)"></span><span class="sw6" style="background: oklch(76% .13 55)"></span><span class="sw6" style="background: oklch(72% .13 150)"></span><span class="sw6" style="background: oklch(68% .13 300)"></span><span class="sw6" style="background: oklch(74% .12 0)"></span><span class="sw6" style="background: oklch(72% .01 70)"></span></div>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: oklch(84% .005 70)"><span class="m">role="radiogroup"</span> of <span class="m">role="radio"</span> buttons with <span class="m">aria-label</span> = color name. Arrow keys move selection (roving tabindex). Selection saves immediately and repaints every dot for that account.</p>
+</div>
+
+<div class="panel">
+<h2>Chips, keys, kbd</h2>
+<div class="row"><span class="lbl">Risk chip r6</span><span class="chip" style="background: oklch(58% .19 25 / .22); color: oklch(82% .11 25)">High risk</span><span class="chip" style="background: oklch(84% .14 85 / .16); color: oklch(88% .12 85)">Medium risk</span><span class="chip" style="background: oklch(62% .14 150 / .18); color: oklch(84% .1 150)">Low risk</span><span class="chip" style="background: oklch(39% .002 70)">Question</span></div>
+<div class="row"><span class="lbl">Answer key r6</span><span class="key">1</span><span class="key">2</span><span class="key">3</span><span class="m">22 × 22 · 12/600</span></div>
+<div class="row"><span class="lbl">kbd r6</span><kbd>⌥ Space</kbd><kbd>⌘O</kbd><kbd>Esc</kbd><span class="m">padding 3 7 · 1px border</span></div>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: oklch(84% .005 70)">Chip: padding 2 8, 11.5/600, optional 12px icon with 5px gap. The chip's text is the only signal that must survive color blindness; it is never icon-only. Low risk chip appears only in the detail view and batch row; cards hide it to save space.</p>
+</div>
+
+<div class="panel">
+<h2>Segmented, picker, field, progress</h2>
+<div class="row"><span class="lbl">Segmented r8 / r6</span><span class="seg"><span class="on">All 6</span><span>Repo</span><span>Account</span></span></div>
+<div class="row"><span class="lbl">Picker r7</span><span class="pick">10 minutes<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span><span class="m">native NSMenu via Menu.popup, not a custom list</span></div>
+<div class="row"><span class="lbl">Field r10</span><span class="fld">Or tell it what to do instead…</span></div>
+<div class="row"><span class="lbl">Bar · square ends</span><span style="width: 200px; height: 4px; border-radius: 2px; background: oklch(34% .003 70); overflow: hidden; display: inline-block"><span style="display: block; width: 64%; height: 100%; background: oklch(82% .06 250)"></span></span><span class="m">4h r2 standalone · 3h r0 inside a card</span></div>
+<div class="row"><span class="lbl">Spinner</span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" style="animation: spin 1s linear infinite"><path d="M12 3a9 9 0 1 1-9 9"/></svg><span class="m">14px · 270° arc · 1s linear · static under reduced motion</span></div>
+</div>
+</div>
+
+<div class="panel">
+<h2>State matrix</h2>
+<table>
+<thead><tr><th>Control</th><th>Rest</th><th>Hover</th><th>Pressed</th><th>Focus-visible</th><th>Disabled</th><th>Busy</th></tr></thead>
+<tbody>
+<tr><td>Primary button</td><td class="m">bg --primary-bg</td><td class="m">bg 90% / 30% (light)</td><td class="m">translateY .5px</td><td class="m">2px --focus, offset 2</td><td class="m">opacity .45, no pointer</td><td>Label → 14px spinner + same width (min-width locked at press)</td></tr>
+<tr><td>Secondary button</td><td class="m">--control</td><td class="m">--surface-3</td><td class="m">translateY .5px</td><td class="m">same ring</td><td class="m">.45</td><td>Same</td></tr>
+<tr><td>Icon button / X</td><td class="m">transparent</td><td class="m">--control</td><td class="m">--surface-3</td><td class="m">ring radius 10</td><td class="m">.45</td><td>n/a</td></tr>
+<tr><td>Switch</td><td class="m">track 38%</td><td class="m">track 42%</td><td>—</td><td class="m">ring on track, radius 13</td><td class="m">.45</td><td>Track pulses .6 opacity while Touch ID pending</td></tr>
+<tr><td>Tab</td><td class="m">--text-2</td><td class="m">--text-1</td><td>—</td><td class="m">ring inset, radius 6</td><td>—</td><td>—</td></tr>
+<tr><td>Rail tile</td><td class="m">transparent</td><td class="m">--control</td><td class="m">--surface-3</td><td class="m">ring radius 16</td><td>—</td><td>—</td></tr>
+<tr><td>Card</td><td class="m">--surface-card</td><td>No hover fill</td><td>—</td><td class="m">2px --focus ring, radius 16, when card is keyboard-focused</td><td>—</td><td>Opacity .6 while a decision is in flight</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</body>
+</html>

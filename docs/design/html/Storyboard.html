@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1600">
+<title>Orca · storyboard</title>
+<!-- Orca design artboard · S · Storyboard: every flow, frame by frame · 1600x2000 · generated from source/Storyboard.dc.html; edit the canvas, not this file -->
+<style>
+
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+a{color:oklch(85% .08 250);text-decoration:none}a:hover{color:oklch(93% .05 250)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:oklch(74% .008 70)}
+.flow{display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px;padding:14px 0;border-top:1px solid oklch(30% .003 70)}
+.frames{display:flex;align-items:stretch;gap:0}
+.frame{position:relative;flex:1;min-width:0;background:oklch(23% .003 70);border:1px solid oklch(33% .003 70);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
+.arrow{flex:none;width:28px;display:grid;place-items:center;color:oklch(60% .006 70);font-size:15px}
+.n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:oklch(39% .002 70);font-size:11px;font-weight:700;flex:none}
+.scr{font-size:12.5px;font-weight:600}
+.t{font-size:11.5px;line-height:1.35;color:oklch(80% .006 70)}
+.t b{color:oklch(92% .004 70);font-weight:600}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid oklch(30% .003 70);vertical-align:top}
+th{font-weight:600;color:oklch(78% .006 70)}
+.ok{color:oklch(84% .1 150)}.gap{color:oklch(88% .12 85);font-weight:600}
+
+html{background:oklch(13% .003 70)}
+</style>
+</head>
+<body>
+<div style="width: 1600px; height: 2000px; box-sizing: border-box; background: oklch(17% .003 70); padding: 56px 64px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: flex-end; gap: 24px">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+<p class="cap">ORCA · STORYBOARD</p>
+<h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -.01em">Ten flows, every frame, every exit</h1>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: oklch(82% .005 70); max-width: 900px">Each row is one user goal, read left to right. A frame names the artboard that draws it (click to jump), the trigger that gets you there, and what the system does. Build and test flows in this order; F2 and F4 are the MVP.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: oklch(80% .006 70)">
+<span><span class="n">1</span>&nbsp; step marker (true circle, 20×20)</span>
+<span><b style="color: oklch(92% .004 70)">Trigger</b> what the user or agent does</span>
+<span><b style="color: oklch(92% .004 70)">Result</b> what Orca does, incl. hub side effects</span>
+</div>
+</div>
+
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F1 · phase 2</span>
+<strong style="font-size: 15px">First run</strong>
+<span class="t">Connect accounts so agents ask here.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Empty.html">8 · Empty (first run)</a></div>
+<span class="t"><b>Trigger</b> App launches with no config.</span>
+<span class="t"><b>Result</b> Scans ~ for dirs with settings.json + projects/. Lists each with session count and a name field.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Empty.html">8 · Empty (first run)</a></div>
+<span class="t"><b>Trigger</b> Names accounts, clicks Connect 3 accounts.</span>
+<span class="t"><b>Result</b> Shows each file path + diff; writes one hook entry per Claude dir. Codex gets no hook.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Loading.html">7 · Loading</a></div>
+<span class="t"><b>Trigger</b> Automatic.</span>
+<span class="t"><b>Result</b> Parses session logs per account; streams requests in as each log finishes.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">4</span><a class="scr" href="Main.html">1 · Menu-bar inbox</a></div>
+<span class="t"><b>Trigger</b> Loading done.</span>
+<span class="t"><b>Result</b> Tray icon shows count. Popover stays closed until clicked.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F2 · MVP</span>
+<strong style="font-size: 15px">Approve from the tray</strong>
+<span class="t">Clear one blocked request without leaving the editor.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Main.html">Tray icon</a></div>
+<span class="t"><b>Trigger</b> Hook arrives on socket.</span>
+<span class="t"><b>Result</b> Tray count +1. Notification fires per Settings › Notify.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Main.html">1 · Menu-bar inbox</a></div>
+<span class="t"><b>Trigger</b> Click tray icon (or ⌃⌥I).</span>
+<span class="t"><b>Result</b> Popover opens under icon, focused on oldest card.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Main.html">1 · Menu-bar inbox</a></div>
+<span class="t"><b>Trigger</b> Click Approve, or ↩ on focused card.</span>
+<span class="t"><b>Result</b> High risk: Touch ID sheet first. Hub replies allow; hook exits 0.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">4</span><a class="scr" href="States.html">6 · States (resolved)</a></div>
+<span class="t"><b>Trigger</b> Automatic.</span>
+<span class="t"><b>Result</b> Card collapses out (200 ms). Count −1. Toast &quot;Approved · title&quot; until popover closes.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F3 · phase 3</span>
+<strong style="font-size: 15px">Act on a notification</strong>
+<span class="t">Decide from the banner, or jump to detail.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Notification.html">5 · Notifications</a></div>
+<span class="t"><b>Trigger</b> Banner appears (request or question).</span>
+<span class="t"><b>Result</b> Grouped by account. Body = summary, then raw command in plain text.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Notification.html">5 · Notifications</a></div>
+<span class="t"><b>Trigger</b> Deny, or Review.</span>
+<span class="t"><b>Result</b> Deny resolves immediately. Review opens the popover on Approval detail.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Approval.html">2 · Approval detail</a></div>
+<span class="t"><b>Trigger</b> Approve / Deny / type instead.</span>
+<span class="t"><b>Result</b> Same path as F2. Other banners for this request are removed.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F4 · MVP</span>
+<strong style="font-size: 15px">Answer a question</strong>
+<span class="t">Agent called ask_user; give it an answer fast.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Notification.html">5 · Notifications</a></div>
+<span class="t"><b>Trigger</b> Question banner, or nothing (silent mode).</span>
+<span class="t"><b>Result</b> Options dropdown lists ask_user options; Reply opens text field.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="QuickAnswer.html">4 · Quick answer</a></div>
+<span class="t"><b>Trigger</b> Press ⌥Space anywhere.</span>
+<span class="t"><b>Result</b> Panel opens centered on active screen with the oldest question.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="QuickAnswer.html">4 · Quick answer</a></div>
+<span class="t"><b>Trigger</b> Press 1–3, or type and ↩.</span>
+<span class="t"><b>Result</b> Answer returned as tool result. Next question loads in place.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">4</span><a class="scr" href="QuickAnswer.html">4 · Quick answer</a></div>
+<span class="t"><b>Trigger</b> Tab skips; Esc closes.</span>
+<span class="t"><b>Result</b> Panel closes when queue is empty, after a 600 ms &quot;All clear&quot; line.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F5 · phase 3</span>
+<strong style="font-size: 15px">Learn a rule</strong>
+<span class="t">Stop being asked for a command you always allow.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Approval.html">2 · Approval detail</a></div>
+<span class="t"><b>Trigger</b> Click Approve chevron (or long-press Approve).</span>
+<span class="t"><b>Result</b> Menu opens above the split button, right-aligned to it.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Approval.html">2 · Approval detail</a></div>
+<span class="t"><b>Trigger</b> Pick a step and a scope.</span>
+<span class="t"><b>Result</b> Shows exact pattern and how many past requests it would have covered.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Approval.html">2 · Approval detail</a></div>
+<span class="t"><b>Trigger</b> Allow and approve.</span>
+<span class="t"><b>Result</b> Writes rule to the scope file, then approves. Red tier: Touch ID first.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">4</span><a class="scr" href="Settings.html">10 · Settings › Rules</a></div>
+<span class="t"><b>Trigger</b> Automatic toast: Undo (8 s).</span>
+<span class="t"><b>Result</b> Rule listed under its scope with 1× use. Undo removes the line it wrote.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F6 · phase 2</span>
+<strong style="font-size: 15px">Nobody answers</strong>
+<span class="t">Unanswered request falls back to the editor, never auto-approves.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Main.html">1 · Menu-bar inbox</a></div>
+<span class="t"><b>Trigger</b> Time passes.</span>
+<span class="t"><b>Result</b> Countdown bar fills; label &quot;Moves to Cursor in Nm&quot; updates each minute, each second under 60 s.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Errors.html">9 · Errors (request)</a></div>
+<span class="t"><b>Trigger</b> Tier timeout reached.</span>
+<span class="t"><b>Result</b> Hook exits with &quot;ask&quot;; editor prompts. Card becomes &quot;Cursor is asking now&quot;.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Errors.html">Cursor</a></div>
+<span class="t"><b>Trigger</b> Open in Cursor.</span>
+<span class="t"><b>Result</b> Focuses window by worktree path. Card clears when transcript shows the answer.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F7 · phase 3</span>
+<strong style="font-size: 15px">Review finished work</strong>
+<span class="t">See overnight results and send failures back.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Done.html">3 · Done + recap</a></div>
+<span class="t"><b>Trigger</b> Open Done tab.</span>
+<span class="t"><b>Result</b> Recap bar since last idle. Failed first, then newest.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Done.html">3 · Done + recap</a></div>
+<span class="t"><b>Trigger</b> Type or accept suggestion, Send back to fix.</span>
+<span class="t"><b>Result</b> Headless resume in the same worktree. Card moves to Running.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="States.html">6 · States (running)</a></div>
+<span class="t"><b>Trigger</b> Automatic.</span>
+<span class="t"><b>Result</b> Running row shows current step. Returns to Done on next handoff.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F8 · phase 2</span>
+<strong style="font-size: 15px">Stalled or looping</strong>
+<span class="t">Catch an agent spinning without asking.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="States.html">6 · States (stalled)</a></div>
+<span class="t"><b>Trigger</b> No transcript growth for N min, or same error 3×.</span>
+<span class="t"><b>Result</b> Session moves to &quot;Needs a look&quot; with last step or the repeated error.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="States.html">6 · States (stalled)</a></div>
+<span class="t"><b>Trigger</b> Stop…</span>
+<span class="t"><b>Result</b> Confirm popover: &quot;Stops the agent process. Work so far is kept.&quot; SIGINT, then SIGTERM after 5 s.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Done.html">3 · Done</a></div>
+<span class="t"><b>Trigger</b> Automatic.</span>
+<span class="t"><b>Result</b> Card shows &quot;Stopped by you&quot; with diff stats so far.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F9 · phase 2</span>
+<strong style="font-size: 15px">Recover from a broken setup</strong>
+<span class="t">Hooks removed, extension missing, Codex disconnected.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Errors.html">9 · Errors</a></div>
+<span class="t"><b>Trigger</b> FSEvents sees settings.json lose the hook.</span>
+<span class="t"><b>Result</b> Red banner on top of the inbox; Settings rail item gets the amber &quot;!&quot; pip.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Errors.html">9 · Errors</a></div>
+<span class="t"><b>Trigger</b> Reinstall.</span>
+<span class="t"><b>Result</b> Rewrites the hook entry; shows path. Banner turns green &quot;Fixed&quot; for 2 s, then leaves.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Settings.html">10 · Settings › Accounts</a></div>
+<span class="t"><b>Trigger</b> Automatic.</span>
+<span class="t"><b>Result</b> Account row returns to Connected; pip clears when no problems remain.</span>
+</div>
+
+</div>
+</section>
+
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">F10 · phase 2</span>
+<strong style="font-size: 15px">Tune behavior</strong>
+<span class="t">Timeouts, Touch ID, notifications, shortcut.</span>
+</div>
+<div class="frames">
+
+
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">1</span><a class="scr" href="Settings.html">10 · Settings › General</a></div>
+<span class="t"><b>Trigger</b> Change a picker.</span>
+<span class="t"><b>Result</b> Saved immediately; hook timeouts rewritten to ≥ the new wait.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">2</span><a class="scr" href="Settings.html">10 · Settings › General</a></div>
+<span class="t"><b>Trigger</b> Turn off Touch ID for high risk.</span>
+<span class="t"><b>Result</b> Requires Touch ID to turn off. Switch animates only after success.</span>
+</div>
+
+<span class="arrow" aria-hidden="true">→</span>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">3</span><a class="scr" href="Settings.html">10 · Settings › General</a></div>
+<span class="t"><b>Trigger</b> Change shortcut.</span>
+<span class="t"><b>Result</b> Records next chord; registration failure shows inline amber text, keeps old one.</span>
+</div>
+
+</div>
+</section>
+
+
+<section style="display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid oklch(30% .003 70)">
+<p class="cap">STATE COVERAGE · WHICH ARTBOARD DRAWS WHAT</p>
+<table>
+<thead><tr><th style="width: 200px">Surface</th><th>Default</th><th>Loading</th><th>Empty</th><th>Error</th><th>Edge / overflow</th></tr></thead>
+<tbody>
+<tr><td>Inbox</td><td class="ok">1 · Menu-bar inbox</td><td class="ok">7 · Loading</td><td class="ok">6 · States, 8 · Empty</td><td class="ok">9 · Errors</td><td class="ok">6 · States, 11 · Edge cases</td></tr>
+<tr><td>Approval detail</td><td class="ok">2 · Approval</td><td class="ok">7 · Loading (summary)</td><td>n/a</td><td class="ok">9 · Errors (rule write)</td><td class="ok">11 · Edge cases</td></tr>
+<tr><td>Done + recap</td><td class="ok">3 · Done</td><td class="ok">7 · Loading</td><td class="ok">8 · Empty</td><td class="gap">Missing: resume failed</td><td class="gap">Missing: 30+ items</td></tr>
+<tr><td>Quick answer</td><td class="ok">4 · Quick answer</td><td class="gap">Missing: sending</td><td class="gap">Missing: nothing waiting (panel shows toast, closes)</td><td class="gap">Missing: send failed</td><td class="ok">11 · Edge cases (long question)</td></tr>
+<tr><td>Notifications</td><td class="ok">5 · Notifications</td><td>n/a</td><td>n/a</td><td class="gap">Missing: permission denied in System Settings</td><td class="gap">Missing: 10+ stacked</td></tr>
+<tr><td>Settings</td><td class="ok">10 · Settings</td><td>n/a</td><td class="gap">Missing: Rules empty</td><td class="ok">10 · Settings (shortcut, hook)</td><td class="gap">Missing: 30+ rules</td></tr>
+<tr><td>First run</td><td class="ok">8 · Empty</td><td class="ok">7 · Loading</td><td class="gap">Missing: nothing found on this Mac</td><td class="gap">Missing: hook write denied</td><td>n/a</td></tr>
+<tr><td>Touch ID</td><td>System sheet</td><td>n/a</td><td>n/a</td><td class="gap">Missing: failed / cancelled (card stays, inline "Not approved")</td><td class="gap">Missing: no Touch ID → password</td></tr>
+<tr><td>Light mode</td><td class="ok">L · Light mode</td><td colspan="4">Every dark artboard maps 1:1 through the token table on I2. Build once with tokens; never hand-pick light colors.</td></tr>
+</tbody>
+</table>
+</section>
+</div>
+</body>
+</html>

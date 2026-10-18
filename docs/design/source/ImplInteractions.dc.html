@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · interactions and state machine</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:oklch(74% .008 70)}
+h2{margin:0;font-size:20px;font-weight:650}
+h3{margin:0;font-size:14px;font-weight:650}
+.m{font:11.5px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(88% .02 250)}
+table{border-collapse:collapse;width:100%;font-size:12px;line-height:1.45}
+td,th{text-align:left;padding:7px 8px;border-bottom:1px solid oklch(30% .003 70);vertical-align:top}
+th{color:oklch(78% .006 70);font-weight:600}
+.st{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;border:1px solid oklch(36% .003 70);background:oklch(23% .003 70);flex:1 1 0;min-width:0;box-sizing:border-box}
+.st b{font-size:13px}.st span{font-size:11.5px;color:oklch(80% .006 70);line-height:1.35}
+.st.term{border-style:dashed}
+.ar{font-size:11px;color:oklch(78% .006 70);display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;width:96px;text-align:center}
+.ar::after{content:'→';font-size:16px;color:oklch(60% .006 70)}
+.sec{display:flex;flex-direction:column;gap:12px;padding-top:20px;border-top:1px solid oklch(30% .003 70)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.box{background:oklch(22% .003 70);border:1px solid oklch(32% .003 70);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.box p,.box li{margin:0;font-size:12.5px;line-height:1.5;color:oklch(84% .005 70)}
+.box ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+pre{margin:0;font:11.5px/1.55 ui-monospace,"SF Mono",Menlo,monospace;background:oklch(13% .003 70);border:1px solid oklch(30% .003 70);border-radius:10px;padding:12px 14px;color:oklch(90% .004 70);white-space:pre-wrap}
+</style>
+</helmet>
+<div style="width: 1440px; height: 3300px; box-sizing: border-box; background: oklch(17% .003 70); padding: 56px 64px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p class="cap">ORCA · I6 · INTERACTIONS AND STATE MACHINE</p>
+<h1 style="margin: 0; font-size: 34px; font-weight: 700">What every click, key and timer does.</h1>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: oklch(82% .005 70); max-width: 1040px">The main process owns state; renderers only send intents and render snapshots. No renderer ever decides a request on its own. Anything not listed here does nothing: no hover-to-act, no swipe, no auto-approve.</p>
+</div>
+
+<section class="sec">
+<h2>1 · Request lifecycle</h2>
+<div style="display: flex; align-items: center; flex-wrap: wrap; row-gap: 14px">
+<div class="st"><b>pending</b><span>Hook blocked on socket. Card + tray count + notification.</span></div>
+<span class="ar">click / ↩ / notif action</span>
+<div class="st"><b>confirming</b><span>High risk: Touch ID sheet. Buttons disabled, card .6.</span></div>
+<span class="ar">auth ok · ≤ 1s ack</span>
+<div class="st"><b>decided</b><span>allow / deny / answer sent. Card collapses 200ms.</span></div>
+<span class="ar">hook exits</span>
+<div class="st term"><b>resolved</b><span>Removed from list; Done gets it on handoff.</span></div>
+</div>
+<div style="display: flex; align-items: center; flex-wrap: wrap; row-gap: 14px">
+<div class="st"><b>pending</b><span>Countdown running (low / medium only).</span></div>
+<span class="ar">tier timeout</span>
+<div class="st"><b>moved</b><span>Hook returns "ask". Card: "Cursor is asking now".</span></div>
+<span class="ar">transcript shows answer</span>
+<div class="st term"><b>resolved elsewhere</b><span>"Approved in Cursor at 10:10", else "Handled in Cursor". Dismissable X.</span></div>
+</div>
+<div style="display: flex; align-items: center; flex-wrap: wrap; row-gap: 14px">
+<div class="st"><b>pending</b><span>Any state above.</span></div>
+<span class="ar">session ends / PID gone</span>
+<div class="st term"><b>orphaned</b><span>"The session ended before you answered. Nothing was run." Dismissable X.</span></div>
+<span class="ar" style="width: 140px">auth fails / cancel</span>
+<div class="st"><b>pending</b><span>Back to pending; inline "Not approved" 3s under buttons.</span></div>
+</div>
+<table>
+<thead><tr><th style="width: 130px">From</th><th style="width: 190px">Event</th><th style="width: 200px">Guard</th><th style="width: 120px">To</th><th>UI</th><th>Hub</th></tr></thead>
+<tbody>
+<tr><td>pending</td><td>Approve (click, ↩, notif "Approve")</td><td>tier ≠ high, or Touch ID off</td><td>decided</td><td>Disable both buttons, spinner in Approve, card opacity .6</td><td class="m">reply {permissionDecision:"allow"}</td></tr>
+<tr><td>pending</td><td>Approve, high risk</td><td>Touch ID on</td><td>confirming</td><td>System sheet "Orca wants to approve git push --force"</td><td class="m">systemPreferences.promptTouchID(reason)</td></tr>
+<tr><td>pending</td><td>Deny (click, ⌘⌫, notif "Deny")</td><td>none</td><td>decided</td><td>Same as approve, spinner in Deny</td><td class="m">reply {permissionDecision:"deny", reason:"Denied in Orca"}</td></tr>
+<tr><td>pending</td><td>"Tell it instead" + ↩</td><td>text non-empty</td><td>decided</td><td>Field disabled, send icon spins</td><td class="m">deny + reason = the text</td></tr>
+<tr><td>pending</td><td>Allow and approve (sheet)</td><td>rule write ok; red tier: Touch ID</td><td>decided</td><td>Toast "Rule saved · Undo" 8s</td><td>write rule file, then allow</td></tr>
+<tr><td>pending</td><td>Rule write fails</td><td>file read-only / denied</td><td>decided</td><td>Red toast "Approved once. The rule wasn't saved." + Show file / Retry / X</td><td>allow only</td></tr>
+<tr><td>pending</td><td>Second device/surface answers first</td><td>any</td><td>resolved</td><td>Card shows "Answered in quick answer" 1.5s, then collapses</td><td>first write wins; later writes ignored, logged</td></tr>
+<tr><td>decided</td><td>No ack in 1s</td><td>socket closed</td><td>orphaned</td><td>As orphaned row</td><td>log, drop</td></tr>
+<tr><td>pending</td><td>Snooze 15m (menu)</td><td>tier ≠ high</td><td>pending (hidden)</td><td>Card leaves; returns at top when timer ends; countdown keeps running</td><td>none</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="sec">
+<h2>2 · Keyboard map</h2>
+<div class="grid2">
+<table>
+<thead><tr><th style="width: 130px">Key</th><th>Scope</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td class="m">⌥ Space</td><td>Global (rebindable)</td><td>Toggle quick-answer panel</td></tr>
+<tr><td class="m">⌃⌥ I</td><td>Global (rebindable, off by default)</td><td>Toggle popover</td></tr>
+<tr><td class="m">↑ ↓</td><td>Popover list</td><td>Move card focus; wraps at ends: no</td></tr>
+<tr><td class="m">↩</td><td>Focused request card</td><td>Approve (opens Touch ID for high)</td></tr>
+<tr><td class="m">⌘ ⌫</td><td>Focused request card</td><td>Deny</td></tr>
+<tr><td class="m">Space</td><td>Focused card</td><td>Open approval detail</td></tr>
+<tr><td class="m">⌘ O</td><td>Card / detail</td><td>Open in Cursor (focus window)</td></tr>
+<tr><td class="m">⇧ ⌘ C</td><td>Card / detail</td><td>Copy full command</td></tr>
+<tr><td class="m">⌘ 1 · 2 · 3</td><td>Popover</td><td>Rail: Inbox · Running · Done</td></tr>
+</tbody>
+</table>
+<table>
+<thead><tr><th style="width: 130px">Key</th><th>Scope</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td class="m">⌘ ,</td><td>Popover</td><td>Settings</td></tr>
+<tr><td class="m">⌃ Tab</td><td>Popover</td><td>Next account tab</td></tr>
+<tr><td class="m">1 – 9</td><td>Quick answer</td><td>Pick option N (only options exist)</td></tr>
+<tr><td class="m">Tab</td><td>Quick answer</td><td>Skip to next question, current stays pending</td></tr>
+<tr><td class="m">any letter</td><td>Quick answer</td><td>Focuses free-text field and types</td></tr>
+<tr><td class="m">↩</td><td>Quick answer field</td><td>Send text; empty field + ↩ sends default only if one exists</td></tr>
+<tr><td class="m">↑ ↓</td><td>Approval detail</td><td>Previous / next request</td></tr>
+<tr><td class="m">Esc</td><td>Everywhere</td><td>Close innermost layer: menu → sheet → detail → popover / panel</td></tr>
+<tr><td class="m">⌘ Z</td><td>Within 8s of toast</td><td>Undo rule save / dismiss</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section class="sec">
+<h2>3 · Surfaces</h2>
+<div class="grid2">
+<div class="box"><h3>Tray icon</h3><ul>
+<li>Left click: toggle popover. Opening restores the last rail section and account tab; scroll resets to top.</li>
+<li>Right click: native menu: Open Orca · Pause notifications for 1 hour · Settings… · Quit Orca (⌘Q). No custom HTML menu.</li>
+<li>Icon: template image 18×18, two states only: idle and "has pending" (filled). Count via <span class="m">setTitle</span>. No animation.</li>
+</ul></div>
+<div class="box"><h3>Popover</h3><ul>
+<li>Open: opacity 0→1 and translateY −4px→0, 120ms ease-out. Close: 90ms fade, no slide. Reduced motion: instant.</li>
+<li>On open, focus goes to the oldest pending card (outline only when opened by keyboard).</li>
+<li>Blur hides it, except while the Touch ID sheet is up or a native picker menu is open.</li>
+<li>New request while open: card inserts at its sorted position with a 160ms rise; list never jumps under the pointer: if the user is hovering a card, inserts above it are held until the pointer leaves the list ("2 new above" chip at top).</li>
+</ul></div>
+<div class="box"><h3>Request card</h3><ul>
+<li>Click on title or command opens approval detail. Click on buttons acts. Click elsewhere on the card focuses it only.</li>
+<li>Right click: context menu at pointer, flipped to stay inside the popover: Open in Cursor ⌘O · Copy command ⇧⌘C · Snooze 15 minutes · ── · Always allow…</li>
+<li>Command block: one line with ellipsis; Space or click expands to 2 lines + "Show all" (I-11 edge cases).</li>
+<li>Countdown label: "Moves to Cursor in Nm", per second under 60s. Text and bar share one 1Hz timer.</li>
+</ul></div>
+<div class="box"><h3>Approval detail</h3><ul>
+<li>Replaces the list inside the popover (no new window). "‹ Inbox" returns, keeping list scroll.</li>
+<li>Header shows "N of M" and ↑ ↓ buttons; disabled at ends.</li>
+<li>Steps: compound commands split on <span class="m">&amp;&amp; ; ||</span>; each step numbered with its one-line explanation; risky flags highlighted with <span class="m">&lt;mark&gt;</span> r3.</li>
+<li>Resolved while open (another surface answered): banner "Answered in quick answer", buttons removed, auto-advance to next in 1.5s.</li>
+</ul></div>
+<div class="box"><h3>Always-allow sheet</h3><ul>
+<li>Anchored above the split button. 344 wide, r14, padding 8. Esc / outside click cancels without approving.</li>
+<li>Rows: Approve once ↩ · divider · per-step pattern (code) · scope radios (repo, all accounts / this account, all repos) · "Allow and approve" primary.</li>
+<li>Preview line: "Would have covered N earlier requests" from history; hidden when 0.</li>
+<li>Red tier: pattern rows disabled with "High-risk commands can't be allowed always."</li>
+</ul></div>
+<div class="box"><h3>Quick-answer panel</h3><ul>
+<li>Separate BrowserWindow, 640 wide, height fits content (max 480), centered horizontally, top at 22% of the active display. Panel-type window: doesn't steal focus from the app beneath on close.</li>
+<li>Shows oldest unanswered question across accounts. After answering: next question cross-fades in 120ms. Queue empty: "All clear" line 600ms, then closes.</li>
+<li>Opened with nothing waiting: shows "Nothing waiting" 900ms and closes.</li>
+</ul></div>
+<div class="box"><h3>Notifications</h3><ul>
+<li>Request: title = session title, subtitle = "High risk · wants to force-push", body = raw command (plain). Actions: Review (opens popover detail), Deny. Approve is never offered for high risk in a banner.</li>
+<li>Medium / low: actions Approve, Deny.</li>
+<li>Question: actions = up to 3 options from ask_user (system "Options" dropdown) + Reply (<span class="m">hasReply</span>).</li>
+<li>One notification per request, grouped by account; removed with <span class="m">notification.close()</span> the moment the request resolves anywhere.</li>
+</ul></div>
+<div class="box"><h3>Batch row and stalled sessions</h3><ul>
+<li>Batch row lists low-risk requests with checkboxes; anything reading outside its worktree starts unticked with a reason. "Approve N" re-checks tiers in main at click; a request that changed tier is skipped and reported.</li>
+<li>Stalled: Stop… opens a 280-wide confirm popover anchored to the button: "Stops the agent process. Work so far is kept." Cancel · Stop. Stop sends SIGINT, then SIGTERM after 5s.</li>
+</ul></div>
+<div class="box"><h3>Toasts</h3><ul>
+<li>One visible at a time, bottom of the popover, 16px inset. A newer toast replaces the older; errors are never replaced by info.</li>
+<li>Durations: success 4s, undo 8s, error until closed. Hover pauses the timer.</li>
+<li><span class="m">role="status"</span> for info, <span class="m">role="alert"</span> for errors.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="sec">
+<h2>4 · Motion</h2>
+<table>
+<thead><tr><th>What</th><th>Property</th><th>Duration</th><th>Easing</th><th>Reduced motion</th></tr></thead>
+<tbody>
+<tr><td>Popover open / close</td><td>opacity, translateY −4→0</td><td>120 / 90ms</td><td>ease-out</td><td>instant</td></tr>
+<tr><td>Card resolve</td><td>height → 0, opacity → 0</td><td>200ms</td><td>cubic-bezier(.2,.7,.2,1)</td><td>instant remove</td></tr>
+<tr><td>Card insert</td><td>translateY 6→0, opacity</td><td>160ms</td><td>ease-out</td><td>instant</td></tr>
+<tr><td>Badge increment</td><td>scale 1→1.15→1</td><td>160ms</td><td>ease-out</td><td>none</td></tr>
+<tr><td>Switch knob</td><td>left 2→16</td><td>150ms</td><td>ease</td><td>instant</td></tr>
+<tr><td>Countdown bar</td><td>width</td><td>1s steps</td><td>linear</td><td>same (not motion)</td></tr>
+<tr><td>Skeleton pulse</td><td>opacity 1→.55</td><td>1.6s loop</td><td>ease-in-out</td><td>static</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="sec">
+<h2>5 · IPC contract (renderer ↔ main)</h2>
+<div class="grid2">
+<pre>// renderer → main (ipcRenderer.invoke), all return { ok, error? }
+'request:decide'   { id, decision: 'allow'|'deny', reason?, rule?: { pattern, scope: 'repo'|'account' } }
+'question:answer'  { id, optionIndex? , text? }
+'request:snooze'   { id, minutes: 15 }
+'session:stop'     { sessionId }
+'session:resume'   { sessionId, prompt }
+'window:focus'     { sessionId }            // Cursor window via extension
+'rule:undo'        { ruleId }
+'settings:set'     { key, value }</pre>
+<pre>// main → renderer (webContents.send), full snapshots, not diffs
+'inbox:snapshot'   { pending[], running[], done[], problems[], counts }
+'toast'            { kind: 'success'|'undo'|'error', text, actions[] }
+
+// invariants
+// 1. A request id is decided at most once; second decide → { ok:false, error:'already-resolved' }.
+// 2. Renderer disables controls on send and re-enables only on error.
+// 3. Snapshots are idempotent; renderer keys rows by id so focus survives updates.
+// 4. Every decide is appended to ~/Library/Application Support/Orca/decisions.jsonl.</pre>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3300}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

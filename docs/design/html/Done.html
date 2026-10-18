@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=560">
+<title>Orca · done and recap</title>
+<!-- Orca design artboard · 3 · Done + recap · 560x800 · generated from source/Done.dc.html; edit the canvas, not this file -->
+<style>
+
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+a{color:oklch(85% .08 250);text-decoration:none}a:hover{color:oklch(93% .05 250)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid oklch(85% .08 250);outline-offset:2px}
+.fa{width:14px;height:14px;fill:currentColor;flex:none}
+.rail-item{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;font-size:11px;color:oklch(74% .008 70)}
+.tile{position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:14px}
+.rail-item.on{color:oklch(97% .002 70)}.rail-item.on .tile{background:oklch(39% .002 70)}
+.badge{position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:oklch(58% .19 25);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.tab{position:relative;display:flex;align-items:center;gap:6px;padding:0 4px;font-size:14px;font-weight:600;color:oklch(74% .008 70);height:100%}
+.tab.on{color:oklch(97% .002 70)}.tab.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:oklch(97% .002 70)}
+.count{font-weight:500;color:oklch(74% .008 70)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.card{background:oklch(25% .003 70);border:1px solid oklch(32% .003 70);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.meta{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(74% .008 70);white-space:nowrap}
+.btn{height:32px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:oklch(34% .003 70)}
+.btn.primary{background:oklch(97% .002 70);color:oklch(17% .003 70)}
+.ib{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:oklch(80% .006 70)}
+.ib:hover{background:oklch(34% .003 70)}
+.stat{display:flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap}
+.row:hover{background:oklch(25% .003 70)}
+.row{display:flex;align-items:center;gap:10px;height:38px;padding:0 4px;border-top:1px solid oklch(32% .003 70);font-size:13px}
+
+html{background:oklch(13% .003 70)}
+</style>
+</head>
+<body>
+<div style="width: 560px; height: 800px; box-sizing: border-box; background: oklch(17% .003 70); display: flex; flex-direction: column; align-items: flex-end; padding: 0 16px 16px">
+<div style="height: 36px; display: flex; align-items: center; justify-content: flex-end; width: 100%">
+<button aria-label="Orca, 1 waiting on you" style="display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: oklch(39% .002 70); font-size: 13px; font-weight: 600"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg>1</button>
+</div>
+<div style="width: 528px; height: 748px; display: flex; border: 1px solid oklch(38% .003 70); border-radius: 20px; background: oklch(21.8% .003 70); overflow: hidden; box-shadow: 0 18px 60px oklch(0% 0 0 / .35)">
+<nav aria-label="Sections" style="width: 88px; flex: none; background: oklch(28.4% .004 70); border-right: 1px solid oklch(38% .003 70); padding: 20px 8px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 20px">
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg><span class="badge">1</span></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item on" aria-current="page"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="Done" style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div role="tablist" aria-label="Account" style="height: 52px; flex: none; display: flex; align-items: stretch; gap: 20px; padding: 0 20px; border-bottom: 1px solid oklch(32% .003 70)">
+<button class="tab on" role="tab" aria-selected="true">All</button>
+<button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(72% .12 250)"></span>Work <span class="count">4</span></button>
+<button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal <span class="count">2</span></button>
+</div>
+<div style="flex: 1; min-height: 0; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+<div style="display: flex; flex-direction: column; gap: 9px; padding: 2px 2px 4px">
+<div style="display: flex; align-items: baseline; gap: 8px"><h2 style="margin: 0; flex: 1; font-size: 15px; font-weight: 650">Overnight · 6 finished</h2><span class="meta">since 11:40 PM</span></div>
+<div role="img" aria-label="5 passed, 1 needs a fix" style="display: flex; gap: 3px; height: 10px">
+<div style="flex: 5; border-radius: 5px 0 0 5px; background: oklch(72% .14 150)"></div>
+<div style="flex: 1; border-radius: 0 5px 5px 0; background: oklch(62% .19 25)"></div>
+</div>
+<div class="meta" style="gap: 14px"><span style="display: flex; align-items: center; gap: 6px"><span class="dot" style="background: oklch(72% .14 150)"></span>5 passed</span><span style="display: flex; align-items: center; gap: 6px"><span class="dot" style="background: oklch(62% .19 25)"></span>1 needs a fix</span><span style="flex: 1"></span><a href="Main.html" style="font-size: 12px">1 still waiting in Inbox</a></div>
+</div>
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 14px; height: 14px; color: oklch(76% .14 25)"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm0 336a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm0-256c18.2 0 32.7 15.5 31.4 33.7l-7.4 104c-.9 12.6-11.4 22.3-23.9 22.3-12.6 0-23-9.7-23.9-22.3l-7.4-104C223.3 143.5 237.8 128 256 128z"/></svg><h3 style="margin: 0; flex: 1; font-size: 14px; font-weight: 600">Harden hook shim timeouts</h3><span class="meta">6:10 AM</span><button class="ib" aria-label="More actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<div class="meta"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal<span>·</span>elliott / shim-timeouts</div>
+<div style="display: flex; align-items: center; gap: 14px">
+<span class="stat" style="color: oklch(84% .09 25)">2 of 64 tests failed</span>
+<span class="stat">4 files <span style="color: oklch(80% .12 150)">+96</span> <span style="color: oklch(78% .11 25)">−31</span></span>
+<span class="stat" style="color: oklch(78% .006 70)">61k tokens</span>
+</div>
+<label style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 4px 0 12px; border-radius: 10px; background: oklch(19% .003 70); border: 1px solid oklch(34% .003 70)"><input type="text" aria-label="Instructions for the agent" placeholder="Suggested: fix the socket close race" style="flex: 1; min-width: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; outline: none"><button class="btn primary" style="height: 30px">Send back to fix</button></label>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><button class="btn">View diff</button><button class="btn">Open in Cursor</button></div>
+</article>
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px; color: oklch(78% .13 150)"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg><h3 style="margin: 0; flex: 1; font-size: 14px; font-weight: 600">Add rent-roll export</h3><span class="meta">7:42 AM</span><button class="ib" aria-label="More actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work<span>·</span>noi-signals / rent-roll-export</div>
+<div style="display: flex; align-items: center; gap: 14px">
+<span class="stat" style="color: oklch(84% .1 150)">112 tests passed</span>
+<span class="stat">12 files <span style="color: oklch(80% .12 150)">+340</span> <span style="color: oklch(78% .11 25)">−88</span></span>
+<span class="stat" style="color: oklch(78% .006 70)">182k tokens</span>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: oklch(82% .005 70)">Next: wire the export button into the portfolio view.</p>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><button class="btn">View diff</button><button class="btn primary">Open in Cursor</button></div>
+</article>
+<div style="display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; padding: 0 4px 6px"><span class="meta" style="flex: 1">Earlier</span><button class="meta" style="color: oklch(88% .004 70)">Dismiss earlier</button></div>
+<button class="row" style="width: 100%; text-align: left"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 12px; height: 12px; color: oklch(78% .13 150)"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg><span style="flex: 1">Bump Effect to latest minor</span><span class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · 3:02 AM</span></button>
+<button class="row" style="width: 100%; text-align: left"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 12px; height: 12px; color: oklch(78% .13 150)"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg><span style="flex: 1">Document NOI signal schema</span><span class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · 1:15 AM</span></button>
+<button class="row meta" style="justify-content: center; font-size: 12.5px">Show 2 more</button>
+</div>
+</div>
+</section>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Critique log · first pass</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(95% .002 70)}
+a{color:oklch(85% .08 250)}a:hover{color:oklch(93% .05 250)}
+h2{margin:0 0 12px;font-size:15px;font-weight:650;letter-spacing:.01em}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-weight:600;color:oklch(74% .008 70);padding:6px 8px;border-bottom:1px solid oklch(34% .003 70)}
+td{padding:6px 8px;border-bottom:1px solid oklch(28% .003 70);vertical-align:top}
+.m{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px}
+.mut{color:oklch(76% .008 70)}
+.tag{display:inline-block;font:600 11px ui-monospace,"SF Mono",Menlo,monospace;padding:1px 6px;border-radius:5px;background:oklch(32% .003 70);color:oklch(90% .004 70)}
+.cell{display:flex;align-items:center;gap:8px}
+.track{position:relative;flex:1;height:8px;border-radius:4px;background:oklch(28% .003 70)}
+.fill{height:100%;border-radius:4px}
+.gate{position:absolute;left:80%;top:-3px;bottom:-3px;width:1px;background:oklch(85% .002 70)}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.45}
+</style>
+</helmet>
+<div style="width: 1120px; box-sizing: border-box; min-height: 3000px; background: oklch(19% .003 70); padding: 48px; display: flex; flex-direction: column; gap: 36px">
+<header style="display: flex; flex-direction: column; gap: 6px">
+<p class="m mut" style="margin: 0">UI CRITIQUE LOOP · FIRST PASS · macOS APP ONLY</p>
+<h1 style="margin: 0; font-size: 28px; font-weight: 700">All six items cleared 8.0 within three rounds</h1>
+<p class="mut" style="margin: 0; font-size: 13px; max-width: 760px; line-height: 1.5">A fresh critic agent graded each round with no access to designer reasoning. No item hit the 4-round cap, so there are no plots and nothing is unresolved. Open feasibility flags on items that passed are carried forward at the bottom.</p>
+</header>
+
+<section>
+<h2>Score table</h2>
+<table>
+<thead><tr><th style="width: 200px">Item</th><th>Round 1</th><th>Round 2</th><th>Round 3</th><th style="width: 90px">Final</th></tr></thead>
+<tbody>
+<tr><td>1 · Menu-bar inbox</td><td><div class="cell"><span class="m">7.4</span><div class="track"><div class="fill" style="width: 74%; background: oklch(70% .12 55)"></div><div class="gate"></div></div></div></td><td><div class="cell"><span class="m">7.8</span><div class="track"><div class="fill" style="width: 78%; background: oklch(70% .12 55)"></div><div class="gate"></div></div></div></td><td><div class="cell"><span class="m">8.1</span><div class="track"><div class="fill" style="width: 81%; background: oklch(72% .12 150)"></div><div class="gate"></div></div></div></td><td class="m">8.1 pass</td></tr>
+<tr><td>2 · Approval + learn-a-rule</td><td><div class="cell"><span class="m">7.6</span><div class="track"><div class="fill" style="width: 76%; background: oklch(70% .12 55)"></div><div class="gate"></div></div></div></td><td><div class="cell"><span class="m">8.3</span><div class="track"><div class="fill" style="width: 83%; background: oklch(72% .12 150)"></div><div class="gate"></div></div></div></td><td class="mut">stopped</td><td class="m">8.3 pass</td></tr>
+<tr><td>3 · Done + recap</td><td><div class="cell"><span class="m">7.4</span><div class="track"><div class="fill" style="width: 74%; background: oklch(70% .12 55)"></div><div class="gate"></div></div></div></td><td><div class="cell"><span class="m">7.6</span><div class="track"><div class="fill" style="width: 76%; background: oklch(70% .12 55)"></div><div class="gate"></div></div></div></td><td><div class="cell"><span class="m">8.0</span><div class="track"><div class="fill" style="width: 80%; background: oklch(72% .12 150)"></div><div class="gate"></div></div></div></td><td class="m">8.0 pass</td></tr>
+<tr><td>4 · Quick-answer panel</td><td><div class="cell"><span class="m">8.9</span><div class="track"><div class="fill" style="width: 89%; background: oklch(72% .12 150)"></div><div class="gate"></div></div></div></td><td class="mut">stopped</td><td class="mut">—</td><td class="m">8.9 pass</td></tr>
+<tr><td>5 · Notifications</td><td><div class="cell"><span class="m">8.3</span><div class="track"><div class="fill" style="width: 83%; background: oklch(72% .12 150)"></div><div class="gate"></div></div></div></td><td class="mut">stopped</td><td class="mut">—</td><td class="m">8.3 pass</td></tr>
+<tr><td>6 · Empty / overflow / stalled</td><td><div class="cell"><span class="m">7.5</span><div class="track"><div class="fill" style="width: 75%; background: oklch(70% .12 55)"></div><div class="gate"></div></div></div></td><td><div class="cell"><span class="m">7.7</span><div class="track"><div class="fill" style="width: 77%; background: oklch(70% .12 55)"></div><div class="gate"></div></div></div></td><td><div class="cell"><span class="m">8.0</span><div class="track"><div class="fill" style="width: 80%; background: oklch(72% .12 150)"></div><div class="gate"></div></div></div></td><td class="m">8.0 pass</td></tr>
+</tbody>
+</table>
+<p class="mut" style="margin: 8px 0 0; font-size: 12px">White tick = the 8.0 gate. Plots: none required (no item reached round 4).</p>
+</section>
+
+<section>
+<h2>Decision log</h2>
+<table>
+<thead><tr><th style="width: 110px">Item</th><th style="width: 70px">Criterion</th><th>Before → after</th><th style="width: 330px">Why</th></tr></thead>
+<tbody>
+<tr><td>All</td><td class="m">c12</td><td>Hand-drawn stroke icons → Font Awesome regular, copied from ICON_SOURCE</td><td class="mut">One set, no mixing</td></tr>
+<tr><td>Inbox</td><td class="m">c3</td><td>Bare "worktree" → "worktree lease-sync-2"</td><td class="mut">A token on its own said nothing</td></tr>
+<tr><td>Inbox</td><td class="m">c13</td><td>Red-tier Approve as white primary → neutral button with Touch ID</td><td class="mut">A force-push gets no default</td></tr>
+<tr><td>Inbox</td><td class="m">c21</td><td>Separate "kind" row → risk chip in the title row</td><td class="mut">Card 3's actions were clipped</td></tr>
+<tr><td>Inbox</td><td class="m">c25</td><td>Count on the All tab, the rail and the status item → All tab has no count</td><td class="mut">The same number showed three times</td></tr>
+<tr><td>Inbox</td><td class="m">c10</td><td>None → right-click menu: Open in Cursor, Copy command, Snooze 15 min, Always allow…</td><td class="mut">A fast path for power users</td></tr>
+<tr><td>Inbox</td><td class="m">c3</td><td>"6m" → "waiting 6m"</td><td class="mut">Read as session age</td></tr>
+<tr><td>Inbox</td><td class="m">c19 c20</td><td>None → timeout bar on yellow card + "Moves to Cursor in 9m"</td><td class="mut">Shows urgency at a glance, per the spec's per-tier timeouts</td></tr>
+<tr><td>Inbox</td><td class="m">c25</td><td>"4 running" footer link → removed; "14 cleared today" kept</td><td class="mut">Duplicated the rail</td></tr>
+<tr><td>Inbox</td><td class="m">c13</td><td>Long command hidden behind "Show command" → first line inline, truncated, click to expand</td><td class="mut">Never approve a command you can't see</td></tr>
+<tr><td>Approval</td><td class="m">c20 c21</td><td>One wrapped command → 2 numbered steps, <span class="m">--truncate</span> highlighted</td><td class="mut">break-all split flags mid-token</td></tr>
+<tr><td>Approval</td><td class="m">c25</td><td>Rule silent about the chain → "Always allow step 1 · step 2 will still ask"</td><td class="mut">The rule's real scope, stated plainly</td></tr>
+<tr><td>Approval</td><td class="m">c15</td><td>Deny only → "Or tell it what to do instead…" field</td><td class="mut">The text goes back to the agent as the deny reason</td></tr>
+<tr><td>Approval</td><td class="m">c7</td><td>Static "1 of 3" → "3 of 3" with ↑ / ↓ buttons</td><td class="mut">Lets you step through requests</td></tr>
+<tr><td>Approval</td><td class="m">c19</td><td>None → "Would have covered 6 earlier requests"</td><td class="mut">Shows what the rule is worth before you save it</td></tr>
+<tr><td>Approval</td><td class="m">c3</td><td>"Personal account, any repo" → "Personal account only, all repos"</td><td class="mut">The spec writes this account's settings.json, which applies to every repo. Kept wide on purpose and labelled; the round 1 critic read it as narrower</td></tr>
+<tr><td>Done</td><td class="m">c21</td><td>Counts 7 / 5+1+1 / 5 rows → 6 = 5 passed + 1 needs a fix; the waiting item becomes an Inbox link</td><td class="mut">The numbers didn't add up</td></tr>
+<tr><td>Done</td><td class="m">c13</td><td>Failed run's primary "Open in Cursor" → "Send back to fix" + instruction field</td><td class="mut">The next action is the fix</td></tr>
+<tr><td>Done</td><td class="m">c3</td><td>"$0.41" → "182k tokens"</td><td class="mut">No label, and dollars aren't knowable on subscription accounts</td></tr>
+<tr><td>Done</td><td class="m">c21 c25</td><td>Overflowing meta line → stat row, same anatomy on both cards</td><td class="mut">Text ran past the card edge</td></tr>
+<tr><td>Done</td><td class="m">c3</td><td>"Clear all" → "Dismiss earlier"; xmark → circle-exclamation</td><td class="mut">Said what it removes; the X read as close</td></tr>
+<tr><td>States</td><td class="m">c25</td><td>400px panes with no rail → the real 528px shell with rail and tabs</td><td class="mut">Didn't match Main</td></tr>
+<tr><td>States</td><td class="m">c21 c11</td><td>12 vs 14 count mismatch → badge 14 = 12 shown + "2 new below" pill</td><td class="mut">Counts agree; the pill earns its place</td></tr>
+<tr><td>States</td><td class="m">c16 c18</td><td>"Approve all 5" → per-item checkboxes, "Approve 4"</td><td class="mut">Batch approval you can inspect</td></tr>
+<tr><td>States</td><td class="m">c17</td><td>None → swipe right reveals Approve (green/yellow only)</td><td class="mut">Matches Mail's direction: left is destructive</td></tr>
+<tr><td>States</td><td class="m">c23</td><td>"Tell it…" button → removed</td><td class="mut">Hooks can't inject a message mid-turn</td></tr>
+<tr><td>States</td><td class="m">c23</td><td>"tests 38/112" progress bar → phase + elapsed time</td><td class="mut">The transcript has no output while a command is still running</td></tr>
+<tr><td>States</td><td class="m">c22</td><td>Half-empty Running pane → "Running fine" list; resolved-elsewhere rows moved to the empty Inbox</td><td class="mut">Every element earns its spot</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>Tradeoffs</h2>
+<ul>
+<li><span class="tag">[TRADEOFF]</span> Inbox c20: rejected the critic's left-edge risk stripe (left-border cards are a known AI-slop trope). Risk shows as an icon chip in the title row instead.</li>
+<li><span class="tag">[TRADEOFF]</span> Inbox c17/c18: swipe and batch-select are drawn once, in the busy state, not repeated in the hero view. Inbox scores 7 on both.</li>
+<li><span class="tag">[TRADEOFF]</span> Approve and Deny stay text buttons, not icons (c8). The decision is too important to leave to glyph recognition.</li>
+<li><span class="tag">[TRADEOFF]</span> Copy command moved to ⇧⌘C so ⌘C keeps native text copy.</li>
+<li><span class="tag">[TRADEOFF]</span> Quick answer: the pre-selected default ("Backfill now") is also the option that locks the table. ↩ accepts the riskier choice. The default comes from the agent's ask_user call.</li>
+<li><span class="tag">[PERMISSION]</span> Red tier: no learn-a-rule, no swipe, no inline batch approve, and Touch ID or password on the Mac.</li>
+</ul>
+</section>
+
+<section>
+<h2>Unresolved</h2>
+<p style="margin: 0; font-size: 12.5px">None. These items passed but carry open flags the next pass should pick up:</p>
+<ul style="margin-top: 8px">
+<li><span class="tag">[FEASIBLE?]</span> Notifications (8.3): the monospace command line and the custom options card can't be drawn by UNNotification. Redraw within the system layout: title, subtitle, body, Options dropdown.</li>
+<li><span class="tag">[FEASIBLE?]</span> States: "4 requests in a row". A blocked session has only one pending request, so show the current one + "3 queued".</li>
+<li><span class="tag">[FEASIBLE?]</span> Inbox: red "Never times out" follows the spec's proposed default, but hooks have a maximum block time. Build it as fall back, then re-prompt.</li>
+<li>Inbox c25 = 6: the right-click menu is drawn over card 2, away from its trigger. Done c22 = 6: no "nothing finished overnight" state yet.</li>
+</ul>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px">
+<div>
+<h2>Backend list (deduped)</h2>
+<ul>
+<li>Hook arrival time + configured timeout for each tier, sent with every request (wait time, the "moves to Cursor" bar)</li>
+<li>Deterministic risk-rule reason strings ("Rewrites history…")</li>
+<li>Bash <span class="m">description</span> in the PreToolUse payload for "Agent's reason"; Codex equivalent unknown</li>
+<li>Persisted request history to compute "would have covered N"</li>
+<li>Allow rules enforced in the hub's hook layer, because Codex doesn't read Claude settings</li>
+<li>Token usage parsed from transcripts (Claude and Codex); account billing type before showing any $</li>
+<li>Worktree path + base ref captured at session start (View diff)</li>
+<li>Test counts are agent-reported via handoff and not verified; consider a "reported" cue</li>
+<li>Headless resume of an ended session for "Send back to fix" (<span class="m">claude --resume</span>, <span class="m">codex exec resume</span>)</li>
+<li>Stall detection: transcript-growth polling per session + error fingerprinting</li>
+<li>Session → PID mapping for Stop</li>
+<li>First-answer-wins resolution events from tray, panel, notification and editor fallback; clear banners everywhere</li>
+<li>Text-reply notification action → ask_user; threadIdentifier per account</li>
+<li>Rule for when the overnight recap window starts</li>
+</ul>
+</div>
+<div>
+<h2>Feasibility list (deduped)</h2>
+<ul>
+<li>Indefinite block on red items vs the hook timeout ceiling</li>
+<li>Cursor window focus by worktree path (Accessibility / AppleScript; no public API)</li>
+<li>Prefix rules on compound commands: split on && the same way Claude Code does; map to Codex scopes</li>
+<li>"--truncate empties those tables" needs seed.ts contents; the summarizer sees only the command</li>
+<li>Swipe row actions need a native NSTableView, not a custom popover view</li>
+<li>Notification layout limits (no monospace, no custom panels)</li>
+<li>Requests within one session are sequential (grouped "4 requests" framing)</li>
+<li>⌥Space clashes with Raycast / Alfred / ChatGPT: make it rebindable and detect conflicts</li>
+<li>Touch ID via LocalAuthentication; password fallback on Macs without it</li>
+</ul>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 28px; padding-top: 28px; border-top: 1px solid oklch(34% .003 70)">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<p class="m mut" style="margin: 0">PASS 2 · LOADING, EMPTY, ERRORS, EDGE CASES, SETTINGS</p>
+<h1 style="margin: 0; font-size: 24px; font-weight: 700">Five new items, all at 8.0 or above. Settings needed all four rounds.</h1>
+</div>
+<table>
+<thead><tr><th style="width: 200px">Item</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th style="width: 90px">Final</th></tr></thead>
+<tbody>
+<tr><td>7 · Loading</td><td class="m">7.8</td><td class="m">8.3</td><td class="mut">stopped</td><td class="mut">—</td><td class="m">8.3 pass</td></tr>
+<tr><td>8 · Empty</td><td class="m">7.8</td><td class="m">8.1</td><td class="mut">stopped</td><td class="mut">—</td><td class="m">8.1 pass</td></tr>
+<tr><td>9 · Errors</td><td class="m">7.9</td><td class="m">8.2</td><td class="mut">stopped</td><td class="mut">—</td><td class="m">8.2 pass</td></tr>
+<tr><td>10 · Panel settings</td><td class="m">7.6</td><td class="m">7.7</td><td class="m">7.2</td><td class="m">8.0</td><td class="m">8.0 pass</td></tr>
+<tr><td>11 · Edge cases</td><td class="m">7.8</td><td class="m">8.4</td><td class="mut">stopped</td><td class="mut">—</td><td class="m">8.4 pass</td></tr>
+</tbody>
+</table>
+<div style="display: flex; gap: 32px; align-items: flex-end">
+<div role="img" aria-label="Settings score by round: 7.6, 7.7, 7.2, 8.0" style="position: relative; width: 320px; height: 160px; display: flex; align-items: flex-end; gap: 24px; padding: 0 16px; border-bottom: 1px solid oklch(40% .003 70)">
+<div style="position: absolute; left: 0; right: 0; bottom: 107px; border-top: 1px dashed oklch(80% .004 70)"></div>
+<span class="m mut" style="position: absolute; right: 0; bottom: 110px; font-size: 11px">gate 8.0</span>
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span class="m" style="font-size: 11px">7.6</span><div style="width: 100%; height: 86px; border-radius: 4px 4px 0 0; background: oklch(70% .12 55)"></div></div>
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span class="m" style="font-size: 11px">7.7</span><div style="width: 100%; height: 91px; border-radius: 4px 4px 0 0; background: oklch(70% .12 55)"></div></div>
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span class="m" style="font-size: 11px">7.2</span><div style="width: 100%; height: 64px; border-radius: 4px 4px 0 0; background: oklch(70% .12 55)"></div></div>
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span class="m" style="font-size: 11px">8.0</span><div style="width: 100%; height: 107px; border-radius: 4px 4px 0 0; background: oklch(72% .12 150)"></div></div>
+</div>
+<p class="mut" style="margin: 0; max-width: 520px; font-size: 12.5px; line-height: 1.5">Settings plot, rounds 1–4 (axis from 6.0). The round 3 dip came from a fresh critic catching copy that contradicted itself ("Turning this off asks for Touch ID", … vs * wildcards, a hotkey claim the OS can't back). Round 4 fixed the copy and moved delete into a ⋯ menu, which cleared the gate.</p>
+</div>
+<div>
+<h2>Decision log · pass 2</h2>
+<table>
+<thead><tr><th style="width: 110px">Item</th><th style="width: 70px">Criterion</th><th>Before → after</th><th style="width: 320px">Why</th></tr></thead>
+<tbody>
+<tr><td>Loading</td><td class="m">c21</td><td>Read-only high-risk card during cold start → live Deny / Approve</td><td class="mut">Loading other accounts never blocks a decision</td></tr>
+<tr><td>Loading</td><td class="m">c25</td><td>4-row startup checklist → ready accounts fold into one row</td><td class="mut">The checklist outweighed the only actionable card</td></tr>
+<tr><td>Loading</td><td class="m">c2 c3</td><td>"Waiting for app-server to answer" → "Connecting to Codex…"; "waiting 0m" → "just now"</td><td class="mut">Plain words</td></tr>
+<tr><td>Loading</td><td class="m">TRADEOFF</td><td>Confirmation row cleared after 3s → clears when the panel closes</td><td class="mut">Could vanish unread</td></tr>
+<tr><td>Empty</td><td class="m">c4</td><td>Two rows both labelled "Claude Code" → name field per account at setup</td><td class="mut">Every later screen depends on these names</td></tr>
+<tr><td>Empty</td><td class="m">c3 c21</td><td>"Add hooks to 3 accounts" → "Connect 3 accounts"; "overnight" → "since 11:40 PM"</td><td class="mut">Codex gets no hook; "overnight" is wrong at noon</td></tr>
+<tr><td>Errors</td><td class="m">c5</td><td>Three stacked banners → red banner + collapsed "2 more problems"</td><td class="mut">Work stays above the fold</td></tr>
+<tr><td>Errors</td><td class="m">c8 c11</td><td>Mixed Dismiss styles, toast with no close → xmark icon button everywhere</td><td class="mut">One pattern</td></tr>
+<tr><td>Errors</td><td class="m">c21 c25</td><td>Summary-only card → raw command shown; one-off Codex tab → removed</td><td class="mut">Raw command is never hidden; Codex lives under All</td></tr>
+<tr><td>Settings</td><td class="m">c3 c23</td><td>"Never" timeout → "60 minutes"; "Raycast uses this too" → "⌥ Space couldn't be registered"</td><td class="mut">Hooks have a max wait; macOS can't list other apps' hotkeys</td></tr>
+<tr><td>Settings</td><td class="m">c22</td><td>Work row "Connected" while Errors says its hook is gone → "Not getting requests" + Reinstall</td><td class="mut">Settings and errors agree</td></tr>
+<tr><td>Settings</td><td class="m">c7 c8 c10</td><td>Trash icon on every rule → ⋯ menu (Edit, Scope, Copy, Delete) + right-click</td><td class="mut">Fewer destructive targets, more actions</td></tr>
+<tr><td>Settings</td><td class="m">c14 c15</td><td>"Look for accounts again" → auto "New account found · Add"; search also adds rules from plain language</td><td class="mut">No manual refresh; freeform input with preview</td></tr>
+<tr><td>Settings</td><td class="m">c25</td><td>Stall setting under Quick answer → own Sessions group; Devices tab removed for this pass</td><td class="mut">Placement; Devices belongs to the mobile pass</td></tr>
+<tr><td>Edge cases</td><td class="m">c21 c15</td><td>Specimens without buttons → every card shows its decision row; lists gain "Type an answer…"</td><td class="mut">The sheet now proves its own headline</td></tr>
+<tr><td>Edge cases</td><td class="m">c3 c20</td><td>Case 09 mixed approval and done card → done card with an additions/deletions bar</td><td class="mut">One card type per specimen</td></tr>
+</tbody>
+</table>
+</div>
+<div>
+<h2>Tradeoffs and open flags · pass 2</h2>
+<ul>
+<li><span class="tag">[TRADEOFF]</span> Larger Text stacks Approve above Deny. Keeping Deny first for high risk would preserve position memory; open.</li>
+<li><span class="tag">[TRADEOFF]</span> "Personal account · all repos" rules are wider than the spec's wording, same call as the Approval sheet in pass 1.</li>
+<li><span class="tag">[TRADEOFF]</span> High risk waits longest (60 min) before the editor fallback. It's the safe path, since fallback never approves.</li>
+<li>Open: Rules has no empty state, no multi-select, and doesn't scroll past ~30 rules. Empty has no "nothing found on this Mac" variant. A failed answer-send state isn't drawn.</li>
+<li>Open: middle-truncating branches (case 05) needs measured text width, not CSS. "Approved in Cursor at 10:10" must come from the transcript, else "Handled in Cursor". Terminal sessions fall back to the terminal, so "editor" beats "Cursor" in the timeout label.</li>
+</ul>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px">
+<div>
+<h2>New backend items</h2>
+<ul>
+<li>Hook writes a local spool when the app's socket is missing, and the app replays it on restart</li>
+<li>FSEvents watcher on each account's settings.json, with timestamps, to catch a removed hook</li>
+<li>Heartbeat from the Cursor extension</li>
+<li>Secrets masked on the Mac before the summarizer and notifications; reveals logged</li>
+<li>Session-log count before parsing, for honest startup progress</li>
+<li>Summary call timeout so "Writing a summary…" can't hang</li>
+</ul>
+</div>
+<div>
+<h2>New feasibility and permission items</h2>
+<ul>
+<li><span class="tag">[FEASIBLE?]</span> Install must write a hook timeout at least as long as each tier's wait (default is 60s)</li>
+<li><span class="tag">[FEASIBLE?]</span> Finding non-default config folders: scan for settings.json + projects/, keep the manual folder picker</li>
+<li><span class="tag">[FEASIBLE?]</span> Plain-language rule entry needs a parser or a documented summarizer call, plus the preview</li>
+<li><span class="tag">[FEASIBLE?]</span> Codex has no blocking approval hook outside app-server; shown here, answered in its editor</li>
+<li><span class="tag">[FEASIBLE?]</span> Widening the popover to 640px next to a menu-bar icon at the screen edge</li>
+<li><span class="tag">[PERMISSION]</span> Writing other tools' settings.json rules out the App Sandbox; show path or diff before every write</li>
+<li><span class="tag">[PERMISSION]</span> Touch ID to turn off the high-risk switch and to save any rule that covers a red-tier command</li>
+</ul>
+</div>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1120,"height":3000}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

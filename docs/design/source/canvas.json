@@ -1,0 +1,348 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Approval.dc.html": {
+      "h": 800,
+      "title": "2 · Approval detail + learn-a-rule",
+      "w": 560,
+      "x": 640,
+      "y": 0
+    },
+    "CritiqueLog.dc.html": {
+      "h": 3000,
+      "title": "Critique log · passes 1–2",
+      "w": 1120,
+      "x": 3144,
+      "y": 0
+    },
+    "Done.dc.html": {
+      "h": 800,
+      "title": "3 · Done + recap",
+      "w": 560,
+      "x": 1280,
+      "y": 0
+    },
+    "EdgeCases.dc.html": {
+      "h": 2320,
+      "title": "11 · Edge cases: long text and wrapping",
+      "w": 1240,
+      "x": 3728,
+      "y": 3080
+    },
+    "Empty.dc.html": {
+      "h": 788,
+      "title": "8 · Empty",
+      "w": 1784,
+      "x": 1864,
+      "y": 3000
+    },
+    "Errors.dc.html": {
+      "h": 788,
+      "title": "9 · Errors",
+      "w": 1784,
+      "x": 0,
+      "y": 3908
+    },
+    "ImplBadges.dc.html": {
+      "h": 1900,
+      "title": "I3 · Badges, pips and dots",
+      "w": 1440,
+      "x": 3040,
+      "y": 8400
+    },
+    "ImplClose.dc.html": {
+      "h": 1900,
+      "title": "I4 · Close, dismiss and icon buttons",
+      "w": 1440,
+      "x": 4560,
+      "y": 8400
+    },
+    "ImplControls.dc.html": {
+      "h": 1900,
+      "title": "I5 · Buttons, switches, swatches, chips",
+      "w": 1440,
+      "x": 6080,
+      "y": 8400
+    },
+    "ImplInteractions.dc.html": {
+      "h": 3300,
+      "title": "I6 · Interactions and state machine",
+      "w": 1440,
+      "x": 7600,
+      "y": 8400
+    },
+    "ImplLayout.dc.html": {
+      "h": 1700,
+      "title": "I1 · Popover layout redlines",
+      "w": 1440,
+      "x": 0,
+      "y": 8400
+    },
+    "ImplShapes.dc.html": {
+      "h": 1900,
+      "title": "I2 · Tokens, radii and the circle rule",
+      "w": 1440,
+      "x": 1520,
+      "y": 8400
+    },
+    "LightMode.dc.html": {
+      "h": 940,
+      "title": "L · Light mode",
+      "w": 1784,
+      "x": 0,
+      "y": 11800
+    },
+    "Loading.dc.html": {
+      "h": 788,
+      "title": "7 · Loading",
+      "w": 1784,
+      "x": 0,
+      "y": 3000
+    },
+    "Main.dc.html": {
+      "h": 800,
+      "title": "1 · Menu-bar inbox",
+      "w": 560,
+      "x": 0,
+      "y": 0
+    },
+    "Notification.dc.html": {
+      "h": 340,
+      "title": "5 · Notifications",
+      "w": 440,
+      "x": 760,
+      "y": 1480
+    },
+    "QuickAnswer.dc.html": {
+      "h": 340,
+      "title": "4 · Quick-answer panel",
+      "w": 680,
+      "x": 0,
+      "y": 1480
+    },
+    "Settings.dc.html": {
+      "h": 788,
+      "title": "10 · Panel settings",
+      "w": 1784,
+      "x": 1864,
+      "y": 3908
+    },
+    "States.dc.html": {
+      "h": 788,
+      "title": "6 · Empty / overflow / stalled",
+      "w": 1784,
+      "x": 1280,
+      "y": 1480
+    },
+    "Storyboard.dc.html": {
+      "h": 2000,
+      "title": "S · Storyboard: every flow, frame by frame",
+      "w": 1600,
+      "x": 0,
+      "y": 6000
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-15T14:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "a1": {
+      "fill": "blue",
+      "maxH": 360,
+      "text": "Inbox\n[PERMISSION] Fingerprint Approve on red card: Touch ID or password on the Mac.\n[BACKEND] 'waiting 6m' and 'Moves to Cursor in 9m' need hook arrival time + tier timeout per request.\n[FEASIBLE?] Red 'Never times out' vs hook max block time: build as fall back, then re-prompt.\n[FEASIBLE?] 'Open in Cursor' = Accessibility window match on worktree path.",
+      "w": 260,
+      "x": 0,
+      "y": 840
+    },
+    "a1b": {
+      "fill": "gray",
+      "maxH": 360,
+      "text": "Inbox\n[TRADEOFF] No left-edge risk stripe (slop trope): risk chip + icon instead.\n[TRADEOFF] Copy command is ⇧⌘C so ⌘C stays native copy.\n[TRADEOFF] Swipe + batch-select drawn in States, not repeated here.\nOpen: right-click menu is drawn over card 2, away from its trigger.",
+      "w": 260,
+      "x": 280,
+      "y": 840
+    },
+    "a2": {
+      "fill": "blue",
+      "maxH": 360,
+      "text": "Approval\n[BACKEND] 'Agent's reason' needs the Bash description in the PreToolUse payload; Codex equivalent unknown.\n[BACKEND] 'Would have covered 6' needs persisted request history.\n[FEASIBLE?] '--truncate empties those tables' needs seed.ts; the summarizer only sees the command.\n[PERMISSION] Repo-scope rule writes .claude/settings.local.json, read by every account: show path + undo.",
+      "w": 260,
+      "x": 640,
+      "y": 840
+    },
+    "a2b": {
+      "fill": "gray",
+      "maxH": 360,
+      "text": "Approval\n[FEASIBLE?] Prefix rule on a compound command: split on && the way Claude Code does; map to Codex scopes.\n[BACKEND] Codex ignores Claude settings: enforce learned rules in the hub hook layer.\n[TRADEOFF] Account scope is wider (all repos) than repo scope; labelled so.",
+      "w": 260,
+      "x": 920,
+      "y": 840
+    },
+    "a3": {
+      "fill": "blue",
+      "maxH": 360,
+      "text": "Done\n[BACKEND] Tokens from transcript usage; any $ needs the account's billing type.\n[BACKEND] Test counts are agent-reported via handoff, not verified.\n[FEASIBLE?] 'Send back to fix' = headless resume of an ended session in its worktree.\n[BACKEND] View diff needs worktree + base ref captured at session start.",
+      "w": 260,
+      "x": 1280,
+      "y": 840
+    },
+    "a3b": {
+      "fill": "gray",
+      "maxH": 360,
+      "text": "Done\n[TRADEOFF] 'Dismiss earlier' needs an Undo toast.\n[FEASIBLE?] Overnight window start rule (last idle / lock?).\nOpen: no 'nothing finished overnight' state yet.",
+      "w": 260,
+      "x": 1560,
+      "y": 840
+    },
+    "a4": {
+      "fill": "blue",
+      "maxH": 300,
+      "text": "Quick answer\n[FEASIBLE?] ⌥Space clashes with Raycast / Alfred / ChatGPT: rebindable + conflict detection.\n[TRADEOFF] Default 'Backfill now' is the table-locking option; ↩ accepts the riskier choice. Default comes from the agent's ask_user.",
+      "w": 320,
+      "x": 0,
+      "y": 1880
+    },
+    "a5": {
+      "fill": "orange",
+      "maxH": 300,
+      "text": "Notifications\n[FEASIBLE?] UNNotification has no monospace body and no custom options card; extra actions live in the system Options dropdown. Redraw next pass.\n[BACKEND] Reply → UNTextInputNotificationAction → ask_user; first-tap-wins clears banners everywhere; threadIdentifier per account.",
+      "w": 320,
+      "x": 760,
+      "y": 1880
+    },
+    "a6": {
+      "fill": "blue",
+      "maxH": 320,
+      "text": "States\n[FEASIBLE?] One pending request per session: '4 requests in a row' should be current + 3 queued.\n[FEASIBLE?] Swipe row actions need a native NSTableView.\n[BACKEND] Stop needs session → PID; stall needs transcript-growth polling + error fingerprints.\n[PERMISSION] 'Approve 4' re-checks tiers server-side at click; never includes yellow/red.",
+      "w": 300,
+      "x": 1280,
+      "y": 2328
+    },
+    "a6b": {
+      "fill": "gray",
+      "maxH": 320,
+      "text": "States\n[BACKEND] 'Answered in quick answer' / 'Moved to Cursor' need resolution events from the panel + editor fallback.\n[TRADEOFF] Batch row 'pnpm test · 3 sessions' hides which repos: add a disclosure.",
+      "w": 300,
+      "x": 1600,
+      "y": 2328
+    },
+    "b10": {
+      "fill": "orange",
+      "maxH": 320,
+      "text": "Settings (hit the 4-round cap, passed at 8.0)\n[FEASIBLE?] Install must write hook timeouts ≥ each tier's wait (default 60s).\n[FEASIBLE?] Plain-language rule entry needs a parser + mandatory preview.\n[PERMISSION] Writing other tools' settings.json rules out App Sandbox.\n[PERMISSION] Touch ID to turn off the high-risk switch or save a red-tier rule.\nOpen: Rules empty state, multi-select, scrolling past ~30 rules.",
+      "w": 320,
+      "x": 5048,
+      "y": 4040
+    },
+    "b11": {
+      "fill": "blue",
+      "maxH": 300,
+      "text": "Edge cases\n[BACKEND] Mask secrets on the Mac before the summarizer and notifications; log reveals.\n[FEASIBLE?] Pattern masking misses custom tokens: add URL userinfo + high-entropy detection and a 'mark as secret' fallback.\n[FEASIBLE?] Middle-truncating branches needs measured text width.\n[TRADEOFF] Larger Text puts Approve above Deny.",
+      "w": 320,
+      "x": 5048,
+      "y": 4380
+    },
+    "b7": {
+      "fill": "blue",
+      "maxH": 300,
+      "text": "Loading\n[BACKEND] '9 of 14 session logs' needs a log count before parsing, and requests streamed out as each log finishes.\n[BACKEND] 'Writing a summary…' needs a timeout; Approve stays live on the raw command.\n[TRADEOFF] Answer in flight has no failure state drawn yet.",
+      "w": 320,
+      "x": 5048,
+      "y": 3080
+    },
+    "b8": {
+      "fill": "blue",
+      "maxH": 300,
+      "text": "Empty\n[FEASIBLE?] Finding ~/.claude-work: scan for folders with settings.json + projects/; custom CLAUDE_CONFIG_DIR may be missed, so keep 'Choose another folder…'.\n[PERMISSION] 'Connect 3 accounts' writes each settings.json: show path or diff first.\nOpen: 'nothing found on this Mac' variant.",
+      "w": 320,
+      "x": 5048,
+      "y": 3400
+    },
+    "b9": {
+      "fill": "blue",
+      "maxH": 300,
+      "text": "Errors\n[BACKEND] 'Hooks missing in Work' = FSEvents watcher on settings.json.\n[FEASIBLE?] '2 requests went to Cursor' needs the hook to spool locally when the app is down.\n[BACKEND] 'Approved in Cursor at 10:10' must come from the transcript, else 'Handled in Cursor'.\n[TRADEOFF] Collapsed row is amber though one item is info.",
+      "w": 320,
+      "x": 5048,
+      "y": 3720
+    },
+    "t1": {
+      "kind": "title1",
+      "maxW": 1840,
+      "text": "Menu-bar popover",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "t2": {
+      "kind": "title1",
+      "maxW": 3064,
+      "text": "Outside the popover",
+      "w": 240,
+      "x": 0,
+      "y": 1240
+    },
+    "t3": {
+      "kind": "title1",
+      "maxW": 4968,
+      "text": "Loading, empty, errors, edge cases, settings",
+      "w": 240,
+      "x": 0,
+      "y": 2760
+    },
+    "t4": {
+      "kind": "title1",
+      "maxW": 1600,
+      "text": "Storyboard",
+      "w": 240,
+      "x": 0,
+      "y": 5700
+    },
+    "t5": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "Implementation: redlines, shapes, interactions",
+      "w": 240,
+      "x": 0,
+      "y": 8100
+    },
+    "t6": {
+      "kind": "title1",
+      "maxW": 3304,
+      "text": "Light mode",
+      "w": 240,
+      "x": 0,
+      "y": 11500
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Approval.dc.html",
+    "Done.dc.html",
+    "QuickAnswer.dc.html",
+    "Notification.dc.html",
+    "States.dc.html",
+    "CritiqueLog.dc.html",
+    "Loading.dc.html",
+    "Empty.dc.html",
+    "Errors.dc.html",
+    "Settings.dc.html",
+    "EdgeCases.dc.html",
+    "Storyboard.dc.html",
+    "ImplLayout.dc.html",
+    "ImplShapes.dc.html",
+    "ImplBadges.dc.html",
+    "ImplClose.dc.html",
+    "ImplControls.dc.html",
+    "ImplInteractions.dc.html",
+    "LightMode.dc.html"
+  ],
+  "pages": [],
+  "title": "Orca · macOS"
+}

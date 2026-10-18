@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · storyboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+a{color:oklch(85% .08 250);text-decoration:none}a:hover{color:oklch(93% .05 250)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:oklch(74% .008 70)}
+.flow{display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px;padding:14px 0;border-top:1px solid oklch(30% .003 70)}
+.frames{display:flex;align-items:stretch;gap:0}
+.frame{position:relative;flex:1;min-width:0;background:oklch(23% .003 70);border:1px solid oklch(33% .003 70);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
+.arrow{flex:none;width:28px;display:grid;place-items:center;color:oklch(60% .006 70);font-size:15px}
+.n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:oklch(39% .002 70);font-size:11px;font-weight:700;flex:none}
+.scr{font-size:12.5px;font-weight:600}
+.t{font-size:11.5px;line-height:1.35;color:oklch(80% .006 70)}
+.t b{color:oklch(92% .004 70);font-weight:600}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid oklch(30% .003 70);vertical-align:top}
+th{font-weight:600;color:oklch(78% .006 70)}
+.ok{color:oklch(84% .1 150)}.gap{color:oklch(88% .12 85);font-weight:600}
+</style>
+</helmet>
+<div style="width: 1600px; height: 2000px; box-sizing: border-box; background: oklch(17% .003 70); padding: 56px 64px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: flex-end; gap: 24px">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+<p class="cap">ORCA · STORYBOARD</p>
+<h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -.01em">Ten flows, every frame, every exit</h1>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: oklch(82% .005 70); max-width: 900px">Each row is one user goal, read left to right. A frame names the artboard that draws it (click to jump), the trigger that gets you there, and what the system does. Build and test flows in this order; F2 and F4 are the MVP.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: oklch(80% .006 70)">
+<span><span class="n">1</span>&nbsp; step marker (true circle, 20×20)</span>
+<span><b style="color: oklch(92% .004 70)">Trigger</b> what the user or agent does</span>
+<span><b style="color: oklch(92% .004 70)">Result</b> what Orca does, incl. hub side effects</span>
+</div>
+</div>
+
+<sc-for list="{{flows}}" as="f" hint-placeholder-count="10">
+<section class="flow">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span class="mono" style="color: oklch(74% .008 70)">{{f.id}} · {{f.phase}}</span>
+<strong style="font-size: 15px">{{f.name}}</strong>
+<span class="t">{{f.goal}}</span>
+</div>
+<div class="frames">
+<sc-for list="{{f.frames}}" as="s" hint-placeholder-count="5">
+<sc-if value="{{s.notFirst}}" hint-placeholder-val="{{ true }}"><span class="arrow" aria-hidden="true">→</span></sc-if>
+<div class="frame">
+<div style="display: flex; align-items: center; gap: 8px"><span class="n">{{s.n}}</span><a class="scr" href="{{s.href}}">{{s.screen}}</a></div>
+<span class="t"><b>Trigger</b> {{s.trigger}}</span>
+<span class="t"><b>Result</b> {{s.result}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-for>
+
+<section style="display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid oklch(30% .003 70)">
+<p class="cap">STATE COVERAGE · WHICH ARTBOARD DRAWS WHAT</p>
+<table>
+<thead><tr><th style="width: 200px">Surface</th><th>Default</th><th>Loading</th><th>Empty</th><th>Error</th><th>Edge / overflow</th></tr></thead>
+<tbody>
+<tr><td>Inbox</td><td class="ok">1 · Menu-bar inbox</td><td class="ok">7 · Loading</td><td class="ok">6 · States, 8 · Empty</td><td class="ok">9 · Errors</td><td class="ok">6 · States, 11 · Edge cases</td></tr>
+<tr><td>Approval detail</td><td class="ok">2 · Approval</td><td class="ok">7 · Loading (summary)</td><td>n/a</td><td class="ok">9 · Errors (rule write)</td><td class="ok">11 · Edge cases</td></tr>
+<tr><td>Done + recap</td><td class="ok">3 · Done</td><td class="ok">7 · Loading</td><td class="ok">8 · Empty</td><td class="gap">Missing: resume failed</td><td class="gap">Missing: 30+ items</td></tr>
+<tr><td>Quick answer</td><td class="ok">4 · Quick answer</td><td class="gap">Missing: sending</td><td class="gap">Missing: nothing waiting (panel shows toast, closes)</td><td class="gap">Missing: send failed</td><td class="ok">11 · Edge cases (long question)</td></tr>
+<tr><td>Notifications</td><td class="ok">5 · Notifications</td><td>n/a</td><td>n/a</td><td class="gap">Missing: permission denied in System Settings</td><td class="gap">Missing: 10+ stacked</td></tr>
+<tr><td>Settings</td><td class="ok">10 · Settings</td><td>n/a</td><td class="gap">Missing: Rules empty</td><td class="ok">10 · Settings (shortcut, hook)</td><td class="gap">Missing: 30+ rules</td></tr>
+<tr><td>First run</td><td class="ok">8 · Empty</td><td class="ok">7 · Loading</td><td class="gap">Missing: nothing found on this Mac</td><td class="gap">Missing: hook write denied</td><td>n/a</td></tr>
+<tr><td>Touch ID</td><td>System sheet</td><td>n/a</td><td>n/a</td><td class="gap">Missing: failed / cancelled (card stays, inline "Not approved")</td><td class="gap">Missing: no Touch ID → password</td></tr>
+<tr><td>Light mode</td><td class="ok">L · Light mode</td><td colspan="4">Every dark artboard maps 1:1 through the token table on I2. Build once with tokens; never hand-pick light colors.</td></tr>
+</tbody>
+</table>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":2000}}'>
+class Component extends DCLogic {
+renderVals() {
+const F = (id, phase, name, goal, frames) => ({ id, phase, name, goal, frames: frames.map((s, i) => ({ n: i + 1, notFirst: i > 0, screen: s[0], href: s[1], trigger: s[2], result: s[3] })) });
+return { flows: [
+F('F1', 'phase 2', 'First run', 'Connect accounts so agents ask here.', [
+['8 · Empty (first run)', 'Empty.dc.html', 'App launches with no config.', 'Scans ~ for dirs with settings.json + projects/. Lists each with session count and a name field.'],
+['8 · Empty (first run)', 'Empty.dc.html', 'Names accounts, clicks Connect 3 accounts.', 'Shows each file path + diff; writes one hook entry per Claude dir. Codex gets no hook.'],
+['7 · Loading', 'Loading.dc.html', 'Automatic.', 'Parses session logs per account; streams requests in as each log finishes.'],
+['1 · Menu-bar inbox', 'Main.dc.html', 'Loading done.', 'Tray icon shows count. Popover stays closed until clicked.']]),
+F('F2', 'MVP', 'Approve from the tray', 'Clear one blocked request without leaving the editor.', [
+['Tray icon', 'Main.dc.html', 'Hook arrives on socket.', 'Tray count +1. Notification fires per Settings › Notify.'],
+['1 · Menu-bar inbox', 'Main.dc.html', 'Click tray icon (or ⌃⌥I).', 'Popover opens under icon, focused on oldest card.'],
+['1 · Menu-bar inbox', 'Main.dc.html', 'Click Approve, or ↩ on focused card.', 'High risk: Touch ID sheet first. Hub replies allow; hook exits 0.'],
+['6 · States (resolved)', 'States.dc.html', 'Automatic.', 'Card collapses out (200 ms). Count −1. Toast "Approved · title" until popover closes.']]),
+F('F3', 'phase 3', 'Act on a notification', 'Decide from the banner, or jump to detail.', [
+['5 · Notifications', 'Notification.dc.html', 'Banner appears (request or question).', 'Grouped by account. Body = summary, then raw command in plain text.'],
+['5 · Notifications', 'Notification.dc.html', 'Deny, or Review.', 'Deny resolves immediately. Review opens the popover on Approval detail.'],
+['2 · Approval detail', 'Approval.dc.html', 'Approve / Deny / type instead.', 'Same path as F2. Other banners for this request are removed.']]),
+F('F4', 'MVP', 'Answer a question', 'Agent called ask_user; give it an answer fast.', [
+['5 · Notifications', 'Notification.dc.html', 'Question banner, or nothing (silent mode).', 'Options dropdown lists ask_user options; Reply opens text field.'],
+['4 · Quick answer', 'QuickAnswer.dc.html', 'Press ⌥Space anywhere.', 'Panel opens centered on active screen with the oldest question.'],
+['4 · Quick answer', 'QuickAnswer.dc.html', 'Press 1–3, or type and ↩.', 'Answer returned as tool result. Next question loads in place.'],
+['4 · Quick answer', 'QuickAnswer.dc.html', 'Tab skips; Esc closes.', 'Panel closes when queue is empty, after a 600 ms "All clear" line.']]),
+F('F5', 'phase 3', 'Learn a rule', 'Stop being asked for a command you always allow.', [
+['2 · Approval detail', 'Approval.dc.html', 'Click Approve chevron (or long-press Approve).', 'Menu opens above the split button, right-aligned to it.'],
+['2 · Approval detail', 'Approval.dc.html', 'Pick a step and a scope.', 'Shows exact pattern and how many past requests it would have covered.'],
+['2 · Approval detail', 'Approval.dc.html', 'Allow and approve.', 'Writes rule to the scope file, then approves. Red tier: Touch ID first.'],
+['10 · Settings › Rules', 'Settings.dc.html', 'Automatic toast: Undo (8 s).', 'Rule listed under its scope with 1× use. Undo removes the line it wrote.']]),
+F('F6', 'phase 2', 'Nobody answers', 'Unanswered request falls back to the editor, never auto-approves.', [
+['1 · Menu-bar inbox', 'Main.dc.html', 'Time passes.', 'Countdown bar fills; label "Moves to Cursor in Nm" updates each minute, each second under 60 s.'],
+['9 · Errors (request)', 'Errors.dc.html', 'Tier timeout reached.', 'Hook exits with "ask"; editor prompts. Card becomes "Cursor is asking now".'],
+['Cursor', 'Errors.dc.html', 'Open in Cursor.', 'Focuses window by worktree path. Card clears when transcript shows the answer.']]),
+F('F7', 'phase 3', 'Review finished work', 'See overnight results and send failures back.', [
+['3 · Done + recap', 'Done.dc.html', 'Open Done tab.', 'Recap bar since last idle. Failed first, then newest.'],
+['3 · Done + recap', 'Done.dc.html', 'Type or accept suggestion, Send back to fix.', 'Headless resume in the same worktree. Card moves to Running.'],
+['6 · States (running)', 'States.dc.html', 'Automatic.', 'Running row shows current step. Returns to Done on next handoff.']]),
+F('F8', 'phase 2', 'Stalled or looping', 'Catch an agent spinning without asking.', [
+['6 · States (stalled)', 'States.dc.html', 'No transcript growth for N min, or same error 3×.', 'Session moves to "Needs a look" with last step or the repeated error.'],
+['6 · States (stalled)', 'States.dc.html', 'Stop…', 'Confirm popover: "Stops the agent process. Work so far is kept." SIGINT, then SIGTERM after 5 s.'],
+['3 · Done', 'Done.dc.html', 'Automatic.', 'Card shows "Stopped by you" with diff stats so far.']]),
+F('F9', 'phase 2', 'Recover from a broken setup', 'Hooks removed, extension missing, Codex disconnected.', [
+['9 · Errors', 'Errors.dc.html', 'FSEvents sees settings.json lose the hook.', 'Red banner on top of the inbox; Settings rail item gets the amber "!" pip.'],
+['9 · Errors', 'Errors.dc.html', 'Reinstall.', 'Rewrites the hook entry; shows path. Banner turns green "Fixed" for 2 s, then leaves.'],
+['10 · Settings › Accounts', 'Settings.dc.html', 'Automatic.', 'Account row returns to Connected; pip clears when no problems remain.']]),
+F('F10', 'phase 2', 'Tune behavior', 'Timeouts, Touch ID, notifications, shortcut.', [
+['10 · Settings › General', 'Settings.dc.html', 'Change a picker.', 'Saved immediately; hook timeouts rewritten to ≥ the new wait.'],
+['10 · Settings › General', 'Settings.dc.html', 'Turn off Touch ID for high risk.', 'Requires Touch ID to turn off. Switch animates only after success.'],
+['10 · Settings › General', 'Settings.dc.html', 'Change shortcut.', 'Records next chord; registration failure shows inline amber text, keeps old one.']])
+] };
+}
+}
+</script>
+</body>
+</html>

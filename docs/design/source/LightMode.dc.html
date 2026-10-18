@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · light mode</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}
+.lt{--s0:oklch(96% .003 70);--s1:oklch(98.5% .002 70);--s2:oklch(95% .003 70);--s3:oklch(89% .004 70);--card:#fff;--inset:oklch(95.5% .004 70);--ctl:oklch(92% .004 70);--b1:oklch(85% .004 70);--b2:oklch(90% .003 70);--t1:oklch(20% .004 70);--t2:oklch(46% .008 70);--t3:oklch(32% .006 70);--pbg:oklch(22% .004 70);--pfg:oklch(98% .002 70);--badge:oklch(56% .2 25);color:var(--t1)}
+.pop{position:relative;width:528px;height:748px;flex:none;display:flex;border:1px solid var(--b1);border-radius:20px;background:var(--s1);overflow:hidden;box-shadow:0 18px 50px oklch(30% .01 70 / .18)}
+.rail{width:88px;flex:none;background:var(--s2);border-right:1px solid var(--b1);padding:20px 8px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:20px}
+.ri{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;font-size:11px;color:var(--t2)}
+.ri.on{color:var(--t1)}.ri.on .tile{background:var(--s3)}
+.tile{position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:14px}
+.badge{position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:var(--badge);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px var(--s2)}
+.tabs{height:52px;flex:none;display:flex;align-items:stretch;gap:20px;padding:0 20px;border-bottom:1px solid var(--b2)}
+.tab{position:relative;display:flex;align-items:center;gap:6px;padding:0 4px;font-size:14px;font-weight:600;color:var(--t2)}
+.tab.on{color:var(--t1)}.tab.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--t1)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.card{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--b2);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px oklch(30% .01 70 / .06)}
+.meta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);white-space:nowrap}
+.code{font:12.5px/1.45 ui-monospace,"SF Mono",Menlo,monospace;background:var(--inset);border-radius:8px;padding:8px 10px;color:var(--t1);overflow-wrap:anywhere}
+.btn{height:32px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:var(--ctl);color:var(--t1);white-space:nowrap}
+.btn.p{background:var(--pbg);color:var(--pfg)}
+.risk{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;flex:none}
+.label{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--t2)}
+.num{width:20px;height:20px;border-radius:6px;background:var(--ctl);font-size:11px;font-weight:700;display:grid;place-items:center;margin-top:6px;flex:none}
+.key{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--ctl);font-size:12px;font-weight:600}
+.choice{display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:10px;font-size:14px}
+kbd{font:inherit;padding:1px 6px;border-radius:5px;background:var(--ctl);color:var(--t3)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:var(--t2)}
+</style>
+</helmet>
+<div class="lt" style="width: 1784px; height: 940px; box-sizing: border-box; background: var(--s0); padding: 40px 20px 20px; display: flex; gap: 24px; align-items: flex-start">
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<p class="cap">INBOX · LIGHT</p>
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<span class="ri on"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg><span class="badge" aria-hidden="true">3</span></span>Inbox</span>
+<span class="ri"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l3-8 4 16 3-8h6"/></svg></span>Running</span>
+<span class="ri"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9 17.5 20 6.5"/></svg></span>Done</span>
+<span class="ri" style="margin-top: auto"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4"/></svg></span>Settings</span>
+</nav>
+<section style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div class="tabs"><span class="tab on">All</span><span class="tab"><span class="dot" style="background: oklch(72% .12 250)"></span>Work <span style="font-weight: 500">2</span></span><span class="tab"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal <span style="font-weight: 500">1</span></span></div>
+<div style="flex: 1; min-height: 0; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(58% .19 25 / .12); color: oklch(50% .17 25)">High risk</span><h2 style="margin: 0; flex: 1; min-width: 0; font-size: 14px; font-weight: 600">Fix lease-sync drift</h2><span class="meta">waiting 6m</span></div>
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · noi-signals / lease-sync</div>
+<div class="code">git push --force origin lease-sync</div>
+<p style="margin: 0; font-size: 12px; color: var(--t2)">Rewrites history on origin/lease-sync. Needs Touch ID. Never times out.</p>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><span class="btn">Deny</span><span class="btn">Approve</span></div>
+</article>
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: var(--ctl); color: var(--t1)">Question</span><h2 style="margin: 0; flex: 1; min-width: 0; font-size: 14px; font-weight: 600">Ledger backfill migration</h2><span class="meta">waiting 3m</span></div>
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · noi-signals / ledger-v2</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.4">Backfill tenant ledgers now, or migrate lazily on read?</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><span class="btn" style="box-shadow: inset 0 0 0 1.5px var(--t1)">Backfill now</span><span class="btn">Lazy on read</span><span class="btn" style="background: none; border: 1px dashed var(--b1); color: var(--t2)">Type an answer…</span></div>
+</article>
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(80% .14 85 / .22); color: oklch(50% .11 70)">Medium risk</span><h2 style="margin: 0; flex: 1; min-width: 0; font-size: 14px; font-weight: 600">Seed staging fixtures</h2><span class="meta">waiting 1m</span></div>
+<div class="meta"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal · flow-harness / seed-fixtures</div>
+<div class="code" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">pnpm prisma migrate deploy &amp;&amp; pnpm tsx scripts/seed.ts</div>
+<div style="display: flex; align-items: center; gap: 8px"><span class="meta" style="flex: 1">Moves to Cursor in 9m</span><span class="btn">Deny</span><span style="display: flex; gap: 1px"><span class="btn p" style="border-radius: 9px 0 0 9px">Approve</span><span class="btn p" style="border-radius: 0 9px 9px 0; padding: 0 9px"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span></span></div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--b2)"><div style="width: 10%; height: 100%; background: oklch(72% .15 80)"></div></div>
+</article>
+</div>
+<footer style="height: 40px; flex: none; border-top: 1px solid var(--b2); display: flex; align-items: center; padding: 0 16px; font-size: 12px; color: var(--t2)"><span style="flex: 1">14 cleared today</span><span>⌥ Space quick answer</span></footer>
+</section>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<p class="cap">APPROVAL DETAIL · LIGHT</p>
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<span class="ri on"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg><span class="badge" aria-hidden="true">3</span></span>Inbox</span>
+<span class="ri"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h4l3-8 4 16 3-8h6"/></svg></span>Running</span>
+<span class="ri"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9 17.5 20 6.5"/></svg></span>Done</span>
+<span class="ri" style="margin-top: auto"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4"/></svg></span>Settings</span>
+</nav>
+<section style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div style="height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 16px; border-bottom: 1px solid var(--b2)"><span style="font-size: 13px; font-weight: 600">‹ Inbox</span><span style="flex: 1"></span><span class="meta">3 of 3</span></div>
+<div style="flex: 1; min-height: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; align-items: center; gap: 8px"><h1 style="margin: 0; flex: 1; font-size: 18px; font-weight: 650">Seed staging fixtures</h1><span class="meta">waiting 1m</span></div><div class="meta"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal · flow-harness / seed-fixtures</div></div>
+<div style="display: flex; align-items: center; gap: 8px"><p class="label" style="flex: 1">WANTS TO RUN · 2 STEPS</p><span class="risk" style="background: oklch(80% .14 85 / .22); color: oklch(50% .11 70)">Medium risk</span></div>
+<p style="margin: 0; font-size: 14px; line-height: 1.4">Runs migrations, then seeds 3 fixture sets on staging.</p>
+<div style="display: flex; gap: 8px"><span class="num">1</span><div style="flex: 1; display: flex; flex-direction: column; gap: 4px"><div class="code">pnpm prisma migrate deploy</div><span style="font-size: 12px; color: var(--t2)">Applies pending schema migrations.</span></div></div>
+<div style="display: flex; gap: 8px"><span class="num">2</span><div style="flex: 1; display: flex; flex-direction: column; gap: 4px"><div class="code">DATABASE_URL=$STAGING_URL pnpm tsx scripts/seed.ts --sets tenants,leases,ledgers <mark style="background: oklch(80% .14 85 / .35); color: oklch(38% .09 70); border-radius: 3px; padding: 0 2px">--truncate</mark></div><span style="font-size: 12px; color: var(--t2)">--truncate empties those three tables before seeding.</span></div></div>
+<div style="display: flex; flex-direction: column; gap: 6px"><p class="label">AGENT'S REASON</p><p style="margin: 0; font-size: 13px; line-height: 1.45; color: var(--t3)">Staging is missing the fixture sets the ledger tests need.</p></div>
+<div style="display: flex; align-items: center; height: 38px; padding: 0 12px; border-radius: 10px; background: var(--inset); border: 1px solid var(--b1); font-size: 13px; color: var(--t2)">Or tell it what to do instead…</div>
+</div>
+<div style="flex: none; border-top: 1px solid var(--b2); padding: 12px 16px; display: flex; justify-content: flex-end; gap: 8px"><span class="btn">Deny</span><span style="display: flex; gap: 1px"><span class="btn p" style="border-radius: 9px 0 0 9px">Approve</span><span class="btn p" style="border-radius: 0 9px 9px 0; padding: 0 9px"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></span></span></div>
+</section>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px; width: 640px">
+<p class="cap">QUICK ANSWER · LIGHT</p>
+<div role="dialog" aria-label="Quick answer" style="width: 640px; box-sizing: border-box; background: var(--card); border: 1px solid var(--b1); border-radius: 18px; box-shadow: 0 24px 70px oklch(30% .01 70 / .22); padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · Ledger backfill migration · noi-signals<span style="flex: 1"></span>oldest of 3 · waiting 3m</div>
+<p style="margin: 0; font-size: 18px; font-weight: 600; line-height: 1.35">Backfill tenant ledgers now, or migrate lazily on read?</p>
+<p style="margin: 0; font-size: 12.5px; color: var(--t2)">Backfill locks the ledger table for about 4 minutes on staging.</p>
+<div style="display: flex; flex-direction: column; gap: 2px"><div class="choice" style="background: var(--s2)"><span class="key">1</span><span style="flex: 1">Backfill now</span><span class="meta">default</span></div><div class="choice"><span class="key">2</span><span style="flex: 1">Lazy on read</span></div></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; background: var(--inset); border: 1px solid var(--b1); font-size: 14px; color: var(--t2)"><span class="key">3</span>Or type an answer…</div>
+<div class="meta" style="gap: 14px"><span><kbd>1</kbd>–<kbd>3</kbd> answer</span><span><kbd>Tab</kbd> next question</span><span><kbd>Esc</kbd> close</span></div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; background: var(--s1); border: 1px solid var(--b2); font-size: 12.5px; line-height: 1.5; color: var(--t3)">
+<p class="cap">WHAT CHANGES IN LIGHT</p>
+<span><b style="color: var(--t1)">Primary inverts.</b> Approve is near-black on light, near-white on dark. Never accent-colored.</span>
+<span><b style="color: var(--t1)">Cards lift by shadow, not fill.</b> Card is pure white with a 1px border and <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px">0 1px 2px</span> shadow; popover gets a softer, warmer shadow at 18%.</span>
+<span><b style="color: var(--t1)">Risk colors darken their text, lighten their fill.</b> Chip fill alpha 12–22%, text at L 50% to pass 4.5:1 on white.</span>
+<span><b style="color: var(--t1)">Badge ring follows the rail.</b> 2px ring is <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11.5px">--surface-2</span> in both modes, so it reads as a cut-out.</span>
+<span><b style="color: var(--t1)">Account dots, radii, sizes, motion: identical.</b> Only tokens change. Same components, same markup.</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1784,"height":940}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

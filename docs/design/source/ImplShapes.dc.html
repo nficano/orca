@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · tokens, radii, circle rule</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:oklch(74% .008 70)}
+h2{margin:0;font-size:18px;font-weight:650}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid oklch(30% .003 70);vertical-align:middle}
+th{font-weight:600;color:oklch(78% .006 70)}
+.m{font:11.5px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(88% .02 250)}
+.sw{display:inline-block;width:28px;height:18px;border-radius:4px;border:1px solid oklch(45% .003 70);vertical-align:middle}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cell{background:oklch(22% .003 70);border:1px solid oklch(32% .003 70);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:10px;min-height:120px;justify-content:center;box-sizing:border-box}
+.cell.bad{border-color:oklch(58% .19 25 / .55)}
+.verdict{font-size:11.5px;font-weight:700}
+.ok{color:oklch(84% .12 150)}.no{color:oklch(80% .14 25)}
+.why{font-size:11.5px;line-height:1.4;color:oklch(80% .006 70);text-align:center}
+.btn{height:32px;padding:0 14px;display:inline-flex;align-items:center;font-size:13px;font-weight:600;background:oklch(34% .003 70);color:inherit}
+.ibx{width:28px;height:28px;display:grid;place-items:center;background:oklch(34% .003 70)}
+.tl{width:48px;height:48px;display:grid;place-items:center;background:oklch(39% .002 70)}
+.chip{font-size:11.5px;font-weight:600;padding:2px 8px;background:oklch(84% .14 85 / .16);color:oklch(88% .12 85)}
+pre{margin:0;font:12px/1.55 ui-monospace,"SF Mono",Menlo,monospace;background:oklch(13% .003 70);border:1px solid oklch(30% .003 70);border-radius:10px;padding:14px 16px;color:oklch(90% .004 70);white-space:pre-wrap}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1900px; box-sizing: border-box; background: oklch(17% .003 70); padding: 56px 64px; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p class="cap">ORCA · I2 · TOKENS, RADII AND THE CIRCLE RULE</p>
+<h1 style="margin: 0; font-size: 34px; font-weight: 700">Rounded squares by default. Circles only where listed.</h1>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: oklch(82% .005 70); max-width: 1000px">Generated UI over-rounds: pill buttons, circular icon buttons, circular close X's, round tiles. Orca uses none of those. Every radius below is a fixed px token. <span class="m">50%</span> appears only on the six elements in the circle allowlist, each with explicit equal width and height and <span class="m">flex: none</span>. <span class="m">9999px</span> and <span class="m">100%</span> never appear.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h2>Color tokens · dark and light</h2>
+<table>
+<thead><tr><th>Token</th><th>Used for</th><th>Dark</th><th></th><th>Light</th><th></th></tr></thead>
+<tbody>
+<tr><td class="m">--surface-0</td><td>Behind popover (screenshots only)</td><td class="m">oklch(17% .003 70)</td><td><span class="sw" style="background: oklch(17% .003 70)"></span></td><td class="m">oklch(96% .003 70)</td><td><span class="sw" style="background: oklch(96% .003 70)"></span></td></tr>
+<tr><td class="m">--surface-1</td><td>Popover, panel body</td><td class="m">oklch(21.8% .003 70)</td><td><span class="sw" style="background: oklch(21.8% .003 70)"></span></td><td class="m">oklch(98.5% .002 70)</td><td><span class="sw" style="background: oklch(98.5% .002 70)"></span></td></tr>
+<tr><td class="m">--surface-2</td><td>Rail, menus, sheets</td><td class="m">oklch(28.4% .004 70)</td><td><span class="sw" style="background: oklch(28.4% .004 70)"></span></td><td class="m">oklch(95% .003 70)</td><td><span class="sw" style="background: oklch(95% .003 70)"></span></td></tr>
+<tr><td class="m">--surface-3</td><td>Active tile, selected segment</td><td class="m">oklch(39% .002 70)</td><td><span class="sw" style="background: oklch(39% .002 70)"></span></td><td class="m">oklch(89% .004 70)</td><td><span class="sw" style="background: oklch(89% .004 70)"></span></td></tr>
+<tr><td class="m">--surface-card</td><td>Request cards</td><td class="m">oklch(25% .003 70)</td><td><span class="sw" style="background: oklch(25% .003 70)"></span></td><td class="m">oklch(100% 0 0)</td><td><span class="sw" style="background: #fff"></span></td></tr>
+<tr><td class="m">--surface-inset</td><td>Code blocks, inputs</td><td class="m">oklch(17% .003 70)</td><td><span class="sw" style="background: oklch(17% .003 70)"></span></td><td class="m">oklch(95.5% .004 70)</td><td><span class="sw" style="background: oklch(95.5% .004 70)"></span></td></tr>
+<tr><td class="m">--control</td><td>Secondary button, icon button hover</td><td class="m">oklch(34% .003 70)</td><td><span class="sw" style="background: oklch(34% .003 70)"></span></td><td class="m">oklch(92% .004 70)</td><td><span class="sw" style="background: oklch(92% .004 70)"></span></td></tr>
+<tr><td class="m">--border-1</td><td>Popover, menu edges</td><td class="m">oklch(38% .003 70)</td><td><span class="sw" style="background: oklch(38% .003 70)"></span></td><td class="m">oklch(85% .004 70)</td><td><span class="sw" style="background: oklch(85% .004 70)"></span></td></tr>
+<tr><td class="m">--border-2</td><td>Card edge, dividers</td><td class="m">oklch(32% .003 70)</td><td><span class="sw" style="background: oklch(32% .003 70)"></span></td><td class="m">oklch(90% .003 70)</td><td><span class="sw" style="background: oklch(90% .003 70)"></span></td></tr>
+<tr><td class="m">--text-1</td><td>Titles, body</td><td class="m">oklch(97% .002 70)</td><td><span class="sw" style="background: oklch(97% .002 70)"></span></td><td class="m">oklch(20% .004 70)</td><td><span class="sw" style="background: oklch(20% .004 70)"></span></td></tr>
+<tr><td class="m">--text-2</td><td>Meta, captions (4.5:1 checked)</td><td class="m">oklch(74% .008 70)</td><td><span class="sw" style="background: oklch(74% .008 70)"></span></td><td class="m">oklch(46% .008 70)</td><td><span class="sw" style="background: oklch(46% .008 70)"></span></td></tr>
+<tr><td class="m">--primary-bg / fg</td><td>Approve, primary actions</td><td class="m">97% / 17%</td><td><span class="sw" style="background: oklch(97% .002 70)"></span></td><td class="m">22% / 98%</td><td><span class="sw" style="background: oklch(22% .004 70)"></span></td></tr>
+<tr><td class="m">--risk-high</td><td>Chip fg · bg at 22% / 12% alpha</td><td class="m">oklch(82% .11 25)</td><td><span class="sw" style="background: oklch(82% .11 25)"></span></td><td class="m">oklch(50% .17 25)</td><td><span class="sw" style="background: oklch(50% .17 25)"></span></td></tr>
+<tr><td class="m">--risk-medium</td><td>Chip fg · bg at 16% / 22% alpha</td><td class="m">oklch(88% .12 85)</td><td><span class="sw" style="background: oklch(88% .12 85)"></span></td><td class="m">oklch(50% .11 70)</td><td><span class="sw" style="background: oklch(50% .11 70)"></span></td></tr>
+<tr><td class="m">--badge</td><td>Rail count badge (text #fff both)</td><td class="m">oklch(58% .19 25)</td><td><span class="sw" style="background: oklch(58% .19 25)"></span></td><td class="m">oklch(56% .2 25)</td><td><span class="sw" style="background: oklch(56% .2 25)"></span></td></tr>
+<tr><td class="m">--pip</td><td>Settings "!" pip (dark text)</td><td class="m">oklch(84% .14 85)</td><td><span class="sw" style="background: oklch(84% .14 85)"></span></td><td class="m">oklch(78% .15 80)</td><td><span class="sw" style="background: oklch(78% .15 80)"></span></td></tr>
+<tr><td class="m">--success</td><td>Passed, Connected, switch on</td><td class="m">oklch(62% .14 150)</td><td><span class="sw" style="background: oklch(62% .14 150)"></span></td><td class="m">oklch(56% .14 150)</td><td><span class="sw" style="background: oklch(56% .14 150)"></span></td></tr>
+<tr><td class="m">--focus</td><td>2px ring, offset 2</td><td class="m">oklch(85% .08 250)</td><td><span class="sw" style="background: oklch(85% .08 250)"></span></td><td class="m">oklch(55% .15 250)</td><td><span class="sw" style="background: oklch(55% .15 250)"></span></td></tr>
+<tr><td class="m">--acct-*</td><td>Account dots: same in both modes</td><td class="m" colspan="4">blue 72% .12 250 · orange 76% .13 55 · green 72% .13 150 · purple 68% .13 300 · pink 74% .12 0 · gray 72% .01 70</td></tr>
+</tbody>
+</table>
+<p style="margin: 0; font-size: 12px; line-height: 1.5; color: oklch(80% .006 70)">Mode follows <span class="m">nativeTheme.shouldUseDarkColors</span>; listen to <span class="m">nativeTheme.on('updated')</span> and set <span class="m">data-theme</span> on <span class="m">&lt;html&gt;</span>. Settings › General gains Appearance: System / Light / Dark (sets <span class="m">nativeTheme.themeSource</span>).</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h2>Radius scale · the only values allowed</h2>
+<table>
+<thead><tr><th style="width: 70px">Token</th><th>px</th><th>Elements</th></tr></thead>
+<tbody>
+<tr><td class="m">r-3</td><td>3</td><td>Inline highlight <span class="m">&lt;mark&gt;</span>, annotation labels</td></tr>
+<tr><td class="m">r-5</td><td>5</td><td>Number keys in quick answer (20–22 square)</td></tr>
+<tr><td class="m">r-6</td><td>6</td><td>Risk chip, kbd, tray count pill, segmented inner button</td></tr>
+<tr><td class="m">r-7</td><td>7</td><td>Menu item, small text input (28h), picker</td></tr>
+<tr><td class="m">r-8</td><td>8</td><td>Code block, icon button / close X (28×28), segmented track</td></tr>
+<tr><td class="m">r-9</td><td>9</td><td>Buttons (30–32h), split-button outer corners</td></tr>
+<tr><td class="m">r-10</td><td>10</td><td>Context menu, text field (38–40h), choice row, setting row</td></tr>
+<tr><td class="m">r-12</td><td>12</td><td>Banners, toast, account group box</td></tr>
+<tr><td class="m">r-14</td><td>14</td><td>Card, rail tile (48×48), sheet popover</td></tr>
+<tr><td class="m">r-16</td><td>16</td><td>Notification mock, empty-state mark (56×56)</td></tr>
+<tr><td class="m">r-18</td><td>18</td><td>Quick-answer panel</td></tr>
+<tr><td class="m">r-20</td><td>20</td><td>Popover shell</td></tr>
+<tr><td class="m">r-half</td><td>h ÷ 2</td><td>Exactly two: switch track (36×22 → 11) and count badge (18h → 9). Written as px, never %.</td></tr>
+</tbody>
+</table>
+<h2 style="margin-top: 10px">Circle allowlist · <span class="m" style="font-size: 14px">border-radius: 50%</span></h2>
+<table>
+<thead><tr><th>Class</th><th>Size</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td class="m">.dot</td><td>8×8 · 10×10</td><td>Account color in meta rows / settings rows</td></tr>
+<tr><td class="m">.swatch</td><td>22×22</td><td>Account color picker; selected = 2px gap ring + 2px text-1 ring</td></tr>
+<tr><td class="m">.knob</td><td>18×18</td><td>Switch thumb, inset 2px</td></tr>
+<tr><td class="m">.pip</td><td>16×16</td><td>Amber "!" on Settings rail tile</td></tr>
+<tr><td class="m">.spinner</td><td>14×14</td><td>Loading ring, 2px stroke, 270° arc</td></tr>
+<tr><td class="m">.step</td><td>20×20</td><td>Storyboard / docs only, never in app</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h2>Right vs over-rounded · side by side</h2>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 10px"><div class="cell"><span class="btn" style="border-radius: 9px">Approve</span><span class="verdict ok">RIGHT · r9</span></div><div class="cell bad"><span class="btn" style="border-radius: 16px">Approve</span><span class="verdict no">WRONG · pill</span><span class="why">Pill buttons read as tags and break the split-button seam.</span></div></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><div class="cell"><span class="ibx" style="border-radius: 8px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span><span class="verdict ok">RIGHT · 28 r8</span></div><div class="cell bad"><span class="ibx" style="border-radius: 50%"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span><span class="verdict no">WRONG · round X</span><span class="why">Close buttons are icon buttons: same r8 square as every other.</span></div></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><div class="cell"><span class="tl" style="border-radius: 14px"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg></span><span class="verdict ok">RIGHT · 48 r14</span></div><div class="cell bad"><span class="tl" style="border-radius: 50%"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg></span><span class="verdict no">WRONG · round tile</span><span class="why">Badge then floats off the curve instead of the corner.</span></div></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><div class="cell"><span class="chip" style="border-radius: 6px">Medium risk</span><span class="verdict ok">RIGHT · r6</span></div><div class="cell bad"><span class="chip" style="border-radius: 12px">Medium risk</span><span class="verdict no">WRONG · pill chip</span><span class="why">Chips are labels; r6 matches kbd and keys.</span></div></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><div class="cell"><span style="display: flex; gap: 8px; align-items: center; font-size: 12px"><span style="width: 8px; height: 8px; flex: none; border-radius: 50%; background: oklch(72% .12 250)"></span>Work</span><span class="verdict ok">RIGHT · 8×8, flex none</span></div><div class="cell bad"><span style="display: flex; gap: 8px; align-items: stretch; font-size: 12px; height: 16px"><span style="width: 8px; border-radius: 50%; background: oklch(72% .12 250)"></span>Work</span><span class="verdict no">WRONG · ellipse</span><span class="why">No height or flex:none, so the row stretches the dot into an oval.</span></div></div>
+<div style="display: flex; flex-direction: column; gap: 10px"><div class="cell"><span style="display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: oklch(58% .19 25); color: #fff; font-size: 11px; font-weight: 700">12</span><span class="verdict ok">RIGHT · r9 pill at 2 digits</span></div><div class="cell bad"><span style="display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 50%; background: oklch(58% .19 25); color: #fff; font-size: 11px; font-weight: 700">12</span><span class="verdict no">WRONG · 50% badge</span><span class="why">50% on a 25×18 box makes a squashed egg. Use radius = height ÷ 2 in px.</span></div></div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h2>Enforce it in CI</h2>
+<pre>// stylelint.config.mjs
+export default { rules: {
+  'declaration-property-value-disallowed-list': {
+    'border-radius': ['/9999px/', '/100%/', '/^\\d{3,}px/'],
+  },
+  'declaration-property-value-allowed-list': {
+    'border-radius': ['/^var\\(--r-(3|5|6|7|8|9|10|12|14|16|18|20)\\)/',
+                      '/^(9|11)px$/', '0', '/^\\d+px( \\d+px){1,3}$/'],
+  },
+}}
+// 50% is allowed ONLY in src/styles/circles.css (.dot .swatch .knob .pip .spinner)
+// — enforced with an overrides block that disables the allowed-list for that file.</pre>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h2>Type and spacing</h2>
+<table>
+<tbody>
+<tr><td style="width: 120px">18 / 650</td><td>Approval detail title</td><td>15 / 650</td><td>Section header, recap title</td></tr>
+<tr><td>14 / 600</td><td>Card title, tabs, banners bold</td><td>13 / 400–600</td><td>Body, buttons, menu items</td></tr>
+<tr><td>12.5 / 400</td><td>Secondary body, code (mono)</td><td>12 / 400</td><td>Meta row, footer, kbd</td></tr>
+<tr><td>11.5 / 600</td><td>Caps labels (+.02em), risk chip</td><td>11 / 700</td><td>Rail label (400), badge (700)</td></tr>
+<tr><td colspan="4">Font: <span class="m">-apple-system</span> (SF Pro), mono <span class="m">ui-monospace</span> (SF Mono). Numerals in badges, counts, timers: <span class="m">font-variant-numeric: tabular-nums</span>. Spacing steps: 2 · 4 · 6 · 8 · 10 · 12 · 14 · 16 · 20 · 24. Nothing off-grid.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · loading states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+a{color:oklch(85% .08 250);text-decoration:none}a:hover{color:oklch(93% .05 250)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid oklch(85% .08 250);outline-offset:2px}
+button:disabled{cursor:default;opacity:.45}
+.fa{width:14px;height:14px;fill:currentColor;flex:none}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skel{background:oklch(30% .003 70);border-radius:6px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+.rise{animation:rise .35s ease-out both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
+@media (prefers-reduced-motion: reduce){.spin,.skel,.rise{animation:none}}
+.pop{position:relative;width:528px;height:748px;flex:none;display:flex;border:1px solid oklch(38% .003 70);border-radius:20px;background:oklch(21.8% .003 70);overflow:hidden;box-shadow:0 18px 60px oklch(0% 0 0 / .35)}
+.rail{width:88px;flex:none;background:oklch(28.4% .004 70);border-right:1px solid oklch(38% .003 70);padding:20px 8px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:20px}
+.rail-item{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;font-size:11px;color:oklch(74% .008 70)}
+.tile{position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:14px}
+.rail-item.on{color:oklch(97% .002 70)}.rail-item.on .tile{background:oklch(39% .002 70)}
+.badge{position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:oklch(58% .19 25);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.tabs{height:52px;flex:none;display:flex;align-items:stretch;gap:20px;padding:0 20px;border-bottom:1px solid oklch(32% .003 70)}
+.tab{position:relative;display:flex;align-items:center;gap:6px;padding:0 4px;font-size:14px;font-weight:600;color:oklch(74% .008 70);height:100%}
+.tab.on{color:oklch(97% .002 70)}.tab.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:oklch(97% .002 70)}
+.cap{font-size:11.5px;font-weight:600;letter-spacing:.02em;color:oklch(74% .008 70);margin:0}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.meta{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(76% .008 70);white-space:nowrap}
+.card{background:oklch(25% .003 70);border:1px solid oklch(32% .003 70);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 10px;border-radius:10px;font-size:13px}
+.code{font:12.5px/1.45 ui-monospace,"SF Mono",Menlo,monospace;background:oklch(17% .003 70);border-radius:8px;padding:8px 10px;color:oklch(92% .004 70)}
+.btn{height:32px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:oklch(34% .003 70)}
+.btn.primary{background:oklch(97% .002 70);color:oklch(17% .003 70)}
+.risk{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;flex:none}
+.bar{height:4px;border-radius:2px;background:oklch(32% .003 70);overflow:hidden}
+.bar span{display:block;height:100%;background:oklch(82% .06 250)}
+</style>
+</helmet>
+<div style="width: 1784px; height: 788px; box-sizing: border-box; background: oklch(17% .003 70); padding: 20px 40px; display: flex; gap: 60px">
+
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<button class="rail-item on" aria-current="page"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.900-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="Starting up" aria-busy="true" style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div class="tabs" role="tablist" aria-label="Account"><button class="tab on" role="tab" aria-selected="true">All</button><button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(72% .12 250)"></span>Work</button><button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal</button></div>
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div class="card" style="gap: 2px; padding: 8px 6px">
+<div class="row"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px; color: oklch(80% .12 150)"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg><span style="flex: 1; display: flex; flex-direction: column"><span>Work and Cursor ready</span><span class="meta">6 sessions · 2 Cursor windows</span></span></div>
+<div class="row"><svg class="fa spin" viewBox="0 0 512 512" aria-hidden="true" style="width: 13px; height: 13px; color: oklch(82% .06 250)"><path d="M223.2 25C226.4 37.9 218.6 50.9 205.7 54.1 115.1 76.6 48 158.5 48 256 48 370.9 141.1 464 256 464s208-93.1 208-208c0-97.5-67.1-179.4-157.7-201.9-12.9-3.2-20.7-16.2-17.5-29.1S305 4.3 317.9 7.5C429.4 35.2 512 135.9 512 256 512 397.4 397.4 512 256 512S0 397.4 0 256C0 135.9 82.6 35.2 194.1 7.5 207 4.3 220 12.2 223.2 25z"/></svg><span style="flex: 1; display: flex; flex-direction: column; gap: 5px"><span style="display: flex; justify-content: space-between"><span>Personal</span><span class="meta">9 of 14 session logs</span></span><span class="bar" role="progressbar" aria-valuenow="9" aria-valuemax="14" aria-label="Reading Personal session logs"><span style="width: 64%"></span></span></span></div>
+<div class="row"><svg class="fa spin" viewBox="0 0 512 512" aria-hidden="true" style="width: 13px; height: 13px; color: oklch(76% .008 70)"><path d="M223.2 25C226.4 37.9 218.6 50.9 205.7 54.1 115.1 76.6 48 158.5 48 256 48 370.9 141.1 464 256 464s208-93.1 208-208c0-97.5-67.1-179.4-157.7-201.9-12.9-3.2-20.7-16.2-17.5-29.1S305 4.3 317.9 7.5C429.4 35.2 512 135.9 512 256 512 397.4 397.4 512 256 512S0 397.4 0 256C0 135.9 82.6 35.2 194.1 7.5 207 4.3 220 12.2 223.2 25z"/></svg><span style="flex: 1; display: flex; flex-direction: column"><span>Codex</span><span class="meta">Connecting to Codex…</span></span></div>
+</div>
+<p class="cap" style="padding: 6px 2px 0">WAITING ON YOU</p>
+<article class="card rise">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(58% .19 25 / .22); color: oklch(82% .11 25)">High risk</span><strong style="flex: 1; font-size: 14px">Fix lease-sync drift</strong><span class="meta">waiting 6m</span></div>
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · noi-signals / lease-sync</div>
+<div class="code">git push --force origin lease-sync</div>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><button class="btn">Deny</button><button class="btn">Approve</button></div>
+</article>
+<div class="card" aria-hidden="true" style="gap: 12px">
+<div style="display: flex; gap: 8px"><span class="skel" style="width: 72px; height: 18px"></span><span class="skel" style="width: 180px; height: 18px"></span></div>
+<span class="skel" style="width: 220px; height: 12px"></span>
+<span class="skel" style="width: 100%; height: 34px; border-radius: 8px"></span>
+</div>
+<p class="meta" style="justify-content: center; padding-top: 2px">Personal requests appear as their logs finish reading</p>
+</div>
+</section>
+</div>
+
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<button class="rail-item on" aria-current="page"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg><span class="badge">3</span></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="Inbox, loading inline" style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div class="tabs" role="tablist" aria-label="Account"><button class="tab on" role="tab" aria-selected="true">All</button><button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(72% .12 250)"></span>Work <span class="meta" style="font-size: 14px; font-weight: 500">2</span></button><button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal <span class="meta" style="font-size: 14px; font-weight: 500">1</span></button></div>
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(84% .14 85 / .16); color: oklch(88% .12 85)">Medium risk</span><strong style="flex: 1; font-size: 14px">Seed staging fixtures</strong><span class="meta">just now</span></div>
+<div class="meta"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal · flow-harness / seed-fixtures</div>
+<div class="meta" aria-live="polite" style="gap: 8px"><svg class="fa spin" viewBox="0 0 512 512" aria-hidden="true" style="width: 12px; height: 12px"><path d="M223.2 25C226.4 37.9 218.6 50.9 205.7 54.1 115.1 76.6 48 158.5 48 256 48 370.9 141.1 464 256 464s208-93.1 208-208c0-97.5-67.1-179.4-157.7-201.9-12.9-3.2-20.7-16.2-17.5-29.1S305 4.3 317.9 7.5C429.4 35.2 512 135.9 512 256 512 397.4 397.4 512 256 512S0 397.4 0 256C0 135.9 82.6 35.2 194.1 7.5 207 4.3 220 12.2 223.2 25z"/></svg>Writing a summary…</div>
+<div class="code" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">pnpm prisma migrate deploy &amp;&amp; DATABASE_URL=$STAGING_URL pnpm tsx scripts/seed.ts --sets tenants,leases,ledgers --truncate</div>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><button class="btn">Deny</button><button class="btn primary">Approve</button></div>
+</article>
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(39% .002 70); color: oklch(94% .004 70)">Question</span><strong style="flex: 1; font-size: 14px">Ledger backfill migration</strong><span class="meta">waiting 3m</span></div>
+<p style="margin: 0; font-size: 14px; line-height: 1.4">Backfill tenant ledgers now, or migrate lazily on read?</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button class="btn" disabled>Backfill now</button>
+<button class="btn primary" aria-busy="true"><svg class="fa spin" viewBox="0 0 512 512" aria-hidden="true" style="width: 12px; height: 12px"><path d="M223.2 25C226.4 37.9 218.6 50.9 205.7 54.1 115.1 76.6 48 158.5 48 256 48 370.9 141.1 464 256 464s208-93.1 208-208c0-97.5-67.1-179.4-157.7-201.9-12.9-3.2-20.7-16.2-17.5-29.1S305 4.3 317.9 7.5C429.4 35.2 512 135.9 512 256 512 397.4 397.4 512 256 512S0 397.4 0 256C0 135.9 82.6 35.2 194.1 7.5 207 4.3 220 12.2 223.2 25z"/></svg>Lazy on read</button>
+<button class="btn" disabled>Type an answer…</button>
+</div>
+<p class="meta" style="margin: 0">Sending to the agent…</p>
+</article>
+<div class="row" style="background: oklch(72% .14 150 / .1); border: 1px solid oklch(72% .14 150 / .25)"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px; color: oklch(82% .12 150)"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg><span style="flex: 1; display: flex; flex-direction: column"><span>Approved · Rent-roll PDF layout</span><span class="meta">The agent picked it up. Clears when you close the panel.</span></span></div>
+</div>
+</section>
+</div>
+
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item on" aria-current="page"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="Done, loading" aria-busy="true" style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div class="tabs" role="tablist" aria-label="Account"><button class="tab on" role="tab" aria-selected="true">All</button><button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(72% .12 250)"></span>Work</button><button class="tab" role="tab" aria-selected="false"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal</button></div>
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 9px; padding: 2px 2px 4px">
+<div style="display: flex; align-items: baseline; gap: 8px"><h2 style="margin: 0; flex: 1; font-size: 15px; font-weight: 650">Overnight · 6 finished</h2><span class="meta">since 11:40 PM</span></div>
+<span class="skel" style="height: 10px; border-radius: 5px"></span>
+<div class="meta" style="gap: 8px"><svg class="fa spin" viewBox="0 0 512 512" aria-hidden="true" style="width: 12px; height: 12px"><path d="M223.2 25C226.4 37.9 218.6 50.9 205.7 54.1 115.1 76.6 48 158.5 48 256 48 370.9 141.1 464 256 464s208-93.1 208-208c0-97.5-67.1-179.4-157.7-201.9-12.9-3.2-20.7-16.2-17.5-29.1S305 4.3 317.9 7.5C429.4 35.2 512 135.9 512 256 512 397.4 397.4 512 256 512S0 397.4 0 256C0 135.9 82.6 35.2 194.1 7.5 207 4.3 220 12.2 223.2 25z"/></svg>Reading results · 4 of 6 sessions</div>
+</div>
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px; color: oklch(78% .13 150)"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg><h3 style="margin: 0; flex: 1; font-size: 14px; font-weight: 600">Add rent-roll export</h3><span class="meta">7:42 AM</span></div>
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · noi-signals / rent-roll-export</div>
+<div style="display: flex; align-items: center; gap: 14px; font-size: 12.5px"><span style="color: oklch(84% .1 150)">112 tests passed</span><span>12 files <span style="color: oklch(80% .12 150)">+340</span> <span style="color: oklch(78% .11 25)">−88</span></span><span class="skel" aria-label="Counting tokens" style="width: 76px; height: 14px"></span></div>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><button class="btn">View diff</button><button class="btn primary">Open in Cursor</button></div>
+</article>
+<div class="card" aria-hidden="true" style="gap: 12px">
+<div style="display: flex; gap: 8px"><span class="skel" style="width: 14px; height: 14px; border-radius: 4px"></span><span class="skel" style="width: 200px; height: 16px"></span></div>
+<span class="skel" style="width: 240px; height: 12px"></span>
+<span class="skel" style="width: 280px; height: 12px"></span>
+</div>
+<div class="card" aria-hidden="true" style="gap: 12px">
+<div style="display: flex; gap: 8px"><span class="skel" style="width: 14px; height: 14px; border-radius: 4px"></span><span class="skel" style="width: 160px; height: 16px"></span></div>
+<span class="skel" style="width: 220px; height: 12px"></span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1784,"height":788}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

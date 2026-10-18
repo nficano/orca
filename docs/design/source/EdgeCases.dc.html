@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · edge cases</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+a{color:oklch(85% .08 250);text-decoration:none}a:hover{color:oklch(93% .05 250)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+button:focus-visible{outline:2px solid oklch(85% .08 250);outline-offset:2px}
+.fa{width:14px;height:14px;fill:currentColor;flex:none}
+.case{display:flex;flex-direction:column;gap:10px}
+.num{margin:0;font:600 11.5px ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.04em;color:oklch(76% .008 70)}
+.case h2{margin:0;font-size:15px;font-weight:650}
+.rule{margin:0;font-size:12.5px;line-height:1.5;color:oklch(84% .005 70);max-width:520px}
+.stage{width:406px;padding:12px;border-radius:14px;background:oklch(21.8% .003 70);border:1px solid oklch(30% .003 70)}
+.card{background:oklch(25% .003 70);border:1px solid oklch(32% .003 70);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.meta{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(76% .008 70);white-space:nowrap;min-width:0}
+.code{position:relative;font:12.5px/1.45 ui-monospace,"SF Mono",Menlo,monospace;background:oklch(17% .003 70);border-radius:8px;padding:8px 10px;color:oklch(92% .004 70);overflow-wrap:anywhere}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.btn{min-height:32px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:oklch(34% .003 70)}
+.btn.primary{background:oklch(97% .002 70);color:oklch(17% .003 70)}
+.more{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:oklch(88% .004 70)}
+.risk{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;flex:none}
+.opt{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:9px;font-size:13px;line-height:1.35;text-align:left;width:100%;box-sizing:border-box}
+.opt:hover{background:oklch(30% .003 70)}
+.key{display:grid;place-items:center;width:20px;height:20px;border-radius:5px;background:oklch(34% .003 70);font-size:11px;font-weight:700;flex:none}
+.mask{letter-spacing:.08em;color:oklch(80% .006 70)}
+.title1{margin:0;flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</helmet>
+<div style="width: 1240px; min-height: 2320px; box-sizing: border-box; background: oklch(17% .003 70); padding: 48px; display: flex; flex-direction: column; gap: 40px">
+<header style="display: flex; flex-direction: column; gap: 6px">
+<p class="num">EDGE CASES · ALL SPECIMENS AT REAL CARD WIDTH (406 PX)</p>
+<h1 style="margin: 0; font-size: 26px; font-weight: 700">Long text never pushes the decision buttons out of view</h1>
+<p class="rule" style="max-width: 760px">Cards clamp, the detail view shows everything. Truncation always has a way to see the rest, and the raw command is never hidden behind a summary.</p>
+</header>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; row-gap: 44px">
+
+<section class="case">
+<p class="num">01</p><h2>Long single-line command</h2>
+<p class="rule">Clamp to 2 lines in the card, then "Show all". Break at spaces, &amp;&amp;, | and \ before breaking inside a word. The detail view shows the whole command, one step per row.</p>
+<div class="stage"><article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(84% .14 85 / .16); color: oklch(88% .12 85)">Medium risk</span><h3 class="title1">Seed staging from image</h3><span class="meta">waiting 2m</span></div>
+<div class="code clamp2" style="overflow-wrap: break-word">docker run --rm -e DATABASE_URL=$STAGING_URL -v $(pwd)/fixtures:/fixtures ghcr.io/acme/seed:2.4.1 --sets tenants,leases,ledgers,units,vendors --truncate --batch-size 500</div>
+<div style="display: flex; align-items: center; gap: 8px"><button class="more" style="flex: 1">Show all<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button><button class="btn">Deny</button><button class="btn primary">Approve</button></div>
+</article></div>
+</section>
+
+<section class="case">
+<p class="num">02</p><h2>Multi-line scripts and heredocs</h2>
+<p class="rule">Show the first 3 lines exactly as written, then "+38 lines". The first line is never replaced by a summary. Line numbers appear only in the detail view.</p>
+<div class="stage"><article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(84% .14 85 / .16); color: oklch(88% .12 85)">Medium risk</span><h3 class="title1">Ledger proration migration</h3><span class="meta">waiting 4m</span></div>
+<div class="code" style="white-space: pre; overflow: hidden; text-overflow: ellipsis">cat &gt; migrations/0042_ledger.sql &lt;&lt;'EOF'
+ALTER TABLE ledger ADD COLUMN prorated_cents bigint;
+CREATE INDEX ledger_unit_month ON ledger (unit_id, …</div>
+<div style="display: flex; align-items: center; gap: 8px"><button class="more" style="flex: 1">+38 lines<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button><button class="btn">Deny</button><button class="btn primary">Approve</button></div>
+</article></div>
+</section>
+
+<section class="case">
+<p class="num">03</p><h2>Secrets inside commands</h2>
+<p class="rule">Tokens, passwords and keys are masked everywhere, notifications and summaries included, keeping the last 4 characters. Revealing on the Mac needs Touch ID and lasts 10 seconds.</p>
+<div class="stage"><article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(58% .19 25 / .22); color: oklch(82% .11 25)">High risk</span><h3 class="title1">Rotate vendor webhook</h3><span class="meta">waiting 1m</span></div>
+<div class="code">curl -X POST -H "Authorization: Bearer <span class="mask">sk-ant-••••••3f9a</span>" https://api.vendor.example/hooks</div>
+<div style="display: flex; align-items: center; gap: 8px"><span class="meta" style="flex: 1"><svg class="fa" viewBox="0 0 384 512" aria-hidden="true" style="width: 10px; height: 12px"><path d="M112 96l0 64 160 0 0-64c0-44.2-35.8-80-80-80s-80 35.8-80 80zM64 160l0-64C64 25.3 121.3-32 192-32S320 25.3 320 96l0 64c35.3 0 64 28.7 64 64l0 224c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 224c0-35.3 28.7-64 64-64zm208 48l-160 0 0 0-48 0 0 0c-8.8 0-16 7.2-16 16l0 224c0 8.8 7.2 16 16 16l256 0c8.8 0 16-7.2 16-16l0-224c0-8.8-7.2-16-16-16l0 0-48 0 0 0z"/></svg>1 secret hidden</span><button class="more"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 14px; height: 12px"><path d="M288 80C222.8 80 169.2 109.6 128.1 147.7 89.6 183.5 63 226 49.4 256 63 286 89.6 328.5 128.1 364.3 169.2 402.4 222.8 432 288 432s118.8-29.6 159.9-67.7C486.4 328.5 513 286 526.6 256 513 226 486.4 183.5 447.9 147.7 406.8 109.6 353.2 80 288 80zM95.4 112.6C142.5 68.8 207.2 32 288 32s145.5 36.8 192.6 80.6c46.8 43.5 78.1 95.4 93 131.1 3.3 7.9 3.3 16.7 0 24.6-14.9 35.7-46.2 87.7-93 131.1-47.1 43.7-111.8 80.6-192.6 80.6S142.5 443.2 95.4 399.4c-46.8-43.5-78.1-95.4-93-131.1-3.3-7.9-3.3-16.7 0-24.6 14.9-35.7 46.2-87.7 93-131.1zM288 336c44.2 0 80-35.8 80-80 0-29.6-16.1-55.5-40-69.3-1.4 59.7-49.6 107.9-109.3 109.3 13.8 23.9 39.7 40 69.3 40zm-79.6-88.4c2.5 .3 5 .4 7.6 .4 35.3 0 64-28.7 64-64 0-2.6-.2-5.1-.4-7.6-37.4 3.9-67.2 33.7-71.1 71.1zm45.6-115c10.8-3 22.2-4.5 33.9-4.5 8.8 0 17.5 .9 25.8 2.6 .3 .1 .5 .1 .8 .2 57.9 12.2 101.4 63.7 101.4 125.2 0 70.7-57.3 128-128 128-61.6 0-113-43.5-125.2-101.4-1.8-8.6-2.8-17.5-2.8-26.6 0-11 1.4-21.8 4-32 .2-.7 .3-1.3 .5-1.9 11.9-43.4 46.1-77.6 89.5-89.5z"/></svg>Reveal</button></div>
+</article></div>
+</section>
+
+<section class="case">
+<p class="num">04</p><h2>Long session titles</h2>
+<p class="rule">One line with an ellipsis at the end. Hovering shows the full title; clicking it opens the detail view, where it wraps to at most 2 lines. Wait time and risk never get squeezed out.</p>
+<div class="stage" style="position: relative; padding-bottom: 64px"><article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(39% .002 70); color: oklch(94% .004 70)">Question</span><h3 class="title1">Refactor the tenant ledger reconciliation job to handle partial-month proration</h3><span class="meta">waiting 3m</span></div>
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span>Work · noi-signals / ledger-v2</div>
+<div style="display: flex; gap: 8px"><button class="btn">Refactor now</button><button class="btn">Leave as is</button></div>
+</article>
+<div role="tooltip" style="position: absolute; left: 84px; top: 52px; width: 290px; padding: 8px 10px; border-radius: 8px; background: oklch(34% .004 70); border: 1px solid oklch(44% .003 70); font-size: 12px; line-height: 1.4; box-shadow: 0 8px 24px oklch(0% 0 0 / .45)">Refactor the tenant ledger reconciliation job to handle partial-month proration</div>
+</div>
+</section>
+
+<section class="case">
+<p class="num">05</p><h2>Long repo, branch and worktree names</h2>
+<p class="rule">Keep the repo whole when it fits. Shorten the branch in the middle so its prefix and last segment survive. Drop the worktree name when it matches the branch. The account name is never cut.</p>
+<div class="stage"><article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(72% .14 150 / .16); color: oklch(84% .1 150)">Low risk</span><h3 class="title1">Proration fixtures</h3><span class="meta">waiting 1m</span></div>
+<div class="meta"><span class="dot" style="background: oklch(72% .12 250)"></span><span style="flex: none">Work</span><span>·</span><span style="min-width: 0; overflow: hidden; text-overflow: ellipsis">teachmehipaa-agent-desktop / feature/…/ledger-proration-v2</span></div>
+<div class="code clamp2">pnpm test packages/ledger</div>
+<div style="display: flex; justify-content: flex-end; gap: 8px"><button class="btn">Deny</button><button class="btn primary">Approve</button></div>
+</article></div>
+</section>
+
+<section class="case">
+<p class="num">06</p><h2>Long questions and context</h2>
+<p class="rule">The question clamps at 3 lines and the context at 2, with "More" to expand in place. Answer buttons always stay visible below.</p>
+<div class="stage"><article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><span class="risk" style="background: oklch(39% .002 70); color: oklch(94% .004 70)">Question</span><h3 class="title1">Vendor CSV importer</h3><span class="meta">waiting 5m</span></div>
+<p class="clamp3" style="margin: 0; font-size: 14px; line-height: 1.4">The vendor file has 214 rows where the unit number exists in two properties with the same street name. Should I match on property code first and fall back to address, or skip those rows and write them to a review file so someone can map them by hand?</p>
+<button class="more" style="align-self: flex-start">More</button>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><button class="btn" style="box-shadow: inset 0 0 0 1.5px oklch(97% .002 70)">Match code first</button><button class="btn">Skip and log</button><button class="btn" style="background: none; border: 1px dashed oklch(42% .003 70); color: oklch(84% .005 70)">Type an answer…</button></div>
+</article></div>
+</section>
+
+<section class="case">
+<p class="num">07</p><h2>Many options</h2>
+<p class="rule">Up to 3 options show as buttons in a row. From 4 to 9 they become a numbered list you can pick with keys 1–9. Past 9, show the first 9, then "Show 4 more" and a filter field. Number keys act on the focused card only, and typing an answer is always the last row.</p>
+<div class="stage"><article class="card" style="gap: 6px">
+<div style="display: flex; align-items: center; gap: 8px; padding-bottom: 4px"><span class="risk" style="background: oklch(39% .002 70); color: oklch(94% .004 70)">Question</span><h3 class="title1">Pick the export format</h3><span class="meta">waiting 1m</span></div>
+<button class="opt" style="background: oklch(31% .003 70)"><span class="key">1</span><span style="flex: 1">CSV</span><span class="meta">default</span></button>
+<button class="opt"><span class="key">2</span><span style="flex: 1">Excel (.xlsx)</span></button>
+<button class="opt"><span class="key">3</span><span style="flex: 1">Parquet</span></button>
+<button class="opt"><span class="key">4</span><span style="flex: 1">JSON lines</span></button>
+<button class="opt"><span class="key">5</span><span style="flex: 1">Yardi ETL template</span></button>
+<button class="opt" style="color: oklch(84% .005 70)"><span class="key" style="background: none; border: 1px dashed oklch(44% .003 70)">6</span><span style="flex: 1">Type an answer…</span></button>
+</article></div>
+</section>
+
+<section class="case">
+<p class="num">08</p><h2>Long option labels</h2>
+<p class="rule">If any label runs past about 24 characters, use the list layout even for 2–3 options. Rows wrap to 2 lines, then end in an ellipsis. Buttons never shrink their text.</p>
+<div class="stage"><article class="card" style="gap: 6px">
+<div style="display: flex; align-items: center; gap: 8px; padding-bottom: 4px"><span class="risk" style="background: oklch(39% .002 70); color: oklch(94% .004 70)">Question</span><h3 class="title1">Ledger backfill migration</h3><span class="meta">waiting 3m</span></div>
+<button class="opt" style="background: oklch(31% .003 70)"><span class="key">1</span><span style="flex: 1">Backfill all tenant ledgers now and lock the table for about 4 minutes</span></button>
+<button class="opt"><span class="key">2</span><span style="flex: 1">Migrate lazily the first time each ledger is read after deploy</span></button>
+<button class="opt"><span class="key">3</span><span style="flex: 1">Stop here</span></button>
+<button class="opt" style="color: oklch(84% .005 70)"><span class="key" style="background: none; border: 1px dashed oklch(44% .003 70)">4</span><span style="flex: 1">Type an answer…</span></button>
+</article></div>
+</section>
+
+<section class="case">
+<p class="num">09</p><h2>Big numbers and long waits</h2>
+<p class="rule">The badge caps at 99+. Waits over an hour show the clock time. Counts get thousands separators and tokens are abbreviated. A diff over 10,000 lines gets a warning.</p>
+<div class="stage" style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; gap: 10px; align-items: center"><span style="min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: oklch(58% .19 25); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center">99+</span><span class="meta">Inbox badge past 99 · a wait over 1 hour reads "waiting since 9:12 AM"</span></div>
+<article class="card">
+<div style="display: flex; align-items: center; gap: 8px"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px; color: oklch(78% .13 150)"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg><h3 class="title1">Regenerate rent-roll snapshots</h3><span class="meta">finished 11:02 AM</span></div>
+<div style="display: flex; align-items: center; gap: 14px; font-size: 12.5px"><span>1,284 files <span style="color: oklch(80% .12 150)">+12,480</span> <span style="color: oklch(78% .11 25)">−3,201</span></span><span class="meta">1.2M tokens</span></div>
+<div role="img" aria-label="80% additions, 20% deletions" style="display: flex; gap: 2px; height: 6px"><div style="flex: 12480; border-radius: 3px 0 0 3px; background: oklch(72% .13 150)"></div><div style="flex: 3201; border-radius: 0 3px 3px 0; background: oklch(66% .15 25)"></div></div>
+<div style="display: flex; align-items: center; gap: 8px"><p class="meta" style="margin: 0; flex: 1; color: oklch(88% .12 85)">Large change. Review it in Cursor.</p><button class="btn primary">Open in Cursor</button></div>
+</article>
+</div>
+</section>
+
+<section class="case">
+<p class="num">10</p><h2>Larger Text (accessibility)</h2>
+<p class="rule">At larger text sizes the meta row wraps instead of cutting the account name, and the buttons stack full width. The popover widens to 640 px before it scrolls.</p>
+<div class="stage" style="font-size: 120%"><article class="card" style="gap: 12px">
+<div style="display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap"><span class="risk" style="font-size: 14px; background: oklch(84% .14 85 / .16); color: oklch(88% .12 85)">Medium risk</span><h3 style="margin: 0; flex: 1 1 100%; font-size: 17px; font-weight: 600">Seed staging fixtures</h3></div>
+<div class="meta" style="font-size: 14.5px; white-space: normal; flex-wrap: wrap"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal · flow-harness / seed-fixtures · waiting 1m</div>
+<div style="display: flex; flex-direction: column; gap: 8px"><button class="btn primary" style="min-height: 40px; font-size: 15.5px">Approve</button><button class="btn" style="min-height: 40px; font-size: 15.5px">Deny</button></div>
+</article></div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1240,"height":2320}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

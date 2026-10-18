@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · approval detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+a{color:oklch(85% .08 250)}a:hover{color:oklch(93% .05 250)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid oklch(85% .08 250);outline-offset:2px}
+.fa{width:14px;height:14px;fill:currentColor;flex:none}
+.rail-item{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;font-size:11px;color:oklch(74% .008 70)}
+.tile{position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:14px}
+.rail-item.on{color:oklch(97% .002 70)}.rail-item.on .tile{background:oklch(39% .002 70)}
+.badge{position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:oklch(58% .19 25);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.meta{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(74% .008 70);white-space:nowrap}
+.label{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.02em;color:oklch(74% .008 70)}
+.code{font:12.5px/1.5 ui-monospace,"SF Mono",Menlo,monospace;background:oklch(17% .003 70);border-radius:8px;padding:8px 10px;color:oklch(92% .004 70);overflow-wrap:anywhere}
+.step{display:grid;grid-template-columns:20px minmax(0,1fr);column-gap:8px;row-gap:4px;align-items:start}
+.num{width:20px;height:20px;border-radius:6px;background:oklch(34% .003 70);font-size:11px;font-weight:700;display:grid;place-items:center;margin-top:6px}
+.btn{height:32px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:oklch(34% .003 70)}
+.btn.primary{background:oklch(97% .002 70);color:oklch(17% .003 70)}
+.ib{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:oklch(86% .004 70)}
+.ib:hover{background:oklch(34% .003 70)}
+.risk{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;flex:none}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:7px 10px;border-radius:8px;cursor:pointer}
+.opt:hover{background:oklch(34% .003 70)}
+.opt input{margin:2px 0 0;accent-color:oklch(97% .002 70)}
+</style>
+</helmet>
+<div style="width: 560px; height: 800px; box-sizing: border-box; background: oklch(17% .003 70); display: flex; flex-direction: column; align-items: flex-end; padding: 0 16px 16px">
+<div style="height: 36px; display: flex; align-items: center; justify-content: flex-end; width: 100%">
+<button aria-label="Orca, 3 waiting on you" style="display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: oklch(39% .002 70); font-size: 13px; font-weight: 600"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg>3</button>
+</div>
+<div style="width: 528px; height: 748px; display: flex; border: 1px solid oklch(38% .003 70); border-radius: 20px; background: oklch(21.8% .003 70); overflow: hidden; box-shadow: 0 18px 60px oklch(0% 0 0 / .35)">
+<nav aria-label="Sections" style="width: 88px; flex: none; background: oklch(28.4% .004 70); border-right: 1px solid oklch(38% .003 70); padding: 20px 8px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 20px">
+<button class="rail-item on" aria-current="page"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg><span class="badge">3</span></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="Approval" style="position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div style="height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 16px; border-bottom: 1px solid oklch(32% .003 70)">
+<button class="meta" style="gap: 6px; color: oklch(92% .004 70); font-size: 13px; font-weight: 600"><svg class="fa" viewBox="0 0 320 512" aria-hidden="true" style="width: 9px; height: 13px"><path d="M7.5 239c-9.4 9.4-9.4 24.6 0 33.9l200 200c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-183-183 183-183c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0L7.5 239z"/></svg>Inbox</button>
+<span style="flex: 1"></span>
+<span class="meta">3 of 3</span>
+<button class="ib" aria-label="Previous request (up arrow)"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px"><path d="M207.5 103c9.4-9.4 24.6-9.4 33.9 0l200 200c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-183-183-183 183c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l200-200z"/></svg></button>
+<button class="ib" aria-label="Next request (down arrow)" disabled style="opacity: .4"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button>
+</div>
+<div style="flex: 1; min-height: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; overflow: hidden">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; gap: 8px"><h1 style="margin: 0; flex: 1; font-size: 18px; font-weight: 650">Seed staging fixtures</h1><span class="meta">waiting 1m</span></div>
+<div class="meta"><span class="dot" style="background: oklch(76% .13 55)"></span>Personal<span>·</span>flow-harness / seed-fixtures<span>·</span>worktree: seed-fixtures</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px"><p class="label" style="flex: 1">WANTS TO RUN · 2 STEPS</p><span class="risk" style="background: oklch(84% .14 85 / .16); color: oklch(88% .12 85)"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 12px; height: 12px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm0 336a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm0-256c18.2 0 32.7 15.5 31.4 33.7l-7.4 104c-.9 12.6-11.4 22.3-23.9 22.3-12.6 0-23-9.7-23.9-22.3l-7.4-104C223.3 143.5 237.8 128 256 128z"/></svg>Medium risk</span><button class="ib" aria-label="Copy full command"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M384 336l-192 0c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l133.5 0c4.2 0 8.3 1.7 11.3 4.7l58.5 58.5c3 3 4.7 7.1 4.7 11.3L400 320c0 8.8-7.2 16-16 16zM192 384l192 0c35.3 0 64-28.7 64-64l0-197.5c0-17-6.7-33.3-18.7-45.3L370.7 18.7C358.7 6.7 342.5 0 325.5 0L192 0c-35.3 0-64 28.7-64 64l0 256c0 35.3 28.7 64 64 64zM64 128c-35.3 0-64 28.7-64 64L0 448c0 35.3 28.7 64 64 64l192 0c35.3 0 64-28.7 64-64l0-16-48 0 0 16c0 8.8-7.2 16-16 16L64 464c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l16 0 0-48-16 0z"/></svg></button></div>
+<p style="margin: 0; font-size: 14px; line-height: 1.4">Runs migrations, then seeds 3 fixture sets on staging.</p>
+<div class="step"><span class="num">1</span><div class="code">pnpm prisma migrate deploy</div><span></span><span style="font-size: 12px; color: oklch(78% .006 70)">Applies pending schema migrations.</span></div>
+<div class="step"><span class="num">2</span><div class="code">DATABASE_URL=$STAGING_URL pnpm tsx scripts/seed.ts --sets tenants,leases,ledgers <mark style="background: oklch(84% .14 85 / .22); color: oklch(92% .1 85); border-radius: 3px; padding: 0 2px">--truncate</mark></div><span></span><span style="font-size: 12px; color: oklch(78% .006 70)">--truncate empties those three tables before seeding. Staging only; no production credentials.</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<p class="label">AGENT'S REASON</p>
+<p style="margin: 0; font-size: 13px; line-height: 1.45; color: oklch(88% .004 70)">Staging is missing the fixture sets the ledger tests need. Seeding them before running the suite.</p>
+</div>
+<label style="display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 12px; border-radius: 10px; background: oklch(19% .003 70); border: 1px solid oklch(34% .003 70)"><input type="text" aria-label="Tell the agent what to do instead" placeholder="Or tell it what to do instead…" style="flex: 1; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; outline: none"><button class="ib" aria-label="Send instead of approving"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 14px; height: 13px"><path d="M290.5 287.7L491.4 86.9 359 456.3 290.5 287.7zM457.4 53L256.6 253.8 88 185.3 457.4 53zM38.1 216.8l205.8 83.6 83.6 205.8c5.3 13.1 18.1 21.7 32.3 21.7 14.7 0 27.8-9.2 32.8-23.1L570.6 8c3.5-9.8 1-20.6-6.3-28s-18.2-9.8-28-6.3L39.4 151.7c-13.9 5-23.1 18.1-23.1 32.8 0 14.2 8.6 27 21.7 32.3z"/></svg></button></label>
+</div>
+<div style="flex: none; border-top: 1px solid oklch(32% .003 70); padding: 12px 16px; display: flex; justify-content: flex-end; gap: 8px">
+<button class="btn">Deny</button>
+<div style="display: flex; gap: 1px">
+<button class="btn primary" style="border-radius: 9px 0 0 9px">Approve</button>
+<button class="btn primary" aria-label="More approve options" aria-expanded="true" style="border-radius: 0 9px 9px 0; padding: 0 9px"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px"><path d="M207.5 103c9.4-9.4 24.6-9.4 33.9 0l200 200c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-183-183-183 183c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l200-200z"/></svg></button>
+</div>
+</div>
+<div role="dialog" aria-label="Always allow" style="position: absolute; right: 16px; bottom: 60px; width: 344px; box-sizing: border-box; background: oklch(28.4% .004 70); border: 1px solid oklch(42% .003 70); border-radius: 14px; box-shadow: 0 12px 40px oklch(0% 0 0 / .5); padding: 8px; display: flex; flex-direction: column; gap: 4px">
+<button class="opt" style="justify-content: space-between; font-size: 13px; font-weight: 600"><span>Approve once</span><span style="color: oklch(74% .008 70); font-weight: 500">↩</span></button>
+<div style="height: 1px; background: oklch(42% .003 70); margin: 4px 6px"></div>
+<p class="label" style="padding: 4px 10px 0">ALWAYS ALLOW STEP 1</p>
+<div class="code" style="margin: 2px 10px 0; font-size: 12px">pnpm prisma migrate deploy</div>
+<p style="margin: 2px 10px 4px; font-size: 11.5px; color: oklch(78% .006 70)">Step 2 will still ask. Would have covered 6 earlier requests.</p>
+<label class="opt"><input type="radio" name="scope" checked><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px">flow-harness, all accounts</span><span style="font-size: 11.5px; color: oklch(78% .006 70)">Saved in the repo's local settings</span></span></label>
+<label class="opt"><input type="radio" name="scope"><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px">Personal account only, all repos</span><span style="font-size: 11.5px; color: oklch(78% .006 70)">Saved in this account's settings</span></span></label>
+<div style="display: flex; justify-content: flex-end; padding: 6px 4px 2px"><button class="btn primary">Allow and approve</button></div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":800}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

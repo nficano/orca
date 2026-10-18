@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · badges, pips, dots</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:oklch(74% .008 70)}
+h2{margin:0;font-size:18px;font-weight:650}
+.m{font:11.5px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(88% .02 250)}
+.dim{position:absolute;border:1px dashed oklch(66% .2 330);box-sizing:border-box}
+.dl{position:absolute;font:600 11px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(80% .15 330);white-space:nowrap}
+.hl{position:absolute;height:0;border-top:1px solid oklch(66% .2 330)}
+.vl{position:absolute;width:0;border-left:1px solid oklch(66% .2 330)}
+.tile{position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:14px;flex:none}
+.badge{position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:oklch(58% .19 25);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px oklch(28.4% .004 70)}
+.pip{position:absolute;bottom:-2px;right:-4px;width:16px;height:16px;border-radius:50%;background:oklch(84% .14 85);color:oklch(22% .03 85);display:grid;place-items:center;font-size:11px;font-weight:800;box-shadow:0 0 0 2px oklch(28.4% .004 70)}
+.rail{background:oklch(28.4% .004 70);border-radius:14px;padding:16px 12px;display:flex;gap:24px;align-items:flex-start}
+.ri{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;font-size:11px;color:oklch(74% .008 70)}
+.spec{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid oklch(30% .003 70)}
+.spec h3{margin:0;font-size:14px;font-weight:650}
+.spec p,.spec li{margin:0;font-size:12.5px;line-height:1.5;color:oklch(84% .005 70)}
+.spec ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1900px; box-sizing: border-box; background: oklch(17% .003 70); padding: 56px 64px; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p class="cap">ORCA · I3 · BADGES, PIPS AND DOTS</p>
+<h1 style="margin: 0; font-size: 34px; font-weight: 700">The badge hangs off the tile's top-right corner. Not the label, not the rail.</h1>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: oklch(82% .005 70); max-width: 1040px">Four count indicators exist and each has exactly one form: the rail count badge (red, numeric), the Settings alert pip (amber, "!"), the tray title count (plain text), and the account-tab count (plain text). There is no Dock icon, so no Dock badge (<span class="m">app.dock.hide()</span>, <span class="m">LSUIElement</span>).</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 620px minmax(0, 1fr); gap: 48px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<h2>Rail badge at 4× · one digit</h2>
+<div style="position: relative; width: 620px; height: 420px; background: oklch(28.4% .004 70); border-radius: 20px">
+<div style="position: absolute; left: 160px; top: 140px; width: 192px; height: 192px; border-radius: 56px; background: oklch(39% .002 70); display: grid; place-items: center"><svg viewBox="0 0 24 24" width="84" height="84" fill="none" stroke="oklch(97% .002 70)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg></div>
+<div style="position: absolute; left: 304px; top: 124px; width: 72px; height: 72px; border-radius: 36px; background: oklch(58% .19 25); color: #fff; font-size: 44px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 8px oklch(28.4% .004 70)">3</div>
+<div class="dim" style="left: 160px; top: 140px; width: 192px; height: 192px; border-radius: 56px"></div>
+<div class="dim" style="left: 304px; top: 124px; width: 72px; height: 72px"></div>
+<div class="hl" style="left: 352px; top: 104px; width: 24px"></div><div class="vl" style="left: 352px; top: 96px; height: 16px"></div><div class="vl" style="left: 376px; top: 96px; height: 16px"></div>
+<span class="dl" style="left: 336px; top: 78px">right: −6</span>
+<div class="vl" style="left: 396px; top: 124px; height: 16px"></div><div class="hl" style="left: 390px; top: 124px; width: 12px"></div><div class="hl" style="left: 390px; top: 140px; width: 12px"></div>
+<span class="dl" style="left: 408px; top: 124px">top: −4</span>
+<span class="dl" style="left: 408px; top: 172px">18 × 18 · radius 9px</span>
+<span class="dl" style="left: 408px; top: 190px">ring 2px = rail color</span>
+<span class="dl" style="left: 196px; top: 344px">tile 48 × 48 · radius 14 · position: relative</span>
+<div class="hl" style="left: 160px; top: 368px; width: 192px"></div>
+<span class="dl" style="left: 160px; top: 376px">0</span><span class="dl" style="left: 324px; top: 376px">48</span>
+<div class="vl" style="left: 304px; top: 360px; height: 16px"></div>
+<span class="dl" style="left: 236px; top: 394px">36 → badge left</span>
+<div class="vl" style="left: 376px; top: 360px; height: 16px"></div>
+<span class="dl" style="left: 380px; top: 374px">54 → badge right</span>
+<span class="dl" style="left: 24px; top: 20px; color: oklch(80% .006 70)">Drawn at 4×. Ship values in labels are 1× CSS px.</span>
+</div>
+
+<h2>Growth · anchored right, grows left</h2>
+<div class="rail" style="gap: 28px">
+<span class="ri"><span class="tile" style="background: oklch(39% .002 70)"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(97% .002 70)"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg></span>0 · removed</span>
+<span class="ri"><span class="tile" style="background: oklch(39% .002 70)"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(97% .002 70)"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg><span class="badge">1</span></span>1 · 18w</span>
+<span class="ri"><span class="tile" style="background: oklch(39% .002 70)"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(97% .002 70)"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg><span class="badge">9</span></span>9 · 18w</span>
+<span class="ri"><span class="tile" style="background: oklch(39% .002 70)"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(97% .002 70)"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg><span class="badge">12</span></span>12 · ≈25w</span>
+<span class="ri"><span class="tile" style="background: oklch(39% .002 70)"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: oklch(97% .002 70)"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg><span class="badge">99+</span></span>≥100 · ≈31w</span>
+<span class="ri"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z"/></svg><span class="badge">3</span></span>inactive tile</span>
+</div>
+
+<h2>Settings pip · bottom-right</h2>
+<div class="rail" style="gap: 28px; align-items: center">
+<span class="ri"><span class="tile"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4"/></svg><span class="pip">!</span></span>Settings</span>
+<p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: oklch(84% .005 70); max-width: 380px"><span class="m">bottom: −2px; right: −4px</span>. 16 × 16, <span class="m">border-radius: 50%</span> (true circle, on the allowlist). "!" is 11/800 in <span class="m">oklch(22% .03 85)</span>. Same 2px ring as the badge. Bottom placement keeps it visually distinct from the numeric badge and never collides with it.</p>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column">
+<div class="spec"><h3>1 · DOM and anchor</h3><p>The badge is a child of <span class="m">.tile</span>, never of the rail item or its label, so it moves with the tile on hover/press. <span class="m">.tile</span> has <span class="m">position: relative</span> and no <span class="m">overflow</span>. Check the chain up to the rail: no ancestor between the tile and the rail may clip. The rail's 8px side padding plus the 12px tile inset leaves room for the 6px overhang.</p></div>
+<div class="spec"><h3>2 · Box</h3><ul>
+<li><span class="m">position: absolute; top: -4px; right: -6px</span></li>
+<li><span class="m">min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box</span></li>
+<li><span class="m">border-radius: 9px</span>: half the height in px. This gives a circle at 1 digit and a true pill at 2+. <b>Never 50%</b>: on a 25×18 box that renders an egg.</li>
+<li><span class="m">display: grid; place-items: center</span>. No line-height hacks.</li>
+<li><span class="m">box-shadow: 0 0 0 2px var(--surface-2)</span>: a ring in the rail color that separates badge from tile edge. It does not change layout size.</li>
+</ul></div>
+<div class="spec"><h3>3 · Text</h3><p>11px / 700, <span class="m">#fff</span>, <span class="m">font-variant-numeric: tabular-nums</span>. 1–99 print as is; 100+ prints <span class="m">99+</span>. 0 removes the element from the DOM (not <span class="m">opacity: 0</span>), so nothing is announced.</p></div>
+<div class="spec"><h3>4 · What it counts</h3><p>Inbox badge = pending requests + unanswered questions across <b>all</b> accounts, independent of the selected tab. Running and Done never get a badge. Same number as the tray title. Source of truth: one <span class="m">pendingCount</span> selector in the main process, pushed to renderer and tray together, so they can't disagree.</p></div>
+<div class="spec"><h3>5 · Motion</h3><p>Increment: <span class="m">scale 1 → 1.15 → 1</span>, 160ms ease-out, <span class="m">transform-origin: 100% 0</span> (top-right corner, so it grows away from the tile). Decrement and removal: no animation. Disabled under <span class="m">prefers-reduced-motion</span>. Never pulse or loop.</p></div>
+<div class="spec"><h3>6 · Accessibility</h3><p>Badge and pip are <span class="m">aria-hidden="true"</span>. The rail button carries the count: <span class="m">aria-label="Inbox, 3 waiting"</span>; Settings with problems: <span class="m">"Settings, 1 problem"</span>.</p></div>
+<div class="spec"><h3>7 · Pip rules</h3><p>Shown on Settings only, when any account is unhealthy (hook missing, extension missing, Codex disconnected, shortcut failed). Never on other tiles, never numeric. Clears the moment the last problem resolves.</p></div>
+<div class="spec"><h3>8 · Tray and tab counts are text</h3><p>Tray: <span class="m">tray.setTitle(n ? ` ${n}` : '')</span> beside a template image; no rendered badge image, no red. Account tab: count is plain 14/500 <span class="m">--text-2</span> after the label, gap 6, hidden at 0. Neither is a pill.</p></div>
+<div class="spec" style="border-bottom: 1px solid oklch(30% .003 70)"><h3>9 · Dots</h3><p style="display: flex; align-items: center; gap: 8px"><span class="dot" style="background: oklch(72% .12 250)"></span><span><span class="m">width: 8px; height: 8px; border-radius: 50%; flex: none</span>, in a row with <span class="m">align-items: center; gap: 7px</span>. Settings account rows use 10 × 10. Color is the account color, identical in light and dark. Both width and height must be set; a missing height lets a stretch row turn it into an oval.</span></p></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

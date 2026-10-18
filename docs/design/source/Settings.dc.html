@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · panel settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+a{color:oklch(85% .08 250);text-decoration:none}a:hover{color:oklch(93% .05 250)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid oklch(85% .08 250);outline-offset:2px}
+.fa{width:14px;height:14px;fill:currentColor;flex:none}
+.pop{position:relative;width:528px;height:748px;flex:none;display:flex;border:1px solid oklch(38% .003 70);border-radius:20px;background:oklch(21.8% .003 70);overflow:hidden;box-shadow:0 18px 60px oklch(0% 0 0 / .35)}
+.rail{width:88px;flex:none;background:oklch(28.4% .004 70);border-right:1px solid oklch(38% .003 70);padding:20px 8px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:20px}
+.rail-item{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;font-size:11px;color:oklch(74% .008 70)}
+.tile{position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:14px}
+.rail-item.on{color:oklch(97% .002 70)}.rail-item.on .tile{background:oklch(39% .002 70)}
+.tabs{height:52px;flex:none;display:flex;align-items:stretch;gap:18px;padding:0 20px;border-bottom:1px solid oklch(32% .003 70)}
+.tab{position:relative;display:flex;align-items:center;gap:6px;padding:0 4px;font-size:14px;font-weight:600;color:oklch(74% .008 70);height:100%}
+.tab.on{color:oklch(97% .002 70)}.tab.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:oklch(97% .002 70)}
+.cap{font-size:11.5px;font-weight:600;letter-spacing:.02em;color:oklch(74% .008 70);margin:0;padding:14px 4px 4px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.meta{display:flex;align-items:center;gap:7px;font-size:12px;color:oklch(76% .008 70);white-space:nowrap}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px}
+.srow{display:flex;align-items:center;gap:12px;min-height:44px;padding:4px;border-bottom:1px solid oklch(29% .003 70)}
+.srow .l{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.srow .s{font-size:11.5px;color:oklch(76% .008 70)}
+.sw{position:relative;width:36px;height:22px;border-radius:11px;background:oklch(38% .003 70);flex:none}
+.sw::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:oklch(90% .004 70);transition:left .15s}
+.sw[aria-checked="true"]{background:oklch(62% .14 150)}
+.sw[aria-checked="true"]::after{left:16px;background:#fff}
+.pick{height:28px;padding:0 10px;border-radius:7px;background:oklch(29% .003 70);border:1px solid oklch(38% .003 70);font-size:12.5px;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn{height:30px;padding:0 12px;border-radius:9px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:oklch(34% .003 70);white-space:nowrap}
+.btn.primary{background:oklch(97% .002 70);color:oklch(17% .003 70)}
+.ib{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:oklch(80% .006 70);flex:none}
+.ib:hover{background:oklch(34% .003 70)}
+kbd{font:600 12px -apple-system,BlinkMacSystemFont,sans-serif;padding:3px 7px;border-radius:6px;background:oklch(34% .003 70);border:1px solid oklch(42% .003 70)}
+.acct{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 10px;border-radius:10px}
+.acct:hover{background:oklch(26% .003 70)}
+.sw6{width:22px;height:22px;border-radius:50%;flex:none}
+.rule{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 6px 0 10px;border-radius:8px}
+.rule:hover{background:oklch(26% .003 70)}
+.seg{display:flex;padding:2px;border-radius:8px;background:oklch(27% .003 70);gap:2px}
+.seg button{height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:600;color:oklch(80% .006 70)}
+.seg button[aria-pressed="true"]{background:oklch(39% .002 70);color:oklch(97% .002 70)}
+</style>
+</helmet>
+<div style="width: 1784px; height: 788px; box-sizing: border-box; background: oklch(17% .003 70); padding: 20px 40px; display: flex; gap: 60px">
+
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item on" aria-current="page" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="General settings" style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div class="tabs" role="tablist" aria-label="Settings"><button class="tab on" role="tab" aria-selected="true">General</button><button class="tab" role="tab" aria-selected="false">Accounts</button><button class="tab" role="tab" aria-selected="false">Rules</button></div>
+<div style="padding: 0 16px 16px; display: flex; flex-direction: column">
+<p class="cap">SEND TO CURSOR IF UNANSWERED</p>
+<p class="meta" style="margin: 0; padding: 0 4px 4px; white-space: normal">How long an agent waits for you before Cursor asks. Nothing is ever approved on its own.</p>
+<div class="srow"><span class="l">Low risk</span><button class="pick">2 minutes<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button></div>
+<div class="srow"><span class="l">Medium risk</span><button class="pick">10 minutes<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button></div>
+<div class="srow"><span class="l">High risk</span><button class="pick">60 minutes<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button></div>
+<p class="cap">APPROVING</p>
+<div class="srow"><span class="l" id="sw-touch">Touch ID before approving high risk<span class="s">Turning this off also needs Touch ID</span></span><button class="sw" role="switch" aria-checked="true" aria-labelledby="sw-touch"></button></div>
+<div class="srow"><span class="l" id="sw-batch">Approve low risk in one batch</span><button class="sw" role="switch" aria-checked="true" aria-labelledby="sw-batch"></button></div>
+<p class="cap">NOTIFY ME FOR</p>
+<div class="srow"><span class="l">Requests</span><button class="pick">Questions and high risk<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button></div>
+<div class="srow"><span class="l">During Work Focus</span><button class="pick">Work only<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button></div>
+<p class="cap">QUICK ANSWER</p>
+<div class="srow"><span class="l">Shortcut<span class="s" style="color: oklch(86% .11 85)">⌥ Space couldn't be registered. Pick a different one.</span></span><kbd style="opacity: .55; text-decoration: line-through">⌥ Space</kbd><button class="btn">Change</button></div>
+<p class="cap">SESSIONS</p>
+<div class="srow" style="border: 0"><span class="l">Flag a session as stalled after</span><button class="pick">10 minutes<svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 10px; height: 10px"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button></div>
+</div>
+</section>
+</div>
+
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item on" aria-current="page" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="Accounts settings" style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div class="tabs" role="tablist" aria-label="Settings"><button class="tab" role="tab" aria-selected="false">General</button><button class="tab on" role="tab" aria-selected="true">Accounts</button><button class="tab" role="tab" aria-selected="false">Rules</button></div>
+<div style="padding: 12px 12px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; min-height: 0">
+<div style="border-radius: 12px; background: oklch(25% .003 70); border: 1px solid oklch(34% .003 70); display: flex; flex-direction: column">
+<button class="acct" style="width: 100%; text-align: left" aria-expanded="true"><span class="dot" style="background: oklch(72% .12 250)"></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13.5px; font-weight: 600">Work</span><span class="meta"><span class="mono">~/.claude-work</span>· Claude Code</span></span><span class="meta" style="color: oklch(82% .12 25)"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 12px; height: 12px"><path d="M256.5 0c14.7 0 28.2 8.1 35.2 21l216 400c6.7 12.4 6.4 27.4-.8 39.5S486.6 480 472.5 480l-432 0c-14.1 0-27.1-7.4-34.3-19.5s-7.5-27.1-.8-39.5l216-400c7-12.9 20.5-21 35.2-21zM53.9 432L459.1 432 256.5 56.8 53.9 432zm202.6-40a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm0-208c18.6 0 33 16.1 31 34.6l-7.1 64.1C279 294.8 268.7 304 256.5 304s-22.5-9.2-23.8-21.3l-7.1-64.1c-2-18.5 12.4-34.6 31-34.6z"/></svg>Not getting requests</span><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px; color: oklch(76% .008 70)"><path d="M207.5 103c9.4-9.4 24.6-9.4 33.9 0l200 200c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-183-183-183 183c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l200-200z"/></svg></button>
+<div style="padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 12px">
+<label style="display: flex; align-items: center; gap: 12px; font-size: 13px"><span style="width: 56px; color: oklch(80% .006 70)">Name</span><input type="text" value="Work" style="flex: 1; height: 30px; padding: 0 10px; border-radius: 7px; border: 1px solid oklch(38% .003 70); background: oklch(19% .003 70); color: inherit; font: inherit; outline: none"></label>
+<div role="radiogroup" aria-label="Color" style="display: flex; align-items: center; gap: 12px; font-size: 13px"><span style="width: 56px; color: oklch(80% .006 70)">Color</span>
+<button class="sw6" role="radio" aria-checked="true" aria-label="Blue" style="background: oklch(72% .12 250); box-shadow: 0 0 0 2px oklch(25% .003 70), 0 0 0 4px oklch(97% .002 70)"></button>
+<button class="sw6" role="radio" aria-checked="false" aria-label="Orange" style="background: oklch(76% .13 55)"></button>
+<button class="sw6" role="radio" aria-checked="false" aria-label="Green" style="background: oklch(72% .13 150)"></button>
+<button class="sw6" role="radio" aria-checked="false" aria-label="Purple" style="background: oklch(68% .13 300)"></button>
+<button class="sw6" role="radio" aria-checked="false" aria-label="Pink" style="background: oklch(74% .12 0)"></button>
+<button class="sw6" role="radio" aria-checked="false" aria-label="Gray" style="background: oklch(72% .01 70)"></button>
+</div>
+<div class="meta" style="white-space: normal; line-height: 1.4">6 sessions · the hook disappeared from <span class="mono">~/.claude-work/settings.json</span> today at 9:31 AM</div>
+<div style="display: flex; gap: 8px"><button class="btn primary">Reinstall hook</button><span style="flex: 1"></span><button class="btn" style="background: none; color: oklch(80% .13 25)">Remove account…</button></div>
+</div>
+</div>
+<button class="acct" style="width: 100%; text-align: left"><span class="dot" style="background: oklch(76% .13 55)"></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13.5px; font-weight: 600">Personal</span><span class="meta"><span class="mono">~/.claude</span>· Claude Code</span></span><span class="meta" style="color: oklch(84% .1 150)"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px"><path d="M438 68.5c10.8 7.7 13.2 22.7 5.5 33.5l-264 368c-4.1 5.7-10.5 9.4-17.5 9.9S148 478 143 473L7 337c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0L157 419 404.5 74c7.7-10.8 22.7-13.2 33.5-5.5z"/></svg>Connected</span><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px; color: oklch(76% .008 70)"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button>
+<button class="acct" style="width: 100%; text-align: left"><span class="dot" style="background: oklch(80% .02 70)"></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13.5px; font-weight: 600">Codex</span><span class="meta"><span class="mono">~/.codex</span>· Codex</span></span><span class="meta">Answered in its editor</span><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px; color: oklch(76% .008 70)"><path d="M207.5 409c9.4 9.4 24.6 9.4 33.9 0l200-200c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-183 183-183-183c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l200 200z"/></svg></button>
+<div class="acct" style="border: 1px dashed oklch(40% .003 70); min-height: 48px; margin-top: 4px"><span class="dot" style="background: oklch(40% .003 70)"></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px">New account found</span><span class="meta mono">~/.claude-client</span></span><button class="btn">Add</button></div>
+<div style="display: flex; gap: 8px; margin-top: auto; padding: 8px 4px 0"><button class="btn"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 11px; height: 11px"><path d="M248 56c0-13.3-10.7-24-24-24s-24 10.7-24 24l0 176-176 0c-13.3 0-24 10.7-24 24s10.7 24 24 24l176 0 0 176c0 13.3 10.7 24 24 24s24-10.7 24-24l0-176 176 0c13.3 0 24-10.7 24-24s-10.7-24-24-24l-176 0 0-176z"/></svg>Add folder…</button></div>
+</div>
+</section>
+</div>
+
+<div class="pop">
+<nav class="rail" aria-label="Sections">
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M75.3 94c1-8 7.8-14 15.9-14l329.7 0c8 0 14.8 6 15.9 14l25 194-85.2 0c-13.4 0-25.9 6.7-33.3 17.8l-20.1 30.2-134.3 0-20.1-30.2c-7.4-11.1-19.9-17.8-33.3-17.8l-85.2 0 25-194zM48 336l83.2 0 20.1 30.2c7.4 11.1 19.9 17.8 33.3 17.8l142.9 0c13.4 0 25.9-6.7 33.3-17.8l20.1-30.2 83.2 0 0 80c0 8.8-7.2 16-16 16L64 432c-8.8 0-16-7.2-16-16l0-80zM91.2 32C59 32 31.8 55.9 27.7 87.8L.2 300.9 0 302.5 0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-113.5-.2-1.5-27.5-213.1C480.2 55.9 453 32 420.8 32L91.2 32z"/></svg></span><span>Inbox</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 576 512" aria-hidden="true" style="width: 22px; height: 22px"><path d="M287.4 0c11.1-.3 21 7.1 23.8 17.9l78.7 301.7 36.2-81.3c3.9-8.7 12.4-14.3 21.9-14.3l104 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-88.4 0-57.7 129.7c-4.1 9.3-13.7 15-23.9 14.2s-18.7-8-21.3-17.9l-70.1-268.6-75.2 363.4c-2.3 10.9-11.7 18.8-22.8 19.1s-21-7.1-23.9-17.8L109.6 272 24 272c-13.3 0-24-10.7-24-24s10.7-24 24-24l104 0c10.9 0 20.4 7.3 23.2 17.8l37.9 142 75.4-364.7C266.8 8.2 276.2 .3 287.4 0z"/></svg></span><span>Running</span></button>
+<button class="rail-item"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm70.7 121.9c7.8-10.7 22.8-13.1 33.5-5.3 10.7 7.8 13.1 22.8 5.3 33.5L243.4 366.1c-4.1 5.7-10.5 9.3-17.5 9.8-7 .5-13.9-2-18.8-6.9l-55.9-55.9c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l36 36 105.6-145.2z"/></svg></span><span>Done</span></button>
+<button class="rail-item on" aria-current="page" style="margin-top: auto"><span class="tile"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 21px; height: 21px"><path d="M205.5 92.7l13.7-60.7 73.6 0 13.7 60.7c1.7 7.4 6.8 13.6 13.8 16.7 10.8 4.8 21 10.7 30.4 17.6 6.1 4.5 14.1 5.9 21.4 3.6l59.5-18.5 36.8 63.8-45.8 42.3c-5.6 5.2-8.4 12.7-7.6 20.2 1.3 11.5 1.3 23.7 0 35.2-.8 7.6 2 15.1 7.6 20.2l45.8 42.3-36.8 63.8-59.5-18.5c-7.3-2.3-15.2-.9-21.4 3.6-9.4 6.9-19.6 12.9-30.4 17.6-7 3.1-12.1 9.3-13.8 16.7l-13.7 60.7-73.6 0-13.7-60.7c-1.7-7.4-6.8-13.6-13.8-16.7-10.8-4.8-21-10.7-30.4-17.6-6.1-4.5-14.1-5.9-21.4-3.6l-59.5 18.5-36.8-63.8 45.8-42.3c5.6-5.2 8.4-12.7 7.6-20.2-1.3-11.5-1.3-23.7 0-35.2 .8-7.6-2-15.1-7.6-20.2l-45.8-42.3 36.8-63.8 59.5 18.5c7.3 2.3 15.2 .9 21.4-3.6 9.4-6.9 19.6-12.9 30.4-17.6 7-3.1 12.1-9.3 13.8-16.7zM212.8-16c-18.7 0-34.9 13-39 31.2L161.2 70.8c-6.3 3.2-12.3 6.7-18.2 10.5L88.6 64.4c-17.9-5.6-37.2 2-46.5 18.2L-1.1 157.4c-9.3 16.2-6.2 36.7 7.5 49.4l41.9 38.7c-.3 6.9-.3 14 0 21L6.4 305.2c-13.7 12.7-16.9 33.2-7.5 49.4l43.2 74.8c9.3 16.2 28.7 23.7 46.5 18.2l54.5-16.9c5.9 3.8 11.9 7.3 18.2 10.5l12.6 55.6c4.1 18.2 20.3 31.2 39 31.2l86.4 0c18.7 0 34.9-13 39-31.2l12.6-55.6c6.3-3.2 12.3-6.7 18.2-10.5l54.5 16.9c17.9 5.6 37.2-2 46.5-18.2l43.2-74.8c9.3-16.2 6.2-36.7-7.5-49.4l-41.9-38.7c.3-6.9 .3-14 0-21l41.9-38.7c13.7-12.7 16.8-33.2 7.5-49.4L470 82.6c-9.4-16.2-28.7-23.7-46.5-18.2L369 81.3c-5.9-3.8-11.9-7.3-18.2-10.5L338.3 15.2C334.1-3 317.9-16 299.2-16l-86.4 0zM304 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-48-96a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg></span><span>Settings</span></button>
+</nav>
+<section aria-label="Saved rules" style="position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column">
+<div role="menu" aria-label="pnpm test rule actions" style="position: absolute; left: 196px; top: 252px; z-index: 2; width: 220px; padding: 6px; border-radius: 10px; background: oklch(30% .004 70); border: 1px solid oklch(42% .003 70); box-shadow: 0 12px 36px oklch(0% 0 0 / .5); display: flex; flex-direction: column; font-size: 13px">
+<button role="menuitem" style="height: 30px; padding: 0 10px; border-radius: 7px; text-align: left">Edit pattern…</button>
+<button role="menuitem" style="height: 30px; padding: 0 10px; border-radius: 7px; text-align: left; display: flex; justify-content: space-between; align-items: center">Scope<svg class="fa" viewBox="0 0 320 512" aria-hidden="true" style="width: 8px; height: 12px; color: oklch(76% .008 70)"><path d="M313.5 239c9.4 9.4 9.4 24.6 0 33.9l-200 200c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l183-183-183-183c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l200 200z"/></svg></button>
+<button role="menuitem" style="height: 30px; padding: 0 10px; border-radius: 7px; text-align: left">Copy</button>
+<div style="height: 1px; background: oklch(42% .003 70); margin: 4px 6px"></div>
+<button role="menuitem" style="height: 30px; padding: 0 10px; border-radius: 7px; text-align: left; color: oklch(82% .12 25)">Delete</button>
+</div>
+<div class="tabs" role="tablist" aria-label="Settings"><button class="tab" role="tab" aria-selected="false">General</button><button class="tab" role="tab" aria-selected="false">Accounts</button><button class="tab on" role="tab" aria-selected="true">Rules</button></div>
+<div style="padding: 12px 12px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0">
+<div style="display: flex; gap: 8px; align-items: center">
+<label style="flex: 1; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; background: oklch(19% .003 70); border: 1px solid oklch(34% .003 70)"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 12px; height: 12px; color: oklch(76% .008 70)"><path d="M368 208a160 160 0 1 0 -320 0 160 160 0 1 0 320 0zM337.1 371.1C301.7 399.2 256.8 416 208 416 93.1 416 0 322.9 0 208S93.1 0 208 0 416 93.1 416 208c0 48.8-16.8 93.7-44.9 129.1L505 471c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0L337.1 371.1z"/></svg><input type="search" aria-label="Find a rule, or describe one to add" placeholder="Find a rule, or describe a new one" style="flex: 1; min-width: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 13px; outline: none"></label>
+<div class="seg" role="group" aria-label="Scope"><button aria-pressed="true">All 6</button><button aria-pressed="false">Repo</button><button aria-pressed="false">Account</button></div>
+</div>
+<p class="meta" style="margin: 0; padding: 0 4px; white-space: normal">Try "always allow pnpm lint in noi-signals". You'll see the rule before it's saved.</p>
+<p class="cap" style="padding: 8px 4px 2px">FLOW-HARNESS · ALL ACCOUNTS</p>
+<div class="rule"><span class="mono" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">pnpm prisma migrate deploy <span style="color: oklch(82% .08 250)">*</span></span><span class="meta">6× · last used today</span><button class="ib" aria-label="Rule actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<div class="rule" style="background: oklch(39% .002 70)"><span class="mono" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">pnpm test <span style="color: oklch(82% .08 250)">*</span></span><span class="meta">41× · last used today</span><button class="ib" aria-label="Rule actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<p class="cap" style="padding: 10px 4px 2px">NOI-SIGNALS · ALL ACCOUNTS</p>
+<div class="rule"><span class="mono" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">pnpm vitest run --reporter=dot</span><span class="meta">18× · 2 days ago</span><button class="ib" aria-label="Rule actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<div class="rule"><span class="mono" title="python scripts/noi_backtest.py --since 2024-01-01 --portfolio all" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">python scripts/noi_backtest.py --since 2024-01-01 --portfolio all</span><span class="meta" style="color: oklch(86% .11 85)">unused 47 days</span><button class="ib" aria-label="Rule actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<p class="cap" style="padding: 10px 4px 2px"><span style="display: inline-flex; align-items: center; gap: 6px"><span class="dot" style="width: 8px; height: 8px; background: oklch(76% .13 55)"></span>PERSONAL ACCOUNT · ALL REPOS</span></p>
+<div class="rule"><span class="mono" style="flex: 1; min-width: 0">git status</span><span class="meta">112× · last used today</span><button class="ib" aria-label="Rule actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<div class="rule"><span class="mono" style="flex: 1; min-width: 0">git diff</span><span class="meta">64× · 1h ago</span><button class="ib" aria-label="Rule actions"><svg class="fa" viewBox="0 0 448 512" aria-hidden="true" style="width: 13px; height: 13px"><path d="M448 256a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zm-176 0a48 48 0 1 1 -96 0 48 48 0 1 1 96 0zM48 304a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/></svg></button></div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 4px 0; border-top: 1px solid oklch(30% .003 70)">
+<span class="meta" style="flex: 1; white-space: normal; line-height: 1.4">A rule ending in * allows anything that starts with it. Use ⋯ or right-click to edit, rescope or delete. Deleting shows Undo.</span>
+<button class="ib" aria-label="Show rule files in Finder"><svg class="fa" viewBox="0 0 512 512" aria-hidden="true" style="width: 12px; height: 12px"><path d="M288 24c0 13.3 10.7 24 24 24l118.1 0-231 231c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l231-231 0 118.1c0 13.3 10.7 24 24 24s24-10.7 24-24l0-176c0-13.3-10.7-24-24-24L312 0c-13.3 0-24 10.7-24 24zM80 96C35.8 96 0 131.8 0 176L0 432c0 44.2 35.8 80 80 80l256 0c44.2 0 80-35.8 80-80l0-88c0-13.3-10.7-24-24-24s-24 10.7-24 24l0 88c0 17.7-14.3 32-32 32L80 464c-17.7 0-32-14.3-32-32l0-256c0-17.7 14.3-32 32-32l88 0c13.3 0 24-10.7 24-24s-10.7-24-24-24L80 96z"/></svg></button>
+</div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1784,"height":788}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

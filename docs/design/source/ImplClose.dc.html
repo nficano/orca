@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orca · close and icon buttons</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased;color:oklch(97% .002 70)}
+.cap{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:oklch(74% .008 70)}
+h2{margin:0;font-size:18px;font-weight:650}
+.m{font:11.5px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(88% .02 250)}
+.dim{position:absolute;border:1px dashed oklch(66% .2 330);box-sizing:border-box;pointer-events:none}
+.dl{position:absolute;font:600 11px ui-monospace,"SF Mono",Menlo,monospace;color:oklch(80% .15 330);white-space:nowrap}
+.ib{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:oklch(80% .006 70);flex:none;border:0;background:none;padding:0}
+.btn{height:30px;padding:0 12px;border-radius:9px;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;background:oklch(34% .003 70);color:inherit;border:0;font-family:inherit}
+.btn.p{background:oklch(97% .002 70);color:oklch(17% .003 70)}
+.spec{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid oklch(30% .003 70)}
+.spec h3{margin:0;font-size:14px;font-weight:650}
+.spec p,.spec li{margin:0;font-size:12.5px;line-height:1.5;color:oklch(84% .005 70)}
+.spec ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.cell{position:relative;background:oklch(22% .003 70);border:1px solid oklch(32% .003 70);border-radius:12px;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px}
+.cell.bad{border-color:oklch(58% .19 25 / .55)}
+.v{font-size:11.5px;font-weight:700}.ok{color:oklch(84% .12 150)}.no{color:oklch(80% .14 25)}
+.why{margin:0;font-size:11.5px;line-height:1.4;color:oklch(80% .006 70)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+td,th{text-align:left;padding:7px 8px;border-bottom:1px solid oklch(30% .003 70);vertical-align:top}
+th{color:oklch(78% .006 70);font-weight:600}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1900px; box-sizing: border-box; background: oklch(17% .003 70); padding: 56px 64px; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p class="cap">ORCA · I4 · CLOSE, DISMISS AND ICON BUTTONS</p>
+<h1 style="margin: 0; font-size: 34px; font-weight: 700">The X is a 28px rounded square, last in its row, aligned to the first line.</h1>
+<p style="margin: 0; font-size: 14px; line-height: 1.5; color: oklch(82% .005 70); max-width: 1040px">There are only two places in Orca with a visible X: a toast and a dismissable card. Everything else closes by Esc, clicking outside, or a Back link. A close button is an ordinary icon button: same size, radius and states as Copy or More. It is never a circle, never floats over a corner, never sits left of the actions.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 620px minmax(0, 1fr); gap: 48px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<h2>Icon button at 4×</h2>
+<div style="position: relative; height: 260px; background: oklch(25% .003 70); border-radius: 16px">
+<div style="position: absolute; left: 80px; top: 34px; width: 112px; height: 112px; border-radius: 32px; background: oklch(34% .003 70); display: grid; place-items: center"><svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="oklch(97% .002 70)" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+<div class="dim" style="left: 80px; top: 34px; width: 112px; height: 112px; border-radius: 32px"></div>
+<div class="dim" style="left: 110px; top: 64px; width: 52px; height: 52px"></div>
+<span class="dl" style="left: 80px; top: 156px">28 × 28 · radius 8px</span>
+<span class="dl" style="left: 80px; top: 174px">glyph 13 × 13 · stroke 2.2 · round caps</span>
+<span class="dl" style="left: 80px; top: 192px">path M6 6l12 12M18 6 6 18 (24 viewBox)</span>
+<div style="position: absolute; left: 350px; top: 40px; display: flex; flex-direction: column; gap: 14px; font-size: 12px; color: oklch(80% .006 70)">
+<span style="display: flex; align-items: center; gap: 12px"><span class="ib"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>Rest · no fill · glyph <span class="m">--text-2</span></span>
+<span style="display: flex; align-items: center; gap: 12px"><span class="ib" style="background: oklch(34% .003 70); color: oklch(97% .002 70)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>Hover · fill <span class="m">--control</span> · glyph <span class="m">--text-1</span></span>
+<span style="display: flex; align-items: center; gap: 12px"><span class="ib" style="background: oklch(39% .002 70); color: oklch(97% .002 70)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>Pressed · fill <span class="m">--surface-3</span></span>
+<span style="display: flex; align-items: center; gap: 12px"><span class="ib" style="outline: 2px solid oklch(85% .08 250); outline-offset: 2px"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>Focus-visible · 2px ring, offset 2, radius follows (10)</span>
+</div>
+</div>
+
+<h2>Toast · X top-right, on the title line</h2>
+<div style="position: relative; height: 170px">
+<div role="status" style="position: absolute; left: 0; top: 20px; width: 528px; box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 12px; background: oklch(30% .006 25); border: 1px solid oklch(58% .19 25 / .45); font-size: 12.5px; line-height: 1.4">
+<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="oklch(82% .11 25)" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 2px"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
+<span style="flex: 1; min-width: 0"><b style="display: block; font-size: 13px; font-weight: 600">Approved once. The rule wasn't saved.</b><span style="color: oklch(86% .01 25)">flow-harness can't write its local settings file.</span></span>
+<span class="btn">Show file</span><span class="btn p">Retry</span>
+<span class="ib" style="margin: -2px -4px 0 0"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+</div>
+<div class="dim" style="left: 491px; top: 31px; width: 28px; height: 28px; border-radius: 8px"></div>
+<span class="dl" style="left: 320px; top: 0px">box: top 11 · right 9 from toast edge</span>
+<span class="dl" style="left: 0; top: 104px">align-items: flex-start · X margin: −2px −4px 0 0 · 8px gap to Retry</span>
+<span class="dl" style="left: 0; top: 122px">toast padding 12 · r12 · bottom 16 inside popover · width = popover content − 32</span>
+</div>
+
+<h2>Dismissable card · X ends the header row</h2>
+<div style="position: relative; height: 160px">
+<article style="position: absolute; left: 0; top: 10px; width: 408px; box-sizing: border-box; background: oklch(23% .003 70); border: 1px solid oklch(32% .003 70); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 8px; height: 22px; color: oklch(80% .006 70)"><strong style="flex: 1; font-size: 14px; color: oklch(97% .002 70)">Fix lease-sync drift</strong><span style="font-size: 12px">Work</span><span class="ib" style="margin: -3px -6px -3px 0"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
+<p style="margin: 0; font-size: 13px; color: oklch(84% .005 70)">The session ended before you answered. Nothing was run.</p>
+</article>
+<div class="dim" style="left: 371px; top: 22px; width: 28px; height: 28px; border-radius: 8px"></div>
+<span class="dl" style="left: 0; top: 112px">row stays 22h: X margin −3px −6px −3px 0 · glyph edge lands ≈16px from card edge</span>
+<span class="dl" style="left: 0; top: 130px">order: title (flex 1) → meta → X. Nothing ever follows the X.</span>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column">
+<div class="spec"><h3>1 · Component</h3><ul>
+<li><span class="m">&lt;button class="ib" aria-label="Close"&gt;</span> for toasts, <span class="m">aria-label="Dismiss"</span> for cards. Real <span class="m">&lt;button&gt;</span>, Tab-reachable.</li>
+<li><span class="m">width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none</span>. The hit area is the full 28×28 (above the WCAG 2.2 24px minimum); ≥ 8px from any neighbor.</li>
+<li>Glyph: inline SVG, <span class="m">width/height 13</span>, <span class="m">stroke-width 2.2</span>, <span class="m">stroke-linecap: round</span>, <span class="m">stroke: currentColor</span>. Not the "×" character, not an icon font.</li>
+<li><span class="m">title="Close (Esc)"</span> only on toasts that also respond to Esc.</li>
+</ul></div>
+<div class="spec"><h3>2 · Placement rules</h3><ul>
+<li>Always the <b>last</b> child of its row, rightmost. Primary and secondary actions sit left of it with 8px gap.</li>
+<li>In multi-line containers it aligns to the <b>first line</b> (<span class="m">align-items: flex-start</span> on the row), never vertically centered on the whole block.</li>
+<li>Negative margins pull the 28px box outward so the <b>glyph</b>, not the box, lines up with the container's padding edge. Toast: <span class="m">-2px -4px 0 0</span>. Card header: <span class="m">-3px -6px -3px 0</span>.</li>
+<li>It lives inside the container's padding box. Never <span class="m">position: absolute</span> over the corner, never overlapping the border.</li>
+</ul></div>
+<div class="spec"><h3>3 · Behavior</h3><ul>
+<li>Toast X: removes the toast with a 140ms fade + 4px drop; focus returns to the element that was focused before the toast appeared, else the first card.</li>
+<li>Card X: removes the card (collapse height over 200ms, then remove); toast "Dismissed · Undo" for 6s. Only resolved cards (ended, moved to Cursor) get an X. Pending requests never do: you Approve or Deny them.</li>
+<li>Reduced motion: no fade or collapse; remove instantly.</li>
+</ul></div>
+<div class="spec" style="border-bottom: 1px solid oklch(30% .003 70)"><h3>4 · Surfaces with no X</h3>
+<table><thead><tr><th>Surface</th><th>Closes by</th></tr></thead><tbody>
+<tr><td>Popover</td><td>Click outside (window blur), Esc, tray icon click again</td></tr>
+<tr><td>Quick-answer panel</td><td>Esc, answering the last question, ⌥Space again</td></tr>
+<tr><td>Approval detail</td><td>"‹ Inbox" back link top-left, or Esc back to the list</td></tr>
+<tr><td>Context menu, Always-allow sheet</td><td>Esc, click outside, choosing an item</td></tr>
+<tr><td>Red system banner (hooks missing)</td><td>Only by fixing it. Info banners collapse into "N more problems".</td></tr>
+<tr><td>macOS notifications</td><td>System controls; Orca removes them itself once resolved</td></tr>
+</tbody></table>
+<p style="margin-top: 8px">Esc always closes the innermost layer first: menu or sheet → detail view → popover.</p>
+</div>
+</div>
+</div>
+
+<h2>Over-rounded and misplaced X's · do not ship</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+<div class="cell bad"><div style="position: relative; height: 70px; border-radius: 12px; background: oklch(28% .003 70); padding: 12px; font-size: 12.5px">Approved once.<span style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; background: oklch(45% .003 70); display: grid; place-items: center"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div><span class="v no">WRONG · round X floating off the corner</span><p class="why">Overlaps the border, clips in the popover, reads as a notification badge.</p></div>
+<div class="cell bad"><div style="display: flex; align-items: center; gap: 8px; height: 70px; border-radius: 12px; background: oklch(28% .003 70); padding: 0 12px; font-size: 12.5px"><span class="ib" style="border-radius: 50%; background: oklch(34% .003 70)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span><span style="flex: 1">Rule not saved</span><span class="btn p">Retry</span></div><span class="v no">WRONG · X first, circular</span><p class="why">X goes last. Leading X is a Windows / web habit, not macOS.</p></div>
+<div class="cell bad"><div style="display: flex; align-items: center; gap: 8px; border-radius: 12px; background: oklch(28% .003 70); padding: 12px; font-size: 12.5px; line-height: 1.4"><span style="flex: 1">Approved once. The rule wasn't saved because the local settings file is read-only.</span><span class="ib" style="background: oklch(34% .003 70)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div><span class="v no">WRONG · centered on 3 lines</span><p class="why">Align to the first line with flex-start.</p></div>
+<div class="cell"><div style="display: flex; align-items: flex-start; gap: 8px; border-radius: 12px; background: oklch(28% .003 70); padding: 12px; font-size: 12.5px; line-height: 1.4"><span style="flex: 1">Approved once. The rule wasn't saved because the local settings file is read-only.</span><span class="ib" style="margin: -2px -4px 0 0"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div><span class="v ok">RIGHT · last, first-line, r8</span><p class="why">Same icon button as everywhere else; glyph aligned to the padding edge.</p></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
