@@ -40,6 +40,7 @@ function approval(over: Partial<ApprovalView> = {}): ApprovalView {
     sessionId: 's-2',
     toolName: 'Bash',
     command: 'pnpm test',
+    risk: 'yellow',
     reason: 'Run the tests',
     cwd: '/Users/me/code/orca',
     viaSubagent: false,
@@ -115,6 +116,12 @@ describe('Quick-answer panel', () => {
     expect(screen.getByRole('button', { name: /2\s*Lazy on read/ })).toBeTruthy();
     expect(screen.getByText('default')).toBeTruthy();
     expect(field().placeholder).toBe('Or type an answer…');
+  });
+
+  it("names the Ask's Account when the hub knows its name", async () => {
+    await openPanel(fakeHub(snapshotOf(question({ accountName: 'Work' }))));
+    expect(screen.getByText('Work')).toBeTruthy();
+    expect(screen.queryByText('.claude-work')).toBeNull();
   });
 
   it('stays empty until the shortcut opens it', async () => {

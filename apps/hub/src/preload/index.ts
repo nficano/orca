@@ -25,6 +25,11 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   resizeQuickAnswer: (height) => ipcRenderer.send(IPC.quickAnswerResize, height),
   quickAnswerShortcut: () => ipcRenderer.invoke(IPC.quickAnswerShortcutGet),
   rebindQuickAnswer: (accelerator) => ipcRenderer.invoke(IPC.quickAnswerRebind, accelerator),
+  listAccounts: () => ipcRenderer.invoke(IPC.accountsList),
+  scanAccounts: () => ipcRenderer.invoke(IPC.accountsScan),
+  chooseAccountFolder: () => ipcRenderer.invoke(IPC.accountsChooseFolder),
+  previewConnect: (choices) => ipcRenderer.invoke(IPC.accountsPreview, choices),
+  connectAccounts: (choices) => ipcRenderer.invoke(IPC.accountsConnect, choices),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);

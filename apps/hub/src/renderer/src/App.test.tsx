@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ApprovalDecideRequest, ApprovalView, InboxSnapshot, IpcResult } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -16,6 +16,7 @@ function approval(over: Partial<ApprovalView>): ApprovalView {
     toolName: 'Bash',
     command: 'pnpm test',
     cwd: '/Users/me/code/orca',
+    risk: 'green',
     viaSubagent: false,
     openedAt: NOW - 6 * 60_000,
     ...over,
@@ -24,8 +25,10 @@ function approval(over: Partial<ApprovalView>): ApprovalView {
 
 const snapshotOf = (...pending: ApprovalView[]): InboxSnapshot => ({ pending, counts: { pending: pending.length } });
 
+const WORK: ConnectedAccount = { kind: 'claude', dir: '/Users/me/.claude-work', name: 'Work' };
+
 /** A stand-in for the main process: pushes snapshots, records decisions. */
-function fakeHub(initial: InboxSnapshot) {
+function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: ConnectedAccount[] } = {}) {
   const inboxListeners = new Set<(s: InboxSnapshot) => void>();
   const openedListeners = new Set<() => void>();
   const decisions: ApprovalDecideRequest[] = [];
@@ -39,6 +42,14 @@ function fakeHub(initial: InboxSnapshot) {
       return new Promise((resolve) => (answer = resolve));
     },
     answerQuestion: async () => ({ ok: true }),
+    listAccounts: async () => accounts,
+    scanAccounts: async () => [
+      { kind: 'claude', dir: WORK.dir, displayDir: '~/.claude-work', sessionCount: 6, suggestedName: 'Work', connected: false },
+    ],
+    chooseAccountFolder: async () => ({ kind: 'cancelled' }),
+    previewConnect: async (choices) =>
+      choices.map((c) => ({ ...c, settingsPath: `${c.dir}/settings.json`, displayPath: '~/.claude-work/settings.json', changed: true, diff: [] })),
+    connectAccounts: async (choices) => ({ connected: choices.map((c) => ({ kind: 'claude' as const, ...c })), failed: [] }),
   };
   return {
     bridge,
@@ -103,6 +114,11 @@ describe('Inbox', () => {
     hub.openPopover();
 
     expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
+  });
+
+  it("tags each card with its Account's name", async () => {
+    await renderApp(fakeHub(snapshotOf(approval({ account: '/Users/me/.claude-work', accountName: 'Work' }))));
+    expect(within(screen.getByRole('article')).getByText('Work')).toBeTruthy();
   });
 
   it('tags Approvals from a subagent', async () => {
@@ -172,6 +188,158 @@ describe('deciding from a card', () => {
       { id: 'new', decision: 'deny' },
       { id: 'old', decision: 'allow' },
     ]);
+  });
+});
+
+describe('first run', () => {
+  it('with no connected Accounts, shows first run instead of the inbox', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({})), { accounts: [] }));
+
+    expect(screen.getByRole('heading', { name: 'Connect your agent accounts' })).toBeTruthy();
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+
+  it('after connecting, shows the inbox', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({})), { accounts: [] }));
+
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Connect 1 account' })));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Add 1 hook' })));
+
+    expect(screen.queryByRole('heading', { name: 'Connect your agent accounts' })).toBeNull();
+    expect(screen.getByRole('article')).toBeTruthy();
+  });
+});
+
+describe('Risk tiers', () => {
+  it('shows a risk chip on every Approval card', async () => {
+    await renderApp(
+      fakeHub(
+        snapshotOf(
+          approval({ id: 'g', risk: 'green' }),
+          approval({ id: 'y', risk: 'yellow' }),
+          approval({ id: 'r', risk: 'red' }),
+        ),
+      ),
+    );
+    const [green, yellow, red] = screen.getAllByRole('article');
+    expect(within(green!).getByText('Low risk')).toBeTruthy();
+    expect(within(yellow!).getByText('Medium risk')).toBeTruthy();
+    expect(within(red!).getByText('High risk')).toBeTruthy();
+  });
+
+  it('red Approve says it needs Touch ID; green and yellow do not', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({ id: 'g', risk: 'green' }), approval({ id: 'r', risk: 'red' }))));
+    const [green, red] = screen.getAllByRole('article');
+    expect(within(green!).getByRole('button', { name: 'Approve' })).toBeTruthy();
+    expect(within(red!).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+});
+
+describe('Touch ID on a red Approval', () => {
+  it('locks the card while the Touch ID sheet is up', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+
+    expect(hub.decisions).toEqual([{ id: 'r', decision: 'allow' }]);
+    expect(screen.getByRole('article').getAttribute('aria-busy')).toBe('true');
+    expect((screen.getByRole('button', { name: 'Deny' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('failure or cancel returns the card to pending with "Not approved" under the buttons for 3s', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+      await renderApp(hub);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+      await hub.answer({ ok: false, error: 'not-approved' });
+
+      const card = screen.getByRole('article');
+      expect(card.getAttribute('aria-busy')).toBe('false');
+      expect((within(card).getByRole('button', { name: 'Approve with Touch ID' }) as HTMLButtonElement).disabled).toBe(false);
+      expect(within(card).getByRole('status').textContent).toBe('Not approved');
+
+      act(() => vi.advanceTimersByTime(3000));
+      expect(within(card).queryByText('Not approved')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Return on a focused red card goes through Touch ID too', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+    hub.openPopover();
+
+    fireEvent.keyDown(screen.getByRole('article'), { key: 'Enter' });
+    await hub.answer({ ok: false, error: 'not-approved' });
+
+    expect(hub.decisions).toEqual([{ id: 'r', decision: 'allow' }]);
+    expect(screen.getByRole('status').textContent).toBe('Not approved');
+  });
+
+  it('a refusal other than Touch ID shows no "Not approved"', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+    await hub.answer({ ok: false, error: 'invalid-request' });
+
+    expect(screen.queryByText('Not approved')).toBeNull();
+  });
+});
+
+function session(over: Partial<SessionView>): SessionView {
+  return {
+    key: `/Users/me/.claude-work\u0000${over.sessionId ?? 's-1'}`,
+    account: '/Users/me/.claude-work',
+    agent: 'claude',
+    sessionId: 's-1',
+    state: 'running',
+    since: NOW - 12 * 60_000,
+    lastActivityAt: NOW,
+    title: 'Ledger backfill migration',
+    cwd: '/Users/me/code/ledger',
+    branch: 'backfill',
+    ...over,
+  };
+}
+
+describe('Running list', () => {
+  it('lists Running and Waiting Sessions; Waiting ones need a reply in Cursor', async () => {
+    const sessions = [
+      session({ sessionId: 'r', title: 'Ledger backfill migration' }),
+      session({ sessionId: 'w', state: 'waiting', title: 'Shim socket retry', cwd: '/Users/me/code/shim', branch: 'socket-retry' }),
+      session({ sessionId: 'b', state: 'blocked', title: 'Seed staging fixtures' }),
+      session({ sessionId: 'd', state: 'done', title: 'Skills repo README' }),
+    ];
+    await renderApp(fakeHub({ ...snapshotOf(), sessions }));
+
+    const list = screen.getByRole('list', { name: 'Running · 2' });
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).getByText('Ledger backfill migration')).toBeTruthy();
+    expect(within(rows[0]!).getByText('ledger · backfill')).toBeTruthy();
+    expect(within(rows[0]!).getByText('running 12m')).toBeTruthy();
+    expect(within(rows[1]!).getByText('Shim socket retry')).toBeTruthy();
+    expect(within(rows[1]!).getByText('Reply in Cursor')).toBeTruthy();
+    expect(screen.queryByText('Seed staging fixtures')).toBeNull();
+    expect(screen.queryByText('Skills repo README')).toBeNull();
+  });
+
+  it('shows below open Asks too, and names untitled Sessions by their Worktree', async () => {
+    await renderApp(fakeHub({ ...snapshotOf(approval({ id: 'a' })), sessions: [session({ title: undefined, branch: undefined })] }));
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    const row = within(screen.getByRole('list', { name: 'Running · 1' })).getByRole('listitem');
+    expect(within(row).getByText('ledger')).toBeTruthy();
+  });
+
+  it('is absent when nothing is running', async () => {
+    await renderApp(fakeHub({ ...snapshotOf(), sessions: [session({ state: 'done' })] }));
+    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.getByText('Nothing needs you')).toBeTruthy();
   });
 });
 

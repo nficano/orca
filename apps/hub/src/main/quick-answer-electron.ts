@@ -16,9 +16,11 @@ export interface QuickAnswerOptions {
   load(win: BrowserWindow, hash: string): void;
   /** While the tray popover is showing, closing the panel leaves Orca active. */
   isPopoverVisible(): boolean;
+  /** True while a system sheet (Touch ID) is up: the panel must not hide on blur. */
+  holdOnBlur?(): boolean;
 }
 
-export function startQuickAnswer({ inbox, preload, load, isPopoverVisible }: QuickAnswerOptions) {
+export function startQuickAnswer({ inbox, preload, load, isPopoverVisible, holdOnBlur = () => false }: QuickAnswerOptions) {
   const win = new BrowserWindow({
     // An NSPanel: floats over full-screen apps and hands focus back on close (I6 §3).
     type: 'panel',
@@ -54,7 +56,9 @@ export function startQuickAnswer({ inbox, preload, load, isPopoverVisible }: Qui
     },
     activeDisplay: () => screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).bounds,
   });
-  win.on('blur', () => win.isVisible() && win.hide());
+  win.on('blur', () => {
+    if (win.isVisible() && !holdOnBlur()) win.hide();
+  });
 
   inbox.subscribe((snapshot) => win.webContents.send(IPC.inboxSnapshot, snapshot));
   ipcMain.on(IPC.quickAnswerClose, (e) => {

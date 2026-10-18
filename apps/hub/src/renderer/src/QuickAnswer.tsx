@@ -295,7 +295,7 @@ export function QuickAnswer({ bridge, now = Date.now }: QuickAnswerProps) {
 
 function AskHeader({ ask, index, total, now }: { ask: AskView; index: number; total: number; now: number }) {
   const place = index === 0 ? `oldest of ${total}` : `${index + 1} of ${total}`;
-  const parts = [baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
+  const parts = [ask.accountName || baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
   return (
     <div className="meta qa-meta">
       {parts.map((p, i) => (
