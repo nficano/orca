@@ -257,7 +257,7 @@ function useClock(now: () => number): number {
 }
 
 /** tokens.css keys the theme off data-theme; Electron's prefers-color-scheme follows nativeTheme. */
-function useSystemTheme() {
+export function useSystemTheme() {
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: light)');
     const apply = () => {
