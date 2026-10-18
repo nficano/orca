@@ -5,6 +5,7 @@ import { basename, join, resolve, sep } from 'node:path';
 import { orcaHookCommand, SettingsFileError, withOrcaHook } from './claude-settings';
 import { diffLines } from './diff';
 import { createAccountStore } from './store';
+import { hookTimeoutS, TIER_WAITS_MS } from '../tier-waits';
 import { writeFileAtomic } from './write-atomic';
 
 export interface AccountsOptions {
@@ -38,12 +39,8 @@ export interface Accounts {
   nameOf(dir: string): string | undefined;
 }
 
-/**
- * Hook `timeout` in seconds: the longest tier wait + 60s (spec › Timeouts).
- * Placeholder until tier waits land (#5): yellow's 10m + 60s. The red-tier
- * wait comes from the Claude spike (#1).
- */
-export const DEFAULT_HOOK_TIMEOUT_S = 10 * 60 + 60;
+/** Hook `timeout` in seconds: the longest tier wait + 60s (spec › Timeouts). */
+export const DEFAULT_HOOK_TIMEOUT_S = hookTimeoutS(TIER_WAITS_MS);
 
 export const SHIM_MISSING = "Orca's hook program is missing. Reinstall Orca, then connect again.";
 

@@ -151,4 +151,24 @@ describe.skipIf(!hasGo)('agentd-hook ↔ hub', () => {
     expect(elapsed).toBeGreaterThanOrEqual(1900);
     expect(elapsed).toBeLessThan(4000);
   }, 10_000);
+
+  it('when the tier wait runs out the hook exits with no decision and the card says Cursor is asking now', async () => {
+    inbox = createInbox({ log: fileDecisionsLog(logPath), tierWaits: { green: 300, yellow: 300, red: 300 } });
+    hub = await listenForShims({ path: sock, inbox });
+    const start = Date.now();
+    const shim = runShim(hookInput('pnpm test'));
+    await until(() => inbox.snapshot().pending.length === 1);
+    const id = inbox.snapshot().pending[0]!.id;
+
+    const { code, stdout } = await shim.exited;
+
+    expect(code).toBe(0);
+    expect(stdout).toBe('');
+    expect(Date.now() - start).toBeGreaterThanOrEqual(300);
+    // The socket is closed now, and the card is still there, handed back.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(inbox.snapshot().pending).toEqual([expect.objectContaining({ id, handedBackAt: expect.any(Number) })]);
+    await expect(inbox.decide({ id, decision: 'allow' })).resolves.toEqual({ ok: false, error: 'already-resolved' });
+    await expect(readFile(logPath, 'utf8')).rejects.toThrow();
+  });
 });

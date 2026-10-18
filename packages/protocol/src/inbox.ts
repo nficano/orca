@@ -33,6 +33,14 @@ export interface ApprovalView {
   viaSubagent: boolean;
   /** Epoch ms when the shim connected. */
   openedAt: number;
+  /** Epoch ms when the tier wait runs out and the inbox stops asking ("Inbox stops asking in 9m"). */
+  waitEndsAt?: number;
+  /**
+   * Epoch ms when the tier wait ran out and the Approval was handed back to
+   * the editor with no decision. The card reads "Cursor is asking now" and
+   * can no longer be decided here; the Session is still Blocked.
+   */
+  handedBackAt?: number;
 }
 
 export interface QuestionView {

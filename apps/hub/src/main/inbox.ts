@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import type { DecisionsLog } from './decisions-log';
 import { riskTier } from './risk-tier';
+import { TIER_WAITS_MS, type TierWaits } from './tier-waits';
 import { worktreeRoot } from './worktree';
 
 export const DEFAULT_DENY_MESSAGE = 'Denied in Orca';
@@ -25,11 +26,18 @@ export const DEFAULT_DENY_MESSAGE = 'Denied in Orca';
  * any number may be open per Session. An Ask is decided at most once.
  */
 export interface Inbox {
-  /** A shim connected: open one Ask. `reply` sends the decision back down that connection. */
-  open(msg: ApprovalAskMessage, reply: (decision: ApprovalDecision) => void): string;
+  /**
+   * A shim connected: open one Ask. `reply` sends the decision back down that
+   * connection. `handBack` closes it with no decision when the tier wait runs
+   * out, so the editor's own prompt takes over.
+   */
+  open(msg: ApprovalAskMessage, reply: (decision: ApprovalDecision) => void, handBack?: () => void): string;
   /** The orca MCP server connected: open one Question. `reply` sends the answer back down that connection. */
   openQuestion(msg: QuestionAskMessage, reply: (answer: QuestionAnswer) => void): string;
-  /** The Ask's connection closed. The Ask leaves the inbox if it was still open. */
+  /**
+   * The Ask's connection closed. The Ask leaves the inbox if it was still
+   * open; a handed-back Approval stays ("Cursor is asking now").
+   */
   close(id: string): void;
   decide(req: ApprovalDecideRequest): Promise<IpcResult>;
   /** Answer a Question with a picked option or typed text. */
@@ -41,6 +49,8 @@ export interface Inbox {
 interface OpenAsk {
   view: ApprovalView;
   reply: (decision: ApprovalDecision) => void;
+  /** Hands the Ask back to the editor when its tier wait runs out. */
+  timer: ReturnType<typeof setTimeout>;
 }
 
 interface OpenQuestion {
@@ -64,6 +74,8 @@ export interface InboxOptions {
    * from the hub (the editor prompt still can).
    */
   confirmWithTouchId?: (ask: ApprovalView) => Promise<boolean>;
+  /** How long the inbox asks, per Risk tier, before it hands an Approval back to the editor. */
+  tierWaits?: TierWaits;
 }
 
 export function createInbox({
@@ -75,19 +87,27 @@ export function createInbox({
   worktreeOf = worktreeRoot,
   homeDir = homedir(),
   confirmWithTouchId = async () => false,
+  tierWaits = TIER_WAITS_MS,
 }: InboxOptions): Inbox {
   // Map keeps insertion order, which is arrival order: oldest first.
   const open = new Map<string, OpenAsk>();
   /** Red Approvals whose Touch ID sheet is up (I6 §1 "confirming"). */
   const confirming = new Map<string, Promise<boolean>>();
   const questions = new Map<string, OpenQuestion>();
+  /**
+   * Approvals whose tier wait ran out: handed back to the editor, never
+   * decided here. They stay in the inbox as "Cursor is asking now".
+   */
+  const handedBack = new Map<string, ApprovalView>();
   const listeners = new Set<(s: InboxSnapshot) => void>();
 
   const snapshot = (): InboxSnapshot => {
     // Oldest first, Approvals and Questions alike; urgency never changes the order.
-    const pending = [...open.values(), ...questions.values()]
-      .map((a): AskView => a.view)
-      .sort((a, b) => a.openedAt - b.openedAt);
+    const pending: AskView[] = [
+      ...[...open.values()].map((a) => a.view),
+      ...[...questions.values()].map((q) => q.view),
+      ...handedBack.values(),
+    ].sort((a, b) => a.openedAt - b.openedAt);
     return { pending, counts: { pending: pending.length } };
   };
   const emit = () => {
@@ -96,16 +116,29 @@ export function createInbox({
   };
 
   return {
-    open(msg, reply) {
+    open(msg, reply, handBack) {
       const id = newId();
       const cwd = typeof msg.hook.cwd === 'string' ? msg.hook.cwd : undefined;
       const risk = riskTier(
         { toolName: msg.hook.tool_name, toolInput: msg.hook.tool_input, cwd },
         { worktree: worktreeOf(cwd), homeDir },
       );
-      const view = approvalView(id, msg, risk, now());
+      const openedAt = now();
+      const wait = tierWaits[risk];
+      const view = { ...approvalView(id, msg, risk, openedAt), waitEndsAt: openedAt + wait };
       const name = msg.account ? accountName(msg.account) : undefined;
-      open.set(id, { view: name ? { ...view, accountName: name } : view, reply });
+      // A wait running out never allows: the Ask leaves `open`, so nothing can decide it, and the shim gets no decision.
+      const timer = setTimeout(() => {
+        const ask = open.get(id);
+        if (!ask) return;
+        open.delete(id);
+        handedBack.set(id, { ...ask.view, handedBackAt: now() });
+        handBack?.();
+        emit();
+      }, wait);
+      // An open Ask alone never keeps the process alive.
+      timer.unref?.();
+      open.set(id, { view: name ? { ...view, accountName: name } : view, reply, timer });
       emit();
       return id;
     },
@@ -120,6 +153,8 @@ export function createInbox({
     },
 
     close(id) {
+      const ask = open.get(id);
+      if (ask) clearTimeout(ask.timer);
       if (open.delete(id) || questions.delete(id)) emit();
     },
 
@@ -155,6 +190,7 @@ export function createInbox({
 
       // Claim the Ask before any await so a racing decide sees it gone.
       open.delete(id);
+      clearTimeout(ask.timer);
 
       const answer: ApprovalDecision =
         decision === 'allow' ? { behavior: 'allow' } : { behavior: 'deny', message: reason?.trim() || DEFAULT_DENY_MESSAGE };
