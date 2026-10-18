@@ -68,6 +68,7 @@ const cursor = createCursorLink({
   home: app.getPath('home'),
   resources,
   findAsk: (id) => inbox.snapshot().pending.find((ask) => ask.id === id),
+  findSession: (key) => sessions.list().find((s) => s.key === key),
 });
 /** What the renderer sees: open Asks plus the Sessions from transcripts. */
 const hubSnapshot = () => ({
@@ -97,8 +98,9 @@ app.whenReady().then(async () => {
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
   });
   ipcMain.handle(CURSOR_IPC.open, (_e, req: OpenInCursorRequest): Promise<OpenInCursorResult> => {
-    if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'not-found' });
-    return cursor.openInCursor.openAsk(req.id);
+    const valid = req && (('id' in req && typeof req.id === 'string') || ('sessionKey' in req && typeof req.sessionKey === 'string'));
+    if (!valid) return Promise.resolve({ ok: false, error: 'not-found' });
+    return cursor.openInCursor.open(req);
   });
   ipcMain.handle(CURSOR_IPC.installExtension, () => cursor.extension.install());
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {

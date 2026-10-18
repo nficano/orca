@@ -1,4 +1,4 @@
-import { worktreeOf as findWorktree, type AskView } from '@orca/protocol';
+import { worktreeOf as findWorktree, type AskView, type SessionView } from '@orca/protocol';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -25,11 +25,13 @@ export function createCursorLink({
   home,
   resources,
   findAsk,
+  findSession,
 }: {
   home: string;
   /** The hub's bundled resources; `orca-cursor.vsix` lives here. */
   resources: string;
   findAsk: (id: string) => AskView | undefined;
+  findSession: (key: string) => SessionView | undefined;
 }): CursorLink {
   const windows = createCursorWindows({ worktreeOf: worktreeOnDisk });
   return {
@@ -37,6 +39,7 @@ export function createCursorLink({
     openInCursor: createOpenInCursor({
       windows,
       findAsk,
+      findSession,
       worktreeOf: worktreeOnDisk,
       openFolder: async (path) => void (await run('open', ['-a', 'Cursor', path])),
     }),

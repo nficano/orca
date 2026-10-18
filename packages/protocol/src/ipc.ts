@@ -74,10 +74,8 @@ export const CURSOR_IPC = {
   installExtension: 'cursor:install-extension',
 } as const;
 
-export interface OpenInCursorRequest {
-  /** The Ask to show. */
-  id: string;
-}
+/** The Ask to show (by id), or a Session (by key) from a Stalled or Done card. */
+export type OpenInCursorRequest = { id: string } | { sessionKey: string };
 
 /** `not-found`: the Ask resolved; `no-worktree`: the Ask has no cwd; `open-failed`: Cursor didn't open. */
 export type OpenInCursorResult = { ok: true } | { ok: false; error: 'not-found' | 'no-worktree' | 'open-failed' };

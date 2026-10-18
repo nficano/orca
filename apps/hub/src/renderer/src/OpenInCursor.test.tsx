@@ -6,6 +6,7 @@ import type {
   OpenInCursorRequest,
   OpenInCursorResult,
   QuestionView,
+  SessionView,
 } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -56,6 +57,7 @@ function fakeHub(snapshot: InboxSnapshot) {
     chooseAccountFolder: async () => ({ kind: 'cancelled' }),
     previewConnect: async () => [],
     connectAccounts: async () => ({ connected: [], failed: [] }),
+    stopSession: async () => ({ ok: true }),
   };
   return {
     bridge,
@@ -180,5 +182,33 @@ describe('Cursor extension missing', () => {
     expect(screen.getByRole('alert').textContent).toBe("Couldn't find Cursor in Applications.");
     const retry = screen.getByRole('button', { name: 'Install' }) as HTMLButtonElement;
     expect(retry.disabled).toBe(false);
+  });
+});
+
+describe('Open in Cursor on a Stalled Session', () => {
+  const stalled: SessionView = {
+    key: '/Users/me/.claude-work\u0000pdf',
+    account: '/Users/me/.claude-work',
+    agent: 'claude',
+    sessionId: 'pdf',
+    state: 'stalled',
+    since: NOW - 20 * 60_000,
+    lastActivityAt: NOW - 14 * 60_000,
+    title: 'Rent-roll PDF layout',
+    cwd: '/Users/me/code/rentroll',
+    stall: { kind: 'no-progress' },
+  };
+
+  it('is the primary action, rightmost, and opens the Session in Cursor', async () => {
+    const hub = fakeHub({ pending: [], counts: { pending: 0 }, sessions: [stalled] });
+    await renderApp(hub);
+    const card = screen.getByRole('article', { name: 'Rent-roll PDF layout' });
+    const buttons = within(card).getAllByRole('button');
+
+    expect(buttons.map((b) => b.textContent)).toEqual(['Stop…', 'Open in Cursor']);
+    expect(buttons[1]!.className).toContain('primary');
+
+    fireEvent.click(buttons[1]!);
+    expect(hub.opened).toEqual([{ sessionKey: stalled.key }]);
   });
 });

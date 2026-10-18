@@ -1,7 +1,9 @@
-import type { AskView, OpenInCursorResult } from '@orca/protocol';
+import type { AskView, OpenInCursorRequest, OpenInCursorResult, SessionView } from '@orca/protocol';
 import type { CursorWindows } from './windows';
 
 export interface OpenInCursor {
+  /** The IPC entry point: an Ask by id, or a Session by key. */
+  open(req: OpenInCursorRequest): Promise<OpenInCursorResult>;
   /** Brings forward the Cursor window holding this Ask's Worktree. */
   openAsk(id: string): Promise<OpenInCursorResult>;
   /** Same, for any working directory (a Session's, a Done card's). */
@@ -17,11 +19,13 @@ export interface OpenInCursor {
 export function createOpenInCursor({
   windows,
   findAsk,
+  findSession = () => undefined,
   worktreeOf,
   openFolder,
 }: {
   windows: CursorWindows;
   findAsk: (id: string) => AskView | undefined;
+  findSession?: (key: string) => SessionView | undefined;
   worktreeOf: (cwd: string) => string | undefined;
   /** Opens a folder in Cursor (`open -a Cursor <folder>`). */
   openFolder: (path: string) => Promise<void>;
@@ -38,12 +42,20 @@ export function createOpenInCursor({
     }
   }
 
+  async function openAsk(id: string): Promise<OpenInCursorResult> {
+    const ask = findAsk(id);
+    if (!ask) return { ok: false, error: 'not-found' };
+    return openCwd(ask.cwd);
+  }
+
   return {
     openCwd,
-    async openAsk(id) {
-      const ask = findAsk(id);
-      if (!ask) return { ok: false, error: 'not-found' };
-      return openCwd(ask.cwd);
+    openAsk,
+    async open(req) {
+      if ('id' in req) return openAsk(req.id);
+      const session = findSession(req.sessionKey);
+      if (!session) return { ok: false, error: 'not-found' };
+      return openCwd(session.cwd);
     },
   };
 }

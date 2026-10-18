@@ -78,6 +78,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const canOpenInCursor = typeof bridge.openInCursor === 'function';
   const openInCursor = useCallback((id: string) => void bridge.openInCursor?.({ id }), [bridge]);
   const askMenu = useAskMenu(inbox.pending, openInCursor);
+  const openSessionInCursor = useCallback((sessionKey: string) => void bridge.openInCursor?.({ sessionKey }), [bridge]);
   const canStop = typeof bridge.stopSession === 'function';
   const accountName = (dir: string) => accounts?.find((a) => a.dir === dir)?.name ?? baseName(dir);
   const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
@@ -137,7 +138,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
               ),
             )
           )}
-          {stalled.length > 0 && <NeedsALook sessions={stalled} now={clock} accountName={accountName} {...(canStop ? { onStop } : {})} />}
+          {stalled.length > 0 && (
+            <NeedsALook
+              sessions={stalled}
+              now={clock}
+              accountName={accountName}
+              {...(canStop ? { onStop } : {})}
+              {...(canOpenInCursor ? { onOpenInCursor: openSessionInCursor } : {})}
+            />
+          )}
           {running.length > 0 && <RunningList sessions={running} now={clock} />}
           {stopped.length > 0 && <StoppedList sessions={stopped} />}
         </div>
