@@ -1,8 +1,10 @@
-import type { ApprovalView, ConnectedAccount, InboxSnapshot } from '@orca/protocol';
+import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
 import { FirstRun } from './FirstRun';
-import { badgeText, baseName, waitLabel } from './format';
+import { badgeText, baseName, runningLabel, waitLabel } from './format';
+import { QuestionCard, type AnswerIntent } from './QuestionCard';
+import { Spinner } from './Spinner';
 
 const EMPTY: InboxSnapshot = { pending: [], counts: { pending: 0 } };
 
@@ -47,23 +49,29 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge],
   );
 
-  const decide = useCallback(
-    async (id: string, decision: 'allow' | 'deny') => {
-      // The renderer locks a card on send and unlocks it only on error (I6 §5).
-      if (inFlight.current.has(id)) return;
-      inFlight.current.add(id);
+  /** The renderer locks a card on send and unlocks it only on error (I6 §5). */
+  const send = useCallback(async (id: string, intent: () => Promise<IpcResult>) => {
+    if (inFlight.current.has(id)) return;
+    inFlight.current.add(id);
+    setBusy(new Set(inFlight.current));
+    const result = await intent();
+    if (!result.ok) {
+      inFlight.current.delete(id);
       setBusy(new Set(inFlight.current));
-      const result = await bridge.decideApproval({ id, decision });
-      if (!result.ok) {
-        inFlight.current.delete(id);
-        setBusy(new Set(inFlight.current));
-      }
-    },
-    [bridge],
+    }
+  }, []);
+  const decide = useCallback(
+    (id: string, decision: 'allow' | 'deny') => send(id, () => bridge.decideApproval({ id, decision })),
+    [bridge, send],
+  );
+  const answer = useCallback(
+    (id: string, intent: AnswerIntent) => send(id, () => bridge.answerQuestion({ id, ...intent })),
+    [bridge, send],
   );
 
   const count = inbox.counts.pending;
   const badge = badgeText(count);
+  const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
 
   return (
     <div className="pop">
@@ -93,18 +101,49 @@ export function App({ bridge, now = Date.now }: AppProps) {
         </div>
         <div className="list" ref={listRef}>
           {inbox.pending.length === 0 ? (
-            <div className="empty">
+            <div className={running.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
           ) : (
-            inbox.pending.map((ask) => (
-              <ApprovalCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onDecide={decide} />
-            ))
+            inbox.pending.map((ask) =>
+              ask.kind === 'question' ? (
+                <QuestionCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onAnswer={answer} />
+              ) : (
+                <ApprovalCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onDecide={decide} />
+              ),
+            )
           )}
+          {running.length > 0 && <RunningList sessions={running} now={clock} />}
         </div>
       </section>
     </div>
+  );
+}
+
+/** Running and Waiting Sessions (design 6 · States, empty inbox with running list). */
+function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }) {
+  return (
+    <section className="running">
+      <p className="cap" id="running-cap">
+        Running · {sessions.length}
+      </p>
+      <ul aria-labelledby="running-cap">
+        {sessions.map((s) => {
+          const meta = [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
+          return (
+            <li key={s.key} className="row">
+              <span className="dot" aria-hidden="true" />
+              <span className="row-text">
+                <span className="ellipsis">{s.title ?? (baseName(s.cwd) || 'Session')}</span>
+                {meta && <span className="meta ellipsis">{meta}</span>}
+              </span>
+              <span className="meta">{s.state === 'waiting' ? 'Reply in Cursor' : runningLabel(s.since, now)}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -193,14 +232,6 @@ function useSystemTheme() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
-}
-
-function Spinner() {
-  return (
-    <svg className="spinner" viewBox="0 0 14 14" aria-hidden="true">
-      <path d="M7 1.5a5.5 5.5 0 1 1-5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
 }
 
 function InboxIcon() {

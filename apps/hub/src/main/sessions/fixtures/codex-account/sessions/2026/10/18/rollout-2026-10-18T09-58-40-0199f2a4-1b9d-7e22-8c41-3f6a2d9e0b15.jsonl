@@ -1,0 +1,11 @@
+{"timestamp":"2026-10-18T09:58:40.000Z","type":"session_meta","payload":{"id":"0199f2a4-1b9d-7e22-8c41-3f6a2d9e0b15","timestamp":"2026-10-18T09:58:40.000Z","cwd":"/Users/me/code/shim","originator":"codex_vscode","cli_version":"0.147.0","instructions":null,"source":{"subagent":{"thread_spawn":{"parent_thread_id":"0199f2a1-7c3e-7b10-9d2a-5e8f1c4b6a73","depth":1}}},"model_provider":"openai","git":{"commit_hash":"9f1c2ab","branch":"socket-retry","repository_url":"git@github.com:me/shim.git"}}}
+{"timestamp":"2026-10-18T09:58:40.010Z","type":"turn_context","payload":{"cwd":"/Users/me/code/shim","approval_policy":"on-request","sandbox_policy":{"type":"workspace-write","network_access":false},"model":"gpt-5.5-codex","effort":"medium","summary":"auto"}}
+{"timestamp":"2026-10-18T09:58:40.020Z","type":"event_msg","payload":{"type":"task_started","turn_id":"1","model_context_window":272000}}
+{"timestamp":"2026-10-18T09:58:40.020Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Find where the spool file is written"}]}}
+{"timestamp":"2026-10-18T09:58:40.020Z","type":"event_msg","payload":{"type":"user_message","message":"Find where the spool file is written","images":[]}}
+{"timestamp":"2026-10-18T09:58:40.020Z","type":"response_item","payload":{"type":"reasoning","summary":[],"content":null,"encrypted_content":"gAAAAABo"}}
+{"timestamp":"2026-10-18T09:58:40.020Z","type":"response_item","payload":{"type":"function_call","name":"shell_command","arguments":"{\"command\": \"rg spool\", \"workdir\": \"/Users/me/code/shim\"}","call_id":"call_1"}}
+{"timestamp":"2026-10-18T09:58:40.020Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_1","output":"Exit code: 0\nok  \tgithub.com/me/shim\t0.41s"}}
+{"timestamp":"2026-10-18T09:58:52.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":20113,"output_tokens":412,"total_tokens":20525}},"rate_limits":null}}
+{"timestamp":"2026-10-18T09:58:52.000Z","type":"event_msg","payload":{"type":"agent_message","message":"It is written in spool.go."}}
+{"timestamp":"2026-10-18T09:58:52.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"It is written in spool.go."}]}}

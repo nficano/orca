@@ -1,0 +1,27 @@
+{
+  "name": "@orca/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The orca MCP server (stdio): ask_user blocks on the hub until the Question is answered.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "bin": { "orca-mcp": "dist/orca-mcp.mjs" },
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/orca-mcp.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.0",
+    "@orca/protocol": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

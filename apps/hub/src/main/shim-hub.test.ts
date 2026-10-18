@@ -7,6 +7,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { ApprovalView } from '@orca/protocol';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
@@ -117,7 +118,7 @@ describe.skipIf(!hasGo)('agentd-hook ↔ hub', () => {
     await until(() => inbox.snapshot().pending.length === 1);
     const build = runShim(hookInput('pnpm build'));
     await until(() => inbox.snapshot().pending.length === 2);
-    const [first, second] = inbox.snapshot().pending;
+    const [first, second] = inbox.snapshot().pending as ApprovalView[];
     expect([first!.command, second!.command]).toEqual(['pnpm lint', 'pnpm build']);
 
     await inbox.decide({ id: second!.id, decision: 'deny' });

@@ -1,4 +1,4 @@
-import type { ApprovalDecideRequest, InboxSnapshot, IpcResult } from '@orca/protocol';
+import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
 
 /** First run and hook install (Storyboard F1). */
@@ -19,4 +19,5 @@ export interface OrcaBridge extends AccountsBridge {
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   onPopoverOpened(listener: () => void): () => void;
   decideApproval(req: ApprovalDecideRequest): Promise<IpcResult>;
+  answerQuestion(req: QuestionAnswerRequest): Promise<IpcResult>;
 }

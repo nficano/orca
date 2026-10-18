@@ -2,15 +2,19 @@
  * Orca hub: Electron main process. Owns the hub socket and every Ask; the
  * tray popover only renders snapshots and sends intents.
  */
-import { IPC, type ApprovalDecideRequest, type IpcResult } from '@orca/protocol';
+import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
+import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
+import { findTailedAccounts } from './sessions/accounts';
+import { probeAgentProcesses } from './sessions/liveness';
+import { createSessions } from './sessions/sessions';
+import { startSessionTracking, type SessionTracking } from './sessions/track';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -22,8 +26,10 @@ app.setName('Orca');
 app.setPath('userData', dataDir);
 
 const socketPath = join(dataDir, 'hub.sock');
+/** Where Accounts are looked for. ORCA_ACCOUNTS_HOME points at a scratch home during development. */
+const accountsHome = process.env.ORCA_ACCOUNTS_HOME ?? app.getPath('home');
 const accounts = createAccounts({
-  home: homedir(),
+  home: accountsHome,
   env: process.env,
   storePath: join(dataDir, 'accounts.json'),
   // Packaged: Orca.app/Contents/Resources/bin. Development: `pnpm --filter @orca/hub build:shim`.
@@ -33,9 +39,13 @@ const accounts = createAccounts({
   hookTimeoutS: DEFAULT_HOOK_TIMEOUT_S,
 });
 const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')), accountName: accounts.nameOf });
+const sessions = createSessions();
+/** What the renderer sees: open Asks plus the Sessions from transcripts. */
+const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
+let sessionTracking: SessionTracking | undefined;
 /** True while a sheet (the folder picker) is up: the popover must not hide on blur. */
 let holdPopover = false;
 
@@ -44,10 +54,14 @@ if (!app.requestSingleInstanceLock()) app.quit();
 app.whenReady().then(async () => {
   app.dock?.hide();
 
-  ipcMain.handle(IPC.inboxGet, () => inbox.snapshot());
+  ipcMain.handle(IPC.inboxGet, () => hubSnapshot());
   ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason });
+  });
+  ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
+    if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
+    return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
   });
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
     ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
@@ -69,12 +83,14 @@ app.whenReady().then(async () => {
   );
 
   popover = createPopover();
-  inbox.subscribe((snapshot) => {
+  const publish = () => {
+    const snapshot = hubSnapshot();
     const n = snapshot.counts.pending;
     tray?.setTitle(trayTitle(n));
     tray?.setImage(trayIcon(n > 0));
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
-  });
+  };
+  inbox.subscribe(publish);
 
   hubSocket = await listenForShims({ path: socketPath, inbox });
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
@@ -82,9 +98,20 @@ app.whenReady().then(async () => {
     if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', showPopover);
     else showPopover();
   }
+
+  sessionTracking = await startSessionTracking({
+    accounts: await findTailedAccounts({ home: accountsHome, env: process.env }),
+    sessions,
+    probe: () => probeAgentProcesses(),
+  });
+  sessions.subscribe(publish);
+  publish();
 });
 
-app.on('before-quit', () => void hubSocket?.close());
+app.on('before-quit', () => {
+  sessionTracking?.stop();
+  void hubSocket?.close();
+});
 app.on('window-all-closed', () => {
   // A tray app keeps running with no windows.
 });
@@ -131,7 +158,7 @@ async function pickAccountFolder(): Promise<string | null> {
     const { canceled, filePaths } = await dialog.showOpenDialog(popover, {
       title: 'Choose a Claude Code folder',
       buttonLabel: 'Choose',
-      defaultPath: homedir(),
+      defaultPath: accountsHome,
       properties: ['openDirectory', 'showHiddenFiles'],
     });
     return canceled ? null : (filePaths[0] ?? null);
