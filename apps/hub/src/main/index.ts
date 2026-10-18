@@ -33,7 +33,8 @@ import { startSessionTracking, type SessionTracking } from './sessions/track';
 import { createFocusWatcher } from './profiles/focus';
 import { profilesIpcHandlers } from './profiles/ipc';
 import { createProfiles } from './profiles/profiles';
-import { withProfiles } from './profiles/snapshot';
+import { focusedInbox } from './profiles/focused-inbox';
+import { focusFilter, withProfiles } from './profiles/snapshot';
 import { touchIdConfirmer } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
@@ -73,6 +74,18 @@ const profiles = createProfiles({ storePath: join(dataDir, 'profiles.json') });
 const focus = createFocusWatcher({ dbDir: process.env.ORCA_FOCUS_DB ?? join(app.getPath('home'), 'Library', 'DoNotDisturb', 'DB') });
 /** What the renderer sees: open Asks plus the Sessions from transcripts, tagged by Profile, less what the Focus filter hides. */
 const hubSnapshot = () => withProfiles(withSessions(inbox.snapshot(), sessions.list()), profiles.config(), focus.current());
+/** The inbox less what the Focus filter hides, for the surfaces that read it directly: notifications and the quick-answer panel. */
+const shownInbox = focusedInbox(inbox, {
+  shows: () => focusFilter(profiles.config(), focus.current()),
+  onChange(listener) {
+    const offProfiles = profiles.subscribe(listener);
+    const offFocus = focus.subscribe(() => listener());
+    return () => {
+      offProfiles();
+      offFocus();
+    };
+  },
+});
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -142,9 +155,9 @@ app.whenReady().then(async () => {
   if (Notification.isSupported()) {
     const notifier = electronNotifier();
     const openCard = (askId: string) => showPopover({ askId, view: 'card' });
-    startQuestionNotifications({ inbox, notifier, onOpen: openCard });
+    startQuestionNotifications({ inbox: shownInbox, notifier, onOpen: openCard });
     startApprovalNotifications({
-      inbox,
+      inbox: shownInbox,
       notifier,
       onOpen: openCard,
       onReview: (askId) => showPopover({ askId, view: 'detail' }),
@@ -152,7 +165,7 @@ app.whenReady().then(async () => {
   }
 
   quickAnswer = startQuickAnswer({
-    inbox,
+    inbox: shownInbox,
     preload: join(here, '../preload/index.cjs'),
     load: loadRenderer,
     isPopoverVisible: () => popover?.isVisible() ?? false,
