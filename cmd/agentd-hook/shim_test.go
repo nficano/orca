@@ -183,3 +183,59 @@ func TestEnvironmentPicksSocketAndAccount(t *testing.T) {
 		t.Fatalf("config = %+v", c)
 	}
 }
+
+// A hub that never answers: the shim must give up on its own, before the hook's timeout.
+func TestShimGivesUpWithNoDecisionWhenItsWaitRunsOut(t *testing.T) {
+	path := socketPath(t)
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	fakeHub(t, path, func(string) string {
+		<-release // hold the connection open, never decide
+		return ""
+	})
+	c := cfg(path)
+	c.MaxWait = 300 * time.Millisecond
+	var out bytes.Buffer
+	start := time.Now()
+
+	Run(c, strings.NewReader(hookInput), &out)
+
+	if out.Len() != 0 {
+		t.Fatalf("stdout = %q, want no decision", out.String())
+	}
+	if elapsed := time.Since(start); elapsed < 300*time.Millisecond || elapsed > 2*time.Second {
+		t.Fatalf("gave up after %v, want about MaxWait", elapsed)
+	}
+}
+
+// An allow that arrives after the shim's wait ran out is never printed.
+func TestLateAllowIsNeverPrinted(t *testing.T) {
+	path := socketPath(t)
+	fakeHub(t, path, func(string) string {
+		time.Sleep(500 * time.Millisecond)
+		return `{"v":1,"decision":{"behavior":"allow"}}` + "\n"
+	})
+	c := cfg(path)
+	c.MaxWait = 200 * time.Millisecond
+	var out bytes.Buffer
+
+	Run(c, strings.NewReader(hookInput), &out)
+
+	if out.Len() != 0 {
+		t.Fatalf("stdout = %q, want no decision", out.String())
+	}
+}
+
+// The shim's own wait covers the longest tier wait and still ends before the
+// hook timeout Orca installs (longest tier wait + 60s), so the agent never
+// times the hook out and falls through on its own.
+func TestDefaultWaitOutlastsTheLongestTierWaitButNotTheHookTimeout(t *testing.T) {
+	c := DefaultConfig(func(string) string { return "" }, "/Users/me")
+	if LongestTierWait != 60*time.Minute {
+		t.Fatalf("LongestTierWait = %v, want the red-tier wait, 60m", LongestTierWait)
+	}
+	hookTimeout := LongestTierWait + 60*time.Second
+	if c.MaxWait <= LongestTierWait || c.MaxWait >= hookTimeout {
+		t.Fatalf("MaxWait = %v, want between %v and %v", c.MaxWait, LongestTierWait, hookTimeout)
+	}
+}
