@@ -3,7 +3,7 @@
  * tray popover only renders snapshots and sends intents.
  */
 import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
@@ -15,6 +15,7 @@ import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
 import { createSessions } from './sessions/sessions';
 import { startSessionTracking, type SessionTracking } from './sessions/track';
+import { touchIdConfirmer } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -38,7 +39,15 @@ const accounts = createAccounts({
   ...(process.env.ORCA_HOME ? { socketPath } : {}),
   hookTimeoutS: DEFAULT_HOOK_TIMEOUT_S,
 });
-const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')), accountName: accounts.nameOf });
+/** The popover stays up behind the Touch ID sheet instead of hiding on blur (I6 §3). */
+let touchIdSheetUp = false;
+const inbox = createInbox({
+  log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')),
+  accountName: accounts.nameOf,
+  confirmWithTouchId: touchIdConfirmer(systemPreferences, (up) => {
+    touchIdSheetUp = up;
+  }),
+});
 const sessions = createSessions();
 /** What the renderer sees: open Asks plus the Sessions from transcripts. */
 const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
@@ -133,7 +142,7 @@ function createPopover(): BrowserWindow {
   });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.on('blur', () => {
-    if (!holdPopover) win.hide();
+    if (!holdPopover && !touchIdSheetUp) win.hide();
   });
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(join(here, '../renderer/index.html'));
