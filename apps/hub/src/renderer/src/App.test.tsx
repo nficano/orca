@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, PopoverTarget, SessionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -16,6 +16,7 @@ function approval(over: Partial<ApprovalView>): ApprovalView {
     toolName: 'Bash',
     command: 'pnpm test',
     cwd: '/Users/me/code/orca',
+    risk: 'green',
     viaSubagent: false,
     openedAt: NOW - 6 * 60_000,
     ...over,
@@ -29,7 +30,7 @@ const WORK: ConnectedAccount = { kind: 'claude', dir: '/Users/me/.claude-work', 
 /** A stand-in for the main process: pushes snapshots, records decisions. */
 function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: ConnectedAccount[] } = {}) {
   const inboxListeners = new Set<(s: InboxSnapshot) => void>();
-  const openedListeners = new Set<() => void>();
+  const openedListeners = new Set<(target?: PopoverTarget) => void>();
   const decisions: ApprovalDecideRequest[] = [];
   let answer: (r: IpcResult) => void = () => {};
   const bridge: OrcaBridge = {
@@ -41,6 +42,8 @@ function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: Con
       return new Promise((resolve) => (answer = resolve));
     },
     answerQuestion: async () => ({ ok: true }),
+    openInCursor: async () => ({ ok: true }),
+    installCursorExtension: async () => ({ ok: true }),
     listAccounts: async () => accounts,
     scanAccounts: async () => [
       { kind: 'claude', dir: WORK.dir, displayDir: '~/.claude-work', sessionCount: 6, suggestedName: 'Work', connected: false },
@@ -54,7 +57,7 @@ function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: Con
     bridge,
     decisions,
     push: (s: InboxSnapshot) => act(() => inboxListeners.forEach((l) => l(s))),
-    openPopover: () => act(() => openedListeners.forEach((l) => l())),
+    openPopover: (target?: PopoverTarget) => act(() => openedListeners.forEach((l) => l(target))),
     answer: (r: IpcResult) => act(async () => answer(r)),
   };
 }
@@ -111,6 +114,26 @@ describe('Inbox', () => {
     await renderApp(hub);
 
     hub.openPopover();
+
+    expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
+  });
+
+  it('opens on the Approval a red banner’s Review asked for, ready to approve with Touch ID', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' }), approval({ id: 'red', risk: 'red', command: 'git push --force' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'red', view: 'detail' });
+
+    const red = screen.getAllByRole('article')[1]!;
+    expect(document.activeElement).toBe(red);
+    expect(within(red).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+
+  it('falls back to the oldest card when the Ask a banner named has already resolved', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'gone', view: 'card' });
 
     expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
   });
@@ -206,6 +229,87 @@ describe('first run', () => {
 
     expect(screen.queryByRole('heading', { name: 'Connect your agent accounts' })).toBeNull();
     expect(screen.getByRole('article')).toBeTruthy();
+  });
+});
+
+describe('Risk tiers', () => {
+  it('shows a risk chip on every Approval card', async () => {
+    await renderApp(
+      fakeHub(
+        snapshotOf(
+          approval({ id: 'g', risk: 'green' }),
+          approval({ id: 'y', risk: 'yellow' }),
+          approval({ id: 'r', risk: 'red' }),
+        ),
+      ),
+    );
+    const [green, yellow, red] = screen.getAllByRole('article');
+    expect(within(green!).getByText('Low risk')).toBeTruthy();
+    expect(within(yellow!).getByText('Medium risk')).toBeTruthy();
+    expect(within(red!).getByText('High risk')).toBeTruthy();
+  });
+
+  it('red Approve says it needs Touch ID; green and yellow do not', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({ id: 'g', risk: 'green' }), approval({ id: 'r', risk: 'red' }))));
+    const [green, red] = screen.getAllByRole('article');
+    expect(within(green!).getByRole('button', { name: 'Approve' })).toBeTruthy();
+    expect(within(red!).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+});
+
+describe('Touch ID on a red Approval', () => {
+  it('locks the card while the Touch ID sheet is up', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+
+    expect(hub.decisions).toEqual([{ id: 'r', decision: 'allow' }]);
+    expect(screen.getByRole('article').getAttribute('aria-busy')).toBe('true');
+    expect((screen.getByRole('button', { name: 'Deny' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('failure or cancel returns the card to pending with "Not approved" under the buttons for 3s', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+      await renderApp(hub);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+      await hub.answer({ ok: false, error: 'not-approved' });
+
+      const card = screen.getByRole('article');
+      expect(card.getAttribute('aria-busy')).toBe('false');
+      expect((within(card).getByRole('button', { name: 'Approve with Touch ID' }) as HTMLButtonElement).disabled).toBe(false);
+      expect(within(card).getByRole('status').textContent).toBe('Not approved');
+
+      act(() => vi.advanceTimersByTime(3000));
+      expect(within(card).queryByText('Not approved')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Return on a focused red card goes through Touch ID too', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+    hub.openPopover();
+
+    fireEvent.keyDown(screen.getByRole('article'), { key: 'Enter' });
+    await hub.answer({ ok: false, error: 'not-approved' });
+
+    expect(hub.decisions).toEqual([{ id: 'r', decision: 'allow' }]);
+    expect(screen.getByRole('status').textContent).toBe('Not approved');
+  });
+
+  it('a refusal other than Touch ID shows no "Not approved"', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+    await hub.answer({ ok: false, error: 'invalid-request' });
+
+    expect(screen.queryByText('Not approved')).toBeNull();
   });
 });
 

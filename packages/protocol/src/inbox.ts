@@ -1,10 +1,18 @@
 import type { SessionView } from './sessions';
+import type { SetupView } from './setup';
 
 /**
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
  * every change (never diffs). Renderers key rows by Ask id.
  */
 import type { Urgency } from './question';
+
+/**
+ * Assigned to every Approval by the hub's fixed rules, never by a model.
+ * Red: destructive, writes outside the Worktree or touches a secret.
+ * Green: known safe commands inside the Worktree. Yellow: everything else.
+ */
+export type RiskTier = 'green' | 'yellow' | 'red';
 
 export interface ApprovalView {
   id: string;
@@ -20,8 +28,15 @@ export interface ApprovalView {
   /** "Agent's reason": `tool_input.description` when the payload has one. */
   reason?: string;
   cwd?: string;
+  /** Red-tier Approvals need Touch ID to approve. */
+  risk: RiskTier;
   /** The Approval was raised by a subagent of this Session. */
   viaSubagent: boolean;
+  /**
+   * Its cwd lies in no Worktree (or is unknown), so even a read-only command
+   * reads outside one. The batch row lists it unticked with the reason.
+   */
+  readsOutsideWorktree?: true;
   /** Epoch ms when the shim connected. */
   openedAt: number;
 }
@@ -61,4 +76,11 @@ export interface InboxSnapshot {
    * with an open Ask is Blocked. Absent until the transcript tailers run.
    */
   sessions?: SessionView[];
+  /** Setup errors: Hooks missing banners, the Settings pip and the restart banner. Absent until checked. */
+  setup?: SetupView;
+  /** Orca's Cursor extension; `missing` shows the banner with Install. Absent until the hub checks. */
+  cursor?: { extension: CursorExtensionStatus };
 }
+
+/** Whether Orca's extension is installed in Cursor (it links windows for Open in Cursor). */
+export type CursorExtensionStatus = 'installed' | 'missing';

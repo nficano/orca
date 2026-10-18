@@ -25,6 +25,7 @@ function approval(over: Partial<ApprovalView>): ApprovalView {
     sessionId: 's-1',
     toolName: 'Bash',
     command: 'pnpm test',
+    risk: 'green',
     viaSubagent: false,
     openedAt: T,
     ...over,

@@ -1,18 +1,25 @@
 import type {
   ApprovalAskMessage,
+  ApprovalBatchRequest,
+  ApprovalBatchResult,
   ApprovalDecideRequest,
   ApprovalDecision,
   ApprovalView,
   AskView,
+  BatchSkip,
   InboxSnapshot,
   IpcResult,
   QuestionAnswer,
   QuestionAnswerRequest,
   QuestionAskMessage,
   QuestionView,
+  RiskTier,
 } from '@orca/protocol';
 import { randomUUID } from 'node:crypto';
+import { homedir } from 'node:os';
 import type { DecisionsLog } from './decisions-log';
+import { riskTier, type ToolCall } from './risk-tier';
+import { worktreeRoot } from './worktree';
 
 export const DEFAULT_DENY_MESSAGE = 'Denied in Orca';
 
@@ -28,6 +35,11 @@ export interface Inbox {
   /** The Ask's connection closed. The Ask leaves the inbox if it was still open. */
   close(id: string): void;
   decide(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /**
+   * "Approve N" in the batch row. Re-checks each Approval's Risk tier now and
+   * allows only those still green; every other id is skipped with its reason.
+   */
+  approveBatch(req: ApprovalBatchRequest): Promise<ApprovalBatchResult>;
   /** Answer a Question with a picked option or typed text. */
   answer(req: QuestionAnswerRequest): Promise<IpcResult>;
   snapshot(): InboxSnapshot;
@@ -37,6 +49,8 @@ export interface Inbox {
 interface OpenAsk {
   view: ApprovalView;
   reply: (decision: ApprovalDecision) => void;
+  /** The tool call as the hook sent it, so its tier can be re-checked. */
+  call: ToolCall;
 }
 
 interface OpenQuestion {
@@ -51,6 +65,15 @@ export interface InboxOptions {
   onLogError?: (err: unknown) => void;
   /** The name of a connected Account, by config dir, to tag each Ask with. */
   accountName?: (dir: string) => string | undefined;
+  /** The Worktree root that holds an Ask's cwd; paths outside it raise the Risk tier. */
+  worktreeOf?: (cwd: string | undefined) => string | undefined;
+  homeDir?: string;
+  /**
+   * Shows the Touch ID sheet before a red Approval is allowed. Resolves true
+   * only when the user passed it. Without one, red Approvals can't be allowed
+   * from the hub (the editor prompt still can).
+   */
+  confirmWithTouchId?: (ask: ApprovalView) => Promise<boolean>;
 }
 
 export function createInbox({
@@ -59,9 +82,14 @@ export function createInbox({
   newId = randomUUID,
   onLogError = (err) => console.error('orca: could not append to the decisions log', err),
   accountName = () => undefined,
+  worktreeOf = worktreeRoot,
+  homeDir = homedir(),
+  confirmWithTouchId = async () => false,
 }: InboxOptions): Inbox {
   // Map keeps insertion order, which is arrival order: oldest first.
   const open = new Map<string, OpenAsk>();
+  /** Red Approvals whose Touch ID sheet is up (I6 §1 "confirming"). */
+  const confirming = new Map<string, Promise<boolean>>();
   const questions = new Map<string, OpenQuestion>();
   const listeners = new Set<(s: InboxSnapshot) => void>();
 
@@ -76,13 +104,23 @@ export function createInbox({
     const s = snapshot();
     for (const l of listeners) l(s);
   };
+  /** The tier and Worktree facts for a tool call, as of now. */
+  const assess = (call: ToolCall): Pick<ApprovalView, 'risk' | 'readsOutsideWorktree'> => {
+    const worktree = worktreeOf(call.cwd);
+    const risk = riskTier(call, { worktree, homeDir });
+    return worktree === undefined ? { risk, readsOutsideWorktree: true } : { risk };
+  };
 
   return {
     open(msg, reply) {
       const id = newId();
-      const view = approvalView(id, msg, now());
+      const cwd = typeof msg.hook.cwd === 'string' ? msg.hook.cwd : undefined;
+      const call: ToolCall = { toolName: msg.hook.tool_name, toolInput: msg.hook.tool_input, cwd };
+      const { risk, readsOutsideWorktree } = assess(call);
+      const view = approvalView(id, msg, risk, now());
+      if (readsOutsideWorktree) view.readsOutsideWorktree = true;
       const name = msg.account ? accountName(msg.account) : undefined;
-      open.set(id, { view: name ? { ...view, accountName: name } : view, reply });
+      open.set(id, { view: name ? { ...view, accountName: name } : view, reply, call });
       emit();
       return id;
     },
@@ -111,10 +149,25 @@ export function createInbox({
       return { ok: true };
     },
 
-    async decide({ id, decision, reason }) {
-      const ask = open.get(id);
+    async decide({ id, decision, reason, via }) {
+      let ask = open.get(id);
       if (!ask) return { ok: false, error: 'already-resolved' };
       if (decision !== 'allow' && decision !== 'deny') return { ok: false, error: 'invalid-request' };
+
+      if (decision === 'allow' && ask.view.risk === 'red') {
+        // One sheet per Ask: a second Approve waits on the sheet already up.
+        let sheet = confirming.get(id);
+        if (!sheet) {
+          sheet = confirmWithTouchId(ask.view).catch(() => false);
+          confirming.set(id, sheet);
+          void sheet.finally(() => confirming.delete(id));
+        }
+        if (!(await sheet)) return open.has(id) ? { ok: false, error: 'not-approved' } : { ok: false, error: 'already-resolved' };
+        // While the sheet was up, the Ask may have been decided elsewhere or its shim may have gone.
+        ask = open.get(id);
+        if (!ask) return { ok: false, error: 'already-resolved' };
+      }
+
       // Claim the Ask before any await so a racing decide sees it gone.
       open.delete(id);
 
@@ -129,13 +182,68 @@ export function createInbox({
           sessionId: view.sessionId,
           toolName: view.toolName,
           command: view.command,
+          risk: view.risk,
           ...answer,
-          via: 'tray',
+          via: via === 'panel' || via === 'notification' ? via : 'tray',
         })
         .catch(onLogError);
       ask.reply(answer);
       emit();
       return { ok: true };
+    },
+
+    async approveBatch(req) {
+      if (!req || !Array.isArray(req.ids) || !req.ids.every((id) => typeof id === 'string')) {
+        return { ok: false, error: 'invalid-request' };
+      }
+      const approved: OpenAsk[] = [];
+      const skipped: BatchSkip[] = [];
+      let changed = false;
+      // Claim every Approval synchronously, before any await, so nothing else decides it twice.
+      for (const id of new Set(req.ids)) {
+        const ask = open.get(id);
+        if (!ask) {
+          skipped.push({ id, reason: 'already-resolved' });
+          continue;
+        }
+        const { view } = ask;
+        if (view.risk !== 'green') {
+          skipped.push({ id, command: view.command, reason: 'not-green', risk: view.risk });
+          continue;
+        }
+        const current = assess(ask.call);
+        if (current.risk !== 'green') {
+          // The card shows its new tier from here on.
+          const { readsOutsideWorktree: _, ...rest } = view;
+          ask.view = { ...rest, ...current };
+          changed = true;
+          skipped.push({ id, command: view.command, reason: 'tier-changed', risk: current.risk });
+          continue;
+        }
+        open.delete(id);
+        approved.push(ask);
+      }
+
+      const at = new Date(now()).toISOString();
+      for (const { view } of approved) {
+        await log
+          .append({
+            at,
+            askId: view.id,
+            account: view.account,
+            sessionId: view.sessionId,
+            toolName: view.toolName,
+            command: view.command,
+            risk: view.risk,
+            behavior: 'allow',
+            via: 'tray',
+            batch: true,
+          })
+          .catch(onLogError);
+      }
+      for (const ask of approved) ask.reply({ behavior: 'allow' });
+      if (approved.length > 0 || changed) emit();
+      return { ok: true, approved: approved.map((a) => a.view.id), skipped };
     },
 
     snapshot,
@@ -174,7 +282,7 @@ function questionAnswer(view: QuestionView, optionIndex?: number, text?: string)
   return typed ? { text: typed } : null;
 }
 
-function approvalView(id: string, { account, hook }: ApprovalAskMessage, openedAt: number): ApprovalView {
+function approvalView(id: string, { account, hook }: ApprovalAskMessage, risk: RiskTier, openedAt: number): ApprovalView {
   const input = hook.tool_input;
   const reason = typeof input.description === 'string' && input.description.trim() ? input.description : undefined;
   return {
@@ -186,6 +294,7 @@ function approvalView(id: string, { account, hook }: ApprovalAskMessage, openedA
     command: describeToolCall(input),
     ...(reason ? { reason } : {}),
     ...(typeof hook.cwd === 'string' ? { cwd: hook.cwd } : {}),
+    risk,
     viaSubagent: typeof hook.agent_id === 'string' && hook.agent_id !== '',
     openedAt,
   };

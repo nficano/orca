@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -19,6 +20,18 @@ type Config struct {
 	DialWindow time.Duration
 	// DialInterval is the pause between dial attempts.
 	DialInterval time.Duration
+	// SpoolPath is where an Ask that couldn't reach the hub is recorded.
+	// Empty means spool.jsonl next to the socket.
+	SpoolPath string
+}
+
+// spoolPath is SpoolPath, or spool.jsonl in the socket's dir: the hub's data
+// dir, which the hub reads on restart.
+func (c Config) spoolPath() string {
+	if c.SpoolPath != "" {
+		return c.SpoolPath
+	}
+	return filepath.Join(filepath.Dir(c.SocketPath), "spool.jsonl")
 }
 
 // DefaultConfig reads ORCA_SOCKET and CLAUDE_CONFIG_DIR / CODEX_HOME.
@@ -64,7 +77,9 @@ type hookOutput struct {
 }
 
 // Run forwards one PermissionRequest to the hub as one Ask and blocks until
-// the hub decides or the connection closes. It writes a decision to stdout
+// the hub decides or the connection closes. When the hub can't be reached
+// within the dial window, it appends one line to the spool for the hub's
+// restart banner. It writes a decision to stdout
 // only when the hub sent a valid allow or deny. Every failure path writes
 // nothing, so the agent's normal permission prompt runs: the shim never
 // denies on its own.
@@ -75,6 +90,9 @@ func Run(cfg Config, stdin io.Reader, stdout io.Writer) {
 	}
 	var event struct {
 		HookEventName string `json:"hook_event_name"`
+		SessionID     string `json:"session_id"`
+		ToolName      string `json:"tool_name"`
+		Cwd           string `json:"cwd"`
 	}
 	_ = json.Unmarshal(raw, &event)
 	if event.HookEventName == "" {
@@ -83,6 +101,10 @@ func Run(cfg Config, stdin io.Reader, stdout io.Writer) {
 
 	conn := dial(cfg)
 	if conn == nil {
+		spool(cfg.spoolPath(), spoolLine{
+			V: 1, Kind: "approval", At: time.Now().UnixMilli(), Account: cfg.Account,
+			SessionID: event.SessionID, ToolName: event.ToolName, Cwd: event.Cwd,
+		})
 		return
 	}
 	defer conn.Close()
@@ -120,6 +142,37 @@ func Run(cfg Config, stdin io.Reader, stdout io.Writer) {
 		return
 	}
 	stdout.Write(append(b, '\n'))
+}
+
+// spoolLine records one Approval that went to the agent's own prompt because
+// the hub was down. It leaves out the command: the hub only counts and names
+// these on restart.
+type spoolLine struct {
+	V         int    `json:"v"`
+	Kind      string `json:"kind"`
+	At        int64  `json:"at"`
+	Account   string `json:"account"`
+	SessionID string `json:"session_id"`
+	ToolName  string `json:"tool_name"`
+	Cwd       string `json:"cwd,omitempty"`
+}
+
+// spool appends one line with a single write, so concurrent shims never
+// interleave. Failure is ignored: the normal prompt runs either way.
+func spool(path string, line spoolLine) {
+	b, err := json.Marshal(line)
+	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	f.Write(append(b, '\n'))
 }
 
 // dial retries until the hub answers or the window runs out.

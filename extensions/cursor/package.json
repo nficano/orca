@@ -1,0 +1,41 @@
+{
+  "name": "orca-cursor",
+  "displayName": "Orca",
+  "description": "Links this Cursor window to the Orca hub so Open in Cursor focuses the window holding an Ask's Worktree.",
+  "version": "0.0.1",
+  "publisher": "orca",
+  "private": true,
+  "license": "UNLICENSED",
+  "repository": { "type": "git", "url": "https://github.com/nficano/orca" },
+  "engines": { "vscode": "^1.100.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Orca",
+      "properties": {
+        "orca.socketPath": {
+          "type": "string",
+          "default": "",
+          "description": "The Orca hub socket. Empty uses ~/Library/Application Support/Orca/hub.sock."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/extension.js",
+    "package": "pnpm build && vsce package --no-dependencies --allow-missing-repository --skip-license -o ../../apps/hub/resources/orca-cursor.vsix",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@orca/protocol": "workspace:*",
+    "@types/node": "24.19.2",
+    "@types/vscode": "1.100.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

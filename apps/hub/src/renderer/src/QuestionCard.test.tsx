@@ -31,6 +31,7 @@ const approval: ApprovalView = {
   account: '/Users/me/.claude-work',
   sessionId: 's-2',
   toolName: 'Bash',
+  risk: 'green',
   command: 'pnpm test',
   viaSubagent: false,
   openedAt: NOW - 60_000,
@@ -57,6 +58,8 @@ function fakeHub(initial: InboxSnapshot) {
       answers.push(req);
       return new Promise((resolve) => (reply = resolve));
     },
+    openInCursor: async () => ({ ok: true }),
+    installCursorExtension: async () => ({ ok: true }),
   };
   return {
     bridge,

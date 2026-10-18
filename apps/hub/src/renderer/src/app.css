@@ -265,6 +265,40 @@ button:focus-visible {
   color: var(--text-3);
 }
 
+/* I1 §6, I5 · risk chip: r6, padding 2 8; never truncated. */
+.risk {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px var(--s-8);
+  border-radius: var(--r-6);
+  white-space: nowrap;
+}
+.risk-green {
+  background: var(--risk-low-bg);
+  color: var(--risk-low);
+}
+.risk-yellow {
+  background: var(--risk-medium-bg);
+  color: var(--risk-medium);
+}
+.risk-red {
+  background: var(--risk-high-bg);
+  color: var(--risk-high);
+}
+
+/* I6 §1 · Touch ID failed or cancelled: inline under the buttons for 3s. */
+.not-approved {
+  margin: 0;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--risk-high);
+}
+
 /* I1 §7 · action row; Approve is always rightmost. */
 .actions {
   display: flex;
@@ -539,4 +573,195 @@ button:focus-visible {
 }
 .sending {
   margin: 0;
+}
+
+/* I3 · Settings rail item and its alert pip. tokens.css sizes the .pip circle. */
+.rail-item.settings {
+  margin-top: auto;
+}
+.tile > .pip {
+  position: absolute;
+  bottom: -2px;
+  right: -4px;
+  background: var(--pip);
+  color: var(--pip-fg);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+
+/* 9 · Errors: setup banners above the inbox. */
+.notices {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+.banner {
+  display: flex;
+  gap: var(--s-10);
+  align-items: flex-start;
+  padding: var(--s-10) var(--s-12);
+  border-radius: var(--r-12);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.banner.red {
+  background: color-mix(in oklch, var(--badge) 14%, transparent);
+  border: 1px solid color-mix(in oklch, var(--badge) 40%, transparent);
+}
+.banner.ok {
+  background: color-mix(in oklch, var(--success) 14%, transparent);
+  border: 1px solid color-mix(in oklch, var(--success) 40%, transparent);
+}
+.banner .banner-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+}
+.banner.red .banner-icon {
+  color: var(--risk-high);
+}
+.banner.ok .banner-icon {
+  color: var(--risk-low);
+}
+.banner-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.banner b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+.banner .btn {
+  flex: none;
+}
+.more summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-10);
+  min-height: 40px;
+  padding: 0 var(--s-12);
+  border-radius: var(--r-12);
+  background: var(--surface-card);
+  border: 1px solid var(--border-1);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.more summary::-webkit-details-marker {
+  display: none;
+}
+.more summary > .dot {
+  background: var(--pip);
+}
+.more summary > .ellipsis {
+  flex: 1;
+}
+.more .chevron {
+  width: 10px;
+  height: 10px;
+  color: var(--text-2);
+}
+.more[open] .chevron {
+  transform: rotate(180deg);
+}
+.more .banner {
+  margin-top: var(--s-8);
+}
+.restart-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.restart-head strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+.restart-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--link);
+}
+/* I4 · card header close X: last in its row, glyph aligned to the padding edge. */
+.restart-head .close {
+  margin: -3px -6px -3px 0;
+}
+.restart-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.restart-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.restart-rows .row {
+  padding: 0 var(--s-2);
+  border-top: 1px solid var(--border-2);
+  border-radius: 0;
+}
+.restart-more {
+  margin: 0;
+/* Needs a look · design 6 (States, stalled), I6 stalled sessions. */
+.needs-look {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.needs-look .cap {
+  padding-bottom: 0;
+}
+.stall-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--risk-medium);
+}
+.stall-icon.loop {
+  color: var(--risk-high);
+}
+.needs-look .card {
+  overflow: visible;
+}
+.needs-look .reason {
+  font-size: 12.5px;
+}
+.stop-failed {
+  color: var(--risk-high);
+}
+.stop-anchor {
+  position: relative;
+}
+/* I6: Stop… confirm popover, 280 wide, anchored under the button. */
+.confirm {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + var(--s-6));
+  right: 0;
+  width: 280px;
+  padding: var(--s-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-10);
+  box-shadow: var(--shadow-menu);
+}
+.confirm p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-3);
 }
