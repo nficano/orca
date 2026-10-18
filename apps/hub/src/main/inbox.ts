@@ -169,7 +169,7 @@ export function createInbox({
           command: view.command,
           risk: view.risk,
           ...answer,
-          via: via === 'panel' ? 'panel' : 'tray',
+          via: via === 'panel' || via === 'notification' ? via : 'tray',
         })
         .catch(onLogError);
       ask.reply(answer);

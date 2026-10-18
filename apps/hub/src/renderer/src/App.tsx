@@ -44,8 +44,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   useEffect(
     () =>
-      bridge.onPopoverOpened(() => {
-        listRef.current?.querySelector<HTMLElement>('article')?.focus();
+      bridge.onPopoverOpened((target) => {
+        // A banner opened the popover for one Ask (Review, or a click): show that one.
+        // Approval detail (design 2) opens on target.view === 'detail' once it exists;
+        // until then Review lands on the card, whose Approve asks for Touch ID.
+        const list = listRef.current;
+        const named = target && list?.querySelector<HTMLElement>(`article[data-ask-id="${CSS.escape(target.askId)}"]`);
+        (named || list?.querySelector<HTMLElement>('article'))?.focus();
       }),
     [bridge],
   );
@@ -207,7 +212,7 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
   const meta = [ask.accountName ?? baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
 
   return (
-    <article className="card" tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
+    <article className="card" data-ask-id={ask.id} tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
       <div className="card-head">
         <RiskChip risk={ask.risk} />
         <h2 className="title">{ask.toolName}</h2>
