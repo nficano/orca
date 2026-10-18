@@ -19,6 +19,10 @@ export interface TranscriptUpdate {
    * handoff: the agent called orca's `handoff` tool. ended: the turn ended.
    */
   turn?: 'started' | 'working' | 'handoff' | 'ended';
+  /** What the agent says it is doing now, or the tool it just called: a Stalled Session's "Last step". */
+  step?: string;
+  /** A tool call finished; `error` is its failure text when it failed. Feeds loop detection. */
+  toolResult?: { tool: string; error?: string };
 }
 
 /** Reads one transcript file's lines in order; keeps whatever per-file state the format needs. */
@@ -47,4 +51,40 @@ export function parseLine(line: string): Record<string, unknown> | undefined {
 /** orca's `handoff` MCP tool, as Claude (`mcp__orca__handoff`) or Codex names it. */
 export function isHandoffTool(name: unknown): boolean {
   return name === 'mcp__orca__handoff' || name === 'orca__handoff' || name === 'orca.handoff';
+}
+
+const STEP_MAX = 120;
+
+/** One line for "Last step": the first non-empty line, clamped. */
+export function stepText(text: unknown): string | undefined {
+  if (typeof text !== 'string') return undefined;
+  const line = text
+    .split('\n')
+    .map((l) => l.trim())
+    .find(Boolean);
+  if (!line) return undefined;
+  return line.length > STEP_MAX ? `${line.slice(0, STEP_MAX - 1)}…` : line;
+}
+
+/** Lines agents add around a tool's output that differ run to run or say nothing about the failure. */
+const NOISE = [/^(error:\s*)?exit code:?\s*-?\d+$/i, /^wall time:/i, /^output:$/i, /^<\/?tool_use_error>$/];
+
+function errorLines(text: string): string[] {
+  return text
+    .replace(/<\/?tool_use_error>/g, '\n')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !NOISE.some((re) => re.test(l)));
+}
+
+/** The line a person reads for a failed tool call: "connect ECONNREFUSED 127.0.0.1:5432". */
+export function errorMessage(text: string): string {
+  const first = errorLines(text)[0] ?? text.trim();
+  const msg = first.replace(/^error:\s*/i, '');
+  return msg.length > 200 ? `${msg.slice(0, 199)}…` : msg;
+}
+
+/** Same tool and same failure text, ignoring exit-code and timing lines: the same error. */
+export function errorKey(tool: string, text: string): string {
+  return `${tool}\u0000${errorLines(text).join('\n').replace(/\s+/g, ' ').slice(0, 2000)}`;
 }

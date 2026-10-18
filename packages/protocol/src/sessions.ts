@@ -8,6 +8,12 @@ export type AgentKind = 'claude' | 'codex';
 
 export type SessionState = 'blocked' | 'running' | 'waiting' | 'stalled' | 'done' | 'ended';
 
+/**
+ * Why a Session is Stalled. no-progress: no transcript growth for the stall
+ * threshold. loop: the same tool error `count` times in a row (3 or more).
+ */
+export type StallReason = { kind: 'no-progress' } | { kind: 'loop'; error: string; count: number };
+
 export interface SessionView {
   /** Account + session id; stable for the Session's life, across resumes. */
   key: string;
@@ -25,4 +31,10 @@ export interface SessionView {
   /** Working directory from the newest transcript entry. */
   cwd?: string;
   branch?: string;
+  /** What the agent last said it was doing, or the last tool it called. */
+  lastStep?: string;
+  /** Set while the Session is Stalled. */
+  stall?: StallReason;
+  /** The user stopped the Session from Orca; it is Done until a new turn starts. */
+  stoppedByYou?: boolean;
 }
