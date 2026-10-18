@@ -16,6 +16,8 @@ export interface DecisionRecord {
   message?: string;
   /** The surface the decision came from. */
   via: 'tray';
+  /** Allowed by "Approve N" in the batch row. */
+  batch?: true;
 }
 
 export interface DecisionsLog {

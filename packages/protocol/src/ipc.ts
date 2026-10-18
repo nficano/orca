@@ -1,8 +1,12 @@
+import type { RiskTier } from './inbox';
+
 /** Renderer ↔ main IPC contract (design I6 §5, renamed to glossary terms). */
 
 export const IPC = {
   /** renderer → main (invoke): decide one Approval. Returns IpcResult. */
   approvalDecide: 'approval:decide',
+  /** renderer → main (invoke): "Approve N" in the batch row (ApprovalBatchRequest). Returns ApprovalBatchResult. */
+  approvalBatch: 'approval:approve-batch',
   /** renderer → main (invoke): answer one Question. Returns IpcResult. */
   questionAnswer: 'question:answer',
   /** renderer → main (invoke): the current InboxSnapshot. */
@@ -29,6 +33,32 @@ export interface ApprovalDecideRequest {
   /** Deny message; defaults to "Denied in Orca". */
   reason?: string;
 }
+
+/** The ticked Approvals in the batch row. */
+export interface ApprovalBatchRequest {
+  ids: string[];
+}
+
+/**
+ * Why "Approve N" left an Approval open:
+ * - `tier-changed`: green when listed, not green when main re-checked it at click.
+ * - `not-green`: it was never green; the batch never approves yellow or red.
+ * - `already-resolved`: no open Approval with that id (decided elsewhere, gone, or a Question).
+ */
+export type BatchSkipReason = 'tier-changed' | 'not-green' | 'already-resolved';
+
+export interface BatchSkip {
+  id: string;
+  reason: BatchSkipReason;
+  /** The Approval's command, when it is still open. */
+  command?: string;
+  /** Its Risk tier now, when it is still open. */
+  risk?: RiskTier;
+}
+
+export type ApprovalBatchResult =
+  | { ok: true; approved: string[]; skipped: BatchSkip[] }
+  | { ok: false; error: IpcError };
 
 /** Exactly one of `optionIndex` (a picked option) or `text` (a typed answer). */
 export interface QuestionAnswerRequest {
