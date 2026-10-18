@@ -43,6 +43,7 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   reinstallHooks: (dir) => ipcRenderer.invoke(IPC.setupReinstall, dir),
   dismissRestart: () => ipcRenderer.invoke(IPC.setupDismissRestart),
   stopSession: (req) => ipcRenderer.invoke(IPC.sessionStop, req),
+  dismissAsk: (req) => ipcRenderer.invoke(IPC.askDismiss, req),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);

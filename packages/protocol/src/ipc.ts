@@ -9,6 +9,8 @@ export const IPC = {
   approvalBatch: 'approval:approve-batch',
   /** renderer → main (invoke): answer one Question. Returns IpcResult. */
   questionAnswer: 'question:answer',
+  /** renderer → main (invoke, AskDismissRequest): close a resolved-elsewhere or orphaned card. Returns IpcResult. */
+  askDismiss: 'ask:dismiss',
   /** renderer → main (invoke): stop one Session's agent process (SIGINT, then SIGTERM after 5s). Returns IpcResult. */
   sessionStop: 'session:stop',
   /** renderer → main (invoke): the current InboxSnapshot. */
@@ -106,6 +108,11 @@ export interface QuestionAnswerRequest {
 export interface SendBackRequest {
   id: string;
   text?: string;
+}
+
+/** The X on a resolved card (resolved elsewhere or orphaned), by Ask id. */
+export interface AskDismissRequest {
+  id: string;
 }
 
 /** Stop… on a Session, keyed by SessionView.key. */

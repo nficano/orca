@@ -21,8 +21,10 @@ import { posix } from 'node:path';
 import { commandSteps, withExplanations } from './command-steps';
 import type { DecisionsLog } from './decisions-log';
 import { riskTier, type ToolCall } from './risk-tier';
+import { sameToolCall } from './same-tool-call';
 import { maskSecrets } from './secrets';
 import { joinArgv } from './shell';
+import type { ToolAnswer } from './sessions/sessions';
 import { isLongCommand, type Summarize, type Summary, type SummaryRequest } from './summaries';
 import { TIER_WAITS_MS, type TierWaits } from './tier-waits';
 import { worktreeRoot } from './worktree';
@@ -43,10 +45,24 @@ export interface Inbox {
   /** The orca MCP server connected: open one Question. `reply` sends the answer back down that connection. */
   openQuestion(msg: QuestionAskMessage, reply: (answer: QuestionAnswer) => void): string;
   /**
-   * The Ask's connection closed. The Ask leaves the inbox if it was still
-   * open; a handed-back Approval stays ("Cursor is asking now").
+   * The Ask's connection closed. An Approval still open was answered in the
+   * editor first: it is resolved elsewhere ("Handled in Cursor"). A Question
+   * leaves the inbox; a handed-back Approval stays ("Cursor is asking now").
    */
   close(id: string): void;
+  /**
+   * A transcript shows a tool call answered. The oldest matching Approval
+   * that was handed back leaves the inbox, or the oldest one resolved
+   * elsewhere turns "Approved in Cursor" when the call ran.
+   */
+  toolAnswered(answer: ToolAnswer): void;
+  /**
+   * The Session ended. Its Approvals nobody answered are orphaned ("Nothing
+   * was run."): open ones get no decision and their shims are let go.
+   */
+  sessionEnded(account: string, sessionId: string): void;
+  /** The X on a resolved-elsewhere or orphaned card. Open Asks can't be dismissed. */
+  dismiss(id: string): IpcResult;
   decide(req: ApprovalDecideRequest): Promise<IpcResult>;
   /**
    * "Approve N" in the batch row. Re-checks each Approval's Risk tier now and
@@ -66,6 +82,16 @@ interface OpenAsk {
   call: ToolCall;
   /** Hands the Ask back to the editor when its tier wait runs out. */
   timer: ReturnType<typeof setTimeout>;
+  /** Closes the shim's connection with no decision. */
+  handBack?: () => void;
+}
+
+/** An Approval Orca no longer asks about, kept for its card. */
+interface ClosedAsk {
+  view: ApprovalView;
+  call: ToolCall;
+  /** The transcript showed its answer: it ran, or the user rejected it. */
+  settled?: true;
 }
 
 interface OpenQuestion {
@@ -121,7 +147,9 @@ export function createInbox({
    * Approvals whose tier wait ran out: handed back to the editor, never
    * decided here. They stay in the inbox as "Cursor is asking now".
    */
-  const handedBack = new Map<string, ApprovalView>();
+  const handedBack = new Map<string, ClosedAsk>();
+  /** Approvals resolved elsewhere or orphaned, until dismissed (I6 §1). */
+  const resolved = new Map<string, ClosedAsk>();
   const listeners = new Set<(s: InboxSnapshot) => void>();
 
   const snapshot = (): InboxSnapshot => {
@@ -130,8 +158,15 @@ export function createInbox({
       ...[...open.values()].map((a) => a.view),
       ...[...questions.values()].map((q) => q.view),
     ].sort((a, b) => a.openedAt - b.openedAt);
-    const back = [...handedBack.values()].sort((a, b) => a.openedAt - b.openedAt);
-    return { pending, ...(back.length ? { handedBack: back } : {}), counts: { pending: pending.length + back.length } };
+    const oldestFirst = (m: Map<string, ClosedAsk>) => [...m.values()].map((a) => a.view).sort((a, b) => a.openedAt - b.openedAt);
+    const back = oldestFirst(handedBack);
+    const done = oldestFirst(resolved);
+    return {
+      pending,
+      ...(back.length ? { handedBack: back } : {}),
+      ...(done.length ? { resolved: done } : {}),
+      counts: { pending: pending.length + back.length },
+    };
   };
   const emit = () => {
     const s = snapshot();
@@ -174,14 +209,20 @@ export function createInbox({
         const ask = open.get(id);
         if (!ask) return;
         open.delete(id);
-        handedBack.set(id, { ...ask.view, handedBackAt: now() });
+        handedBack.set(id, { view: { ...ask.view, handedBackAt: now() }, call: ask.call });
         handBack?.();
         emit();
       }, wait);
       // An open Ask alone never keeps the process alive.
       timer.unref?.();
       const wantsSummary = summarize !== undefined && isLongCommand(view.command);
-      open.set(id, { view: { ...view, ...(name ? { accountName: name } : {}), ...(wantsSummary ? { summaryPending: true } : {}) }, reply, call, timer });
+      open.set(id, {
+        view: { ...view, ...(name ? { accountName: name } : {}), ...(wantsSummary ? { summaryPending: true } : {}) },
+        reply,
+        call,
+        timer,
+        ...(handBack ? { handBack } : {}),
+      });
       if (wantsSummary) {
         const steps = view.steps?.map((s) => s.command) ?? [];
         requestSummary(
@@ -225,8 +266,77 @@ export function createInbox({
 
     close(id) {
       const ask = open.get(id);
-      if (ask) clearTimeout(ask.timer);
-      if (open.delete(id) || questions.delete(id)) emit();
+      if (ask) {
+        // The editor answered first: its prompt killed the shim (spec › Approval path 6).
+        open.delete(id);
+        clearTimeout(ask.timer);
+        resolved.set(id, { view: { ...closedView(ask.view), resolvedElsewhere: { at: now() } }, call: ask.call });
+        emit();
+        return;
+      }
+      if (questions.delete(id)) emit();
+    },
+
+    toolAnswered(answer) {
+      const answers = (a: ClosedAsk) =>
+        asksIn(a.view, answer.account, answer.sessionId) &&
+        (answer.at === undefined || answer.at >= a.view.openedAt) &&
+        sameToolCall({ tool: a.call.toolName, input: a.call.toolInput }, answer);
+      const back = [...handedBack.entries()].filter(([, a]) => answers(a));
+      const elsewhere = [...resolved.entries()].filter(([, a]) => a.view.resolvedElsewhere && !a.settled && answers(a));
+      const [match] = [...back, ...elsewhere].sort(([, a], [, b]) => a.view.openedAt - b.view.openedAt);
+      if (!match) return;
+      const [id, ask] = match;
+      if (handedBack.delete(id)) {
+        // "Cursor is asking now" clears: the editor has its answer (spec › Approval path 7).
+        emit();
+        return;
+      }
+      ask.settled = true;
+      if (answer.outcome === 'ran') {
+        ask.view = { ...ask.view, resolvedElsewhere: { ...ask.view.resolvedElsewhere!, approved: true } };
+        emit();
+      }
+    },
+
+    sessionEnded(account, sessionId) {
+      const at = now();
+      const orphan = (view: ApprovalView): ApprovalView => {
+        const { resolvedElsewhere: _, ...rest } = closedView(view);
+        return { ...rest, orphanedAt: at };
+      };
+      let changed = false;
+      const letGo: (() => void)[] = [];
+      for (const [id, ask] of open) {
+        if (!asksIn(ask.view, account, sessionId)) continue;
+        open.delete(id);
+        clearTimeout(ask.timer);
+        resolved.set(id, { view: orphan(ask.view), call: ask.call });
+        if (ask.handBack) letGo.push(ask.handBack);
+        changed = true;
+      }
+      for (const [id, ask] of handedBack) {
+        if (!asksIn(ask.view, account, sessionId)) continue;
+        handedBack.delete(id);
+        resolved.set(id, { view: orphan(ask.view), call: ask.call });
+        changed = true;
+      }
+      for (const ask of resolved.values()) {
+        // Subagent tool calls never reach the hub's transcript reader, so their silence proves nothing.
+        if (!ask.view.resolvedElsewhere || ask.settled || ask.view.viaSubagent) continue;
+        if (!asksIn(ask.view, account, sessionId)) continue;
+        ask.view = orphan(ask.view);
+        changed = true;
+      }
+      // No decision goes down: nothing was run.
+      for (const close of letGo) close();
+      if (changed) emit();
+    },
+
+    dismiss(id) {
+      if (!resolved.delete(id)) return { ok: false, error: 'invalid-request' };
+      emit();
+      return { ok: true };
     },
 
     async answer({ id, optionIndex, text }) {
@@ -346,6 +456,17 @@ export function createInbox({
       return () => listeners.delete(listener);
     },
   };
+}
+
+/** The Ask belongs to the Session. The hook names its Account only when CLAUDE_CONFIG_DIR / CODEX_HOME is set. */
+function asksIn(view: ApprovalView, account: string, sessionId: string): boolean {
+  return view.sessionId === sessionId && (view.account === '' || view.account === account);
+}
+
+/** A card Orca no longer asks about: no countdown, no summary on the way, not handed back. */
+function closedView(view: ApprovalView): ApprovalView {
+  const { summaryPending: _, waitEndsAt: __, handedBackAt: ___, ...rest } = view;
+  return rest;
 }
 
 /** Every agent-written string in the view is masked; `secretsHidden` counts what was hidden. */

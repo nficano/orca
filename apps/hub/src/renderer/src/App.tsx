@@ -30,6 +30,7 @@ import {
 } from './format';
 import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
+import { isResolved, ResolvedCard } from './ResolvedCard';
 import { focusLabel, nextTab, profileDot } from './profiles';
 import { ProfilesSettings } from './ProfilesSettings';
 import { FingerprintIcon, RiskChip } from './RiskChip';
@@ -161,8 +162,11 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const colorOf = (profileId: string | undefined) => profiles.find((p) => p.id === profileId)?.color;
   const pending = inbox.pending.filter(inTab);
   /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
-  const cards: AskView[] = [...pending, ...(inbox.handedBack ?? []).filter(inTab)].sort((a, b) => a.openedAt - b.openedAt);
-  const askMenu = useAskMenu(cards, openInCursor);
+  const openCards: AskView[] = [...pending, ...(inbox.handedBack ?? []).filter(inTab)];
+  /** ...plus resolved-elsewhere and orphaned cards, until dismissed. */
+  const cards: AskView[] = [...openCards, ...(inbox.resolved ?? []).filter(inTab)].sort((a, b) => a.openedAt - b.openedAt);
+  const askMenu = useAskMenu(openCards, openInCursor);
+  const dismissAsk = bridge.dismissAsk ? (id: string) => void bridge.dismissAsk!({ id }) : undefined;
   const running = (inbox.sessions ?? []).filter((s) => (s.state === 'running' || s.state === 'waiting') && inTab(s));
   const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled' && inTab(s));
   const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou && inTab(s));
@@ -359,6 +363,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
                   onAnswer={answer}
                   profileColor={colorOf(ask.profileId)}
                 />
+              ) : isResolved(ask) ? (
+                <ResolvedCard key={ask.id} ask={ask} onKeyDown={(e) => void moveCardFocus(e)} {...(dismissAsk ? { onDismiss: dismissAsk } : {})} />
               ) : ask.handedBackAt !== undefined ? (
                 <HandedBackCard
                   key={ask.id}

@@ -2,6 +2,7 @@ import type {
   ApprovalBatchRequest,
   ApprovalBatchResult,
   ApprovalDecideRequest,
+  AskDismissRequest,
   InboxSnapshot,
   InstallExtensionResult,
   IpcResult,
@@ -75,6 +76,8 @@ export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge, Par
   openInCursor?(req: OpenInCursorRequest): Promise<OpenInCursorResult>;
   /** The "Cursor extension missing" banner's Install action. */
   installCursorExtension?(): Promise<InstallExtensionResult>;
+  /** The X on a resolved-elsewhere or orphaned card. Optional so bridges without it hide the X. */
+  dismissAsk?(req: AskDismissRequest): Promise<IpcResult>;
   /** Stop… on a Stalled Session. Optional so bridges without it hide Stop. */
   stopSession?(req: SessionStopRequest): Promise<IpcResult>;
 }
