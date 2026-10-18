@@ -5,3 +5,4 @@ export * from './accounts';
 export * from './question';
 export * from './sessions';
 export * from './cursor';
+export * from './setup';

@@ -5,10 +5,13 @@
 import {
   CURSOR_IPC,
   IPC,
+  type ApprovalBatchRequest,
+  type ApprovalBatchResult,
   type ApprovalDecideRequest,
   type IpcResult,
   type OpenInCursorRequest,
   type OpenInCursorResult,
+  type PopoverTarget,
   type QuestionAnswerRequest,
   type SessionStopRequest,
 } from '@orca/protocol';
@@ -17,6 +20,7 @@ import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { createCursorLink } from './cursor/link';
+import { startApprovalNotifications } from './approval-notifications';
 import { fileDecisionsLog } from './decisions-log';
 import { electronNotifier } from './electron-notifier';
 import { listenForShims, type HubSocket } from './hub-socket';
@@ -26,6 +30,8 @@ import { startQuickAnswer } from './quick-answer-electron';
 import { startQuestionNotifications } from './question-notifications';
 import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
+import { setupIpcHandlers } from './setup/ipc';
+import { createSetup } from './setup/setup';
 import { createSessions } from './sessions/sessions';
 import { createStallThresholds, fileStallConfig } from './sessions/stall-threshold';
 import { processSignals, stopSession } from './sessions/stop';
@@ -70,9 +76,12 @@ const cursor = createCursorLink({
   findAsk: (id) => inbox.snapshot().pending.find((ask) => ask.id === id),
   findSession: (key) => sessions.list().find((s) => s.key === key),
 });
-/** What the renderer sees: open Asks plus the Sessions from transcripts. */
+/** Hooks missing and the restart banner (Storyboard F9). The shim spools next to the socket. */
+const setup = createSetup({ accounts, home: accountsHome, spoolPath: join(dataDir, 'spool.jsonl') });
+/** What the renderer sees: open Asks, the Sessions from transcripts, setup errors and the Cursor extension. */
 const hubSnapshot = () => ({
   ...withSessions(inbox.snapshot(), sessions.list()),
+  setup: setup.view(),
   cursor: { extension: cursor.extension.status() },
 });
 let tray: Tray | undefined;
@@ -93,6 +102,7 @@ app.whenReady().then(async () => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
   });
+  ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => inbox.approveBatch(req));
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
@@ -104,6 +114,14 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle(CURSOR_IPC.installExtension, () => cursor.extension.install());
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
+    ipcMain.handle(channel, async (_e, arg: unknown) => {
+      const result = await handle(arg);
+      // Newly connected Accounts get their settings files watched too.
+      if (channel === IPC.accountsConnect) await setup.refresh();
+      return result;
+    });
+  }
+  for (const [channel, handle] of Object.entries(setupIpcHandlers(setup))) {
     ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
   }
   // Load connected Accounts before any Ask arrives, so every Ask gets its Account's name.
@@ -120,7 +138,7 @@ app.whenReady().then(async () => {
   tray.on('right-click', () =>
     tray?.popUpContextMenu(
       Menu.buildFromTemplate([
-        { label: 'Open Orca', click: showPopover },
+        { label: 'Open Orca', click: () => showPopover() },
         { type: 'separator' },
         { label: 'Quit Orca', accelerator: 'Command+Q', click: () => app.quit() },
       ]),
@@ -137,16 +155,22 @@ app.whenReady().then(async () => {
   };
   inbox.subscribe(publish);
 
-  // Question banners: answered from Options / Reply, removed once the Ask resolves anywhere.
+  // Banners, removed once the Ask resolves anywhere. Questions: answered from Options / Reply.
+  // Approvals (Storyboard F3): green and yellow from Approve / Deny; red gets Review / Deny.
   if (Notification.isSupported()) {
-    startQuestionNotifications({
+    const notifier = electronNotifier();
+    const openCard = (askId: string) => showPopover({ askId, view: 'card' });
+    // Click-to-focus: a banner click opens the Cursor window holding the Ask's Worktree, else its card.
+    const openInCursor = (askId: string) =>
+      void cursor.openInCursor.openAsk(askId).then((r) => {
+        if (!r.ok) openCard(askId);
+      });
+    startQuestionNotifications({ inbox, notifier, onOpen: openInCursor });
+    startApprovalNotifications({
       inbox,
-      notifier: electronNotifier(),
-      // Click-to-focus: the banner opens the Cursor window holding the Ask's Worktree.
-      onOpen: (id) =>
-        void cursor.openInCursor.openAsk(id).then((r) => {
-          if (!r.ok) showPopover();
-        }),
+      notifier,
+      onOpen: openInCursor,
+      onReview: (askId) => showPopover({ askId, view: 'detail' }),
     });
   }
 
@@ -161,9 +185,12 @@ app.whenReady().then(async () => {
   hubSocket = await listenForShims({ path: socketPath, inbox, windows: cursor.windows });
   cursor.extension.subscribe(publish);
   await cursor.extension.refresh();
+  // After listening: a shim that spools from here on is read on the next start.
+  await setup.start();
+  setup.subscribe(publish);
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
   if (firstRun) {
-    if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', showPopover);
+    if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', () => showPopover());
     else showPopover();
   }
 
@@ -180,6 +207,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   sessionTracking?.stop();
+  setup.stop();
   void hubSocket?.close();
 });
 app.on('will-quit', () => quickAnswer?.stop());
@@ -211,7 +239,8 @@ function createPopover(): BrowserWindow {
   return win;
 }
 
-function showPopover() {
+/** `target`: a notification opened the popover for one Ask. */
+function showPopover(target?: PopoverTarget) {
   if (!tray || !popover) return;
   const trayBounds = tray.getBounds();
   const { workArea } = screen.getDisplayMatching(trayBounds);
@@ -219,7 +248,7 @@ function showPopover() {
   popover.show();
   popover.focus();
   void cursor.extension.refresh();
-  popover.webContents.send(IPC.popoverOpened);
+  popover.webContents.send(IPC.popoverOpened, target);
 }
 
 /** "Choose another folder…": a sheet on the popover, starting in the home folder. */

@@ -183,3 +183,75 @@ func TestEnvironmentPicksSocketAndAccount(t *testing.T) {
 		t.Fatalf("config = %+v", c)
 	}
 }
+
+func spoolLines(t *testing.T, path string) []string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.Split(strings.TrimSuffix(string(b), "\n"), "\n")
+}
+
+func TestHubUnreachableAppendsOneSpoolLine(t *testing.T) {
+	path := socketPath(t)
+	c := cfg(path)
+	c.SpoolPath = filepath.Join(filepath.Dir(path), "spool.jsonl")
+	before := time.Now().UnixMilli()
+
+	Run(c, strings.NewReader(hookInput), &bytes.Buffer{})
+	Run(c, strings.NewReader(hookInput), &bytes.Buffer{})
+
+	lines := spoolLines(t, c.SpoolPath)
+	if len(lines) != 2 {
+		t.Fatalf("spool has %d lines, want one per unreachable Ask: %q", len(lines), lines)
+	}
+	var got struct {
+		V         int    `json:"v"`
+		Kind      string `json:"kind"`
+		At        int64  `json:"at"`
+		Account   string `json:"account"`
+		SessionID string `json:"session_id"`
+		ToolName  string `json:"tool_name"`
+		Cwd       string `json:"cwd"`
+	}
+	if err := json.Unmarshal([]byte(lines[0]), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.V != 1 || got.Kind != "approval" || got.Account != "/Users/me/.claude-work" || got.SessionID != "s-1" || got.ToolName != "Bash" || got.Cwd != "/repo" {
+		t.Fatalf("spool line = %+v", got)
+	}
+	if got.At < before || got.At > time.Now().UnixMilli() {
+		t.Fatalf("at = %d, want the time the shim gave up", got.At)
+	}
+	if strings.Contains(lines[0], "pnpm test") {
+		t.Fatalf("spool line carries the command: %s", lines[0])
+	}
+}
+
+func TestReachableHubLeavesSpoolAlone(t *testing.T) {
+	path := socketPath(t)
+	c := cfg(path)
+	c.SpoolPath = filepath.Join(filepath.Dir(path), "spool.jsonl")
+	fakeHub(t, path, func(string) string { return "" })
+
+	Run(c, strings.NewReader(hookInput), &bytes.Buffer{})
+
+	if lines := spoolLines(t, c.SpoolPath); lines != nil {
+		t.Fatalf("spool = %q, want none when the hub answered the dial", lines)
+	}
+}
+
+func TestSpoolDefaultsNextToTheSocket(t *testing.T) {
+	c := DefaultConfig(func(string) string { return "" }, "/Users/me")
+	if got := c.spoolPath(); got != "/Users/me/Library/Application Support/Orca/spool.jsonl" {
+		t.Fatalf("spool path = %q", got)
+	}
+	c.SocketPath = "/tmp/orca-dev/hub.sock"
+	if got := c.spoolPath(); got != "/tmp/orca-dev/spool.jsonl" {
+		t.Fatalf("spool path with a moved socket = %q", got)
+	}
+}
