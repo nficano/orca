@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { createInbox } from './inbox';
+import { startQuickAnswer } from './quick-answer-electron';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -22,6 +23,7 @@ const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
+let quickAnswer: { stop(): void } | undefined;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -31,7 +33,7 @@ app.whenReady().then(async () => {
   ipcMain.handle(IPC.inboxGet, () => inbox.snapshot());
   ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
-    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason });
+    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
   });
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
@@ -59,10 +61,18 @@ app.whenReady().then(async () => {
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
   });
 
+  quickAnswer = startQuickAnswer({
+    inbox,
+    preload: join(here, '../preload/index.cjs'),
+    load: loadRenderer,
+    isPopoverVisible: () => popover?.isVisible() ?? false,
+  });
+
   hubSocket = await listenForShims({ path: join(dataDir, 'hub.sock'), inbox });
 });
 
 app.on('before-quit', () => void hubSocket?.close());
+app.on('will-quit', () => quickAnswer?.stop());
 app.on('window-all-closed', () => {
   // A tray app keeps running with no windows.
 });
@@ -109,4 +119,10 @@ function trayIcon(hasOpenAsks: boolean) {
   const img = nativeImage.createFromPath(join(resources, hasOpenAsks ? 'trayActiveTemplate.png' : 'trayTemplate.png'));
   img.setTemplateImage(true);
   return img;
+}
+
+/** Loads the renderer bundle; `hash` picks the view (`quick-answer`), none is the popover. */
+function loadRenderer(win: BrowserWindow, hash?: string) {
+  if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}${hash ? `#${hash}` : ''}`);
+  else void win.loadFile(join(here, '../renderer/index.html'), hash ? { hash } : undefined);
 }
