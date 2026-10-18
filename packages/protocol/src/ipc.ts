@@ -108,3 +108,19 @@ export interface PopoverTarget {
   askId: string;
   view: 'card' | 'detail';
 }
+
+/** Open in Cursor (⌘O, the card menu, a notification click): focus the window holding the Ask's Worktree. */
+export const CURSOR_IPC = {
+  /** renderer → main (invoke, OpenInCursorRequest): returns OpenInCursorResult. */
+  open: 'cursor:open',
+  /** renderer → main (invoke): install the Orca extension into Cursor. Returns InstallExtensionResult. */
+  installExtension: 'cursor:install-extension',
+} as const;
+
+/** The Ask to show (by id), or a Session (by key) from a Stalled or Done card. */
+export type OpenInCursorRequest = { id: string } | { sessionKey: string };
+
+/** `not-found`: the Ask resolved; `no-worktree`: the Ask has no cwd; `open-failed`: Cursor didn't open. */
+export type OpenInCursorResult = { ok: true } | { ok: false; error: 'not-found' | 'no-worktree' | 'open-failed' };
+
+export type InstallExtensionResult = { ok: true } | { ok: false; message: string };

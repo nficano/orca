@@ -3,11 +3,14 @@
  * tray popover only renders snapshots and sends intents.
  */
 import {
+  CURSOR_IPC,
   IPC,
   type ApprovalBatchRequest,
   type ApprovalBatchResult,
   type ApprovalDecideRequest,
   type IpcResult,
+  type OpenInCursorRequest,
+  type OpenInCursorResult,
   type PopoverTarget,
   type QuestionAnswerRequest,
   type SessionStopRequest,
@@ -16,6 +19,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, s
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
+import { createCursorLink } from './cursor/link';
 import { startApprovalNotifications } from './approval-notifications';
 import { fileDecisionsLog } from './decisions-log';
 import { electronNotifier } from './electron-notifier';
@@ -66,10 +70,20 @@ const inbox = createInbox({
   }),
 });
 const sessions = createSessions();
+const cursor = createCursorLink({
+  home: app.getPath('home'),
+  resources,
+  findAsk: (id) => inbox.snapshot().pending.find((ask) => ask.id === id),
+  findSession: (key) => sessions.list().find((s) => s.key === key),
+});
 /** Hooks missing and the restart banner (Storyboard F9). The shim spools next to the socket. */
 const setup = createSetup({ accounts, home: accountsHome, spoolPath: join(dataDir, 'spool.jsonl') });
-/** What the renderer sees: open Asks, the Sessions from transcripts and setup errors. */
-const hubSnapshot = () => ({ ...withSessions(inbox.snapshot(), sessions.list()), setup: setup.view() });
+/** What the renderer sees: open Asks, the Sessions from transcripts, setup errors and the Cursor extension. */
+const hubSnapshot = () => ({
+  ...withSessions(inbox.snapshot(), sessions.list()),
+  setup: setup.view(),
+  cursor: { extension: cursor.extension.status() },
+});
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -93,6 +107,12 @@ app.whenReady().then(async () => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
   });
+  ipcMain.handle(CURSOR_IPC.open, (_e, req: OpenInCursorRequest): Promise<OpenInCursorResult> => {
+    const valid = req && (('id' in req && typeof req.id === 'string') || ('sessionKey' in req && typeof req.sessionKey === 'string'));
+    if (!valid) return Promise.resolve({ ok: false, error: 'not-found' });
+    return cursor.openInCursor.open(req);
+  });
+  ipcMain.handle(CURSOR_IPC.installExtension, () => cursor.extension.install());
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
     ipcMain.handle(channel, async (_e, arg: unknown) => {
       const result = await handle(arg);
@@ -140,11 +160,16 @@ app.whenReady().then(async () => {
   if (Notification.isSupported()) {
     const notifier = electronNotifier();
     const openCard = (askId: string) => showPopover({ askId, view: 'card' });
-    startQuestionNotifications({ inbox, notifier, onOpen: openCard });
+    // Click-to-focus: a banner click opens the Cursor window holding the Ask's Worktree, else its card.
+    const openInCursor = (askId: string) =>
+      void cursor.openInCursor.openAsk(askId).then((r) => {
+        if (!r.ok) openCard(askId);
+      });
+    startQuestionNotifications({ inbox, notifier, onOpen: openInCursor });
     startApprovalNotifications({
       inbox,
       notifier,
-      onOpen: openCard,
+      onOpen: openInCursor,
       onReview: (askId) => showPopover({ askId, view: 'detail' }),
     });
   }
@@ -157,7 +182,9 @@ app.whenReady().then(async () => {
     holdOnBlur: () => touchIdSheetUp,
   });
 
-  hubSocket = await listenForShims({ path: socketPath, inbox });
+  hubSocket = await listenForShims({ path: socketPath, inbox, windows: cursor.windows });
+  cursor.extension.subscribe(publish);
+  await cursor.extension.refresh();
   // After listening: a shim that spools from here on is read on the next start.
   await setup.start();
   setup.subscribe(publish);
@@ -220,6 +247,7 @@ function showPopover(target?: PopoverTarget) {
   popover.setBounds(popoverWindowBounds(trayBounds, workArea));
   popover.show();
   popover.focus();
+  void cursor.extension.refresh();
   popover.webContents.send(IPC.popoverOpened, target);
 }
 
