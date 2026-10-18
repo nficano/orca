@@ -2,9 +2,18 @@
  * Orca hub: Electron main process. Owns the hub socket and every Ask; the
  * tray popover only renders snapshots and sends intents.
  */
-import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
+import {
+  CURSOR_IPC,
+  IPC,
+  type ApprovalDecideRequest,
+  type IpcResult,
+  type OpenInCursorRequest,
+  type OpenInCursorResult,
+  type QuestionAnswerRequest,
+} from '@orca/protocol';
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
 import { join } from 'node:path';
+import { createCursorLink } from './cursor/link';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { withSessions } from './hub-snapshot';
@@ -25,8 +34,16 @@ app.setPath('userData', dataDir);
 
 const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')) });
 const sessions = createSessions();
+const cursor = createCursorLink({
+  home: app.getPath('home'),
+  resources,
+  findAsk: (id) => inbox.snapshot().pending.find((ask) => ask.id === id),
+});
 /** What the renderer sees: open Asks plus the Sessions from transcripts. */
-const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
+const hubSnapshot = () => ({
+  ...withSessions(inbox.snapshot(), sessions.list()),
+  cursor: { extension: cursor.extension.status() },
+});
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -46,6 +63,11 @@ app.whenReady().then(async () => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
   });
+  ipcMain.handle(CURSOR_IPC.open, (_e, req: OpenInCursorRequest): Promise<OpenInCursorResult> => {
+    if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'not-found' });
+    return cursor.openInCursor.openAsk(req.id);
+  });
+  ipcMain.handle(CURSOR_IPC.installExtension, () => cursor.extension.install());
 
   tray = new Tray(trayIcon(false));
   tray.setToolTip('Orca');
@@ -70,7 +92,9 @@ app.whenReady().then(async () => {
   };
   inbox.subscribe(publish);
 
-  hubSocket = await listenForShims({ path: join(dataDir, 'hub.sock'), inbox });
+  hubSocket = await listenForShims({ path: join(dataDir, 'hub.sock'), inbox, windows: cursor.windows });
+  cursor.extension.subscribe(publish);
+  await cursor.extension.refresh();
 
   sessionTracking = await startSessionTracking({
     // ORCA_ACCOUNTS_HOME points the tailers at a scratch home during development.
@@ -119,6 +143,7 @@ function showPopover() {
   popover.setBounds(popoverWindowBounds(trayBounds, workArea));
   popover.show();
   popover.focus();
+  void cursor.extension.refresh();
   popover.webContents.send(IPC.popoverOpened);
 }
 

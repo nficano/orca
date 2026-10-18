@@ -57,4 +57,9 @@ export interface InboxSnapshot {
    * with an open Ask is Blocked. Absent until the transcript tailers run.
    */
   sessions?: SessionView[];
+  /** Orca's Cursor extension; `missing` shows the banner with Install. Absent until the hub checks. */
+  cursor?: { extension: CursorExtensionStatus };
 }
+
+/** Whether Orca's extension is installed in Cursor (it links windows for Open in Cursor). */
+export type CursorExtensionStatus = 'installed' | 'missing';

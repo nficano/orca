@@ -1,4 +1,4 @@
-import { IPC, type InboxSnapshot } from '@orca/protocol';
+import { CURSOR_IPC, IPC, type InboxSnapshot } from '@orca/protocol';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { OrcaBridge } from './api';
 
@@ -16,6 +16,8 @@ const bridge: OrcaBridge = {
   },
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
+  openInCursor: (req) => ipcRenderer.invoke(CURSOR_IPC.open, req),
+  installCursorExtension: () => ipcRenderer.invoke(CURSOR_IPC.installExtension),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);

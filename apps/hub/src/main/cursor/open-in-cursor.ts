@@ -1,0 +1,49 @@
+import type { AskView, OpenInCursorResult } from '@orca/protocol';
+import type { CursorWindows } from './windows';
+
+export interface OpenInCursor {
+  /** Brings forward the Cursor window holding this Ask's Worktree. */
+  openAsk(id: string): Promise<OpenInCursorResult>;
+  /** Same, for any working directory (a Session's, a Done card's). */
+  openCwd(cwd: string | undefined): Promise<OpenInCursorResult>;
+}
+
+/**
+ * Click-to-focus (spec › Window mapping). The Ask's own cwd picks the window,
+ * which the extension brings forward with focus(windowId). When no window
+ * holds it (or the extension is missing) Cursor opens the Worktree itself,
+ * which also lands on a window that already has it open.
+ */
+export function createOpenInCursor({
+  windows,
+  findAsk,
+  worktreeOf,
+  openFolder,
+}: {
+  windows: CursorWindows;
+  findAsk: (id: string) => AskView | undefined;
+  worktreeOf: (cwd: string) => string | undefined;
+  /** Opens a folder in Cursor (`open -a Cursor <folder>`). */
+  openFolder: (path: string) => Promise<void>;
+}): OpenInCursor {
+  async function openCwd(cwd: string | undefined): Promise<OpenInCursorResult> {
+    if (!cwd || !cwd.startsWith('/')) return { ok: false, error: 'no-worktree' };
+    const windowId = windows.windowFor(cwd);
+    if (windowId && windows.focus(windowId)) return { ok: true };
+    try {
+      await openFolder(worktreeOf(cwd) ?? cwd);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'open-failed' };
+    }
+  }
+
+  return {
+    openCwd,
+    async openAsk(id) {
+      const ask = findAsk(id);
+      if (!ask) return { ok: false, error: 'not-found' };
+      return openCwd(ask.cwd);
+    },
+  };
+}

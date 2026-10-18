@@ -55,6 +55,8 @@ function fakeHub(initial: InboxSnapshot) {
       answers.push(req);
       return new Promise((resolve) => (reply = resolve));
     },
+    openInCursor: async () => ({ ok: true }),
+    installCursorExtension: async () => ({ ok: true }),
   };
   return {
     bridge,

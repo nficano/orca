@@ -1,6 +1,7 @@
 import type { ApprovalView, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
+import { CursorBanner, openKey, useAskMenu } from './Cursor';
 import { badgeText, baseName, runningLabel, waitLabel } from './format';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { Spinner } from './Spinner';
@@ -58,6 +59,9 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const openInCursor = useCallback((id: string) => void bridge.openInCursor({ id }), [bridge]);
+  const askMenu = useAskMenu(inbox.pending, openInCursor);
+
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
@@ -83,7 +87,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
             All
           </button>
         </div>
-        <div className="list" ref={listRef}>
+        <div
+          className="list"
+          ref={listRef}
+          onKeyDown={(e) => openKey(e, openInCursor)}
+          onContextMenu={askMenu.onContextMenu}
+        >
+          {inbox.cursor?.extension === 'missing' && <CursorBanner install={bridge.installCursorExtension} />}
           {inbox.pending.length === 0 ? (
             <div className={running.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
@@ -101,6 +111,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           {running.length > 0 && <RunningList sessions={running} now={clock} />}
         </div>
       </section>
+      {askMenu.element}
     </div>
   );
 }
@@ -165,7 +176,11 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
   const meta = [baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
 
   return (
-    <article className="card" tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
+    <article
+      className="card"
+      data-ask-id={ask.id}
+      tabIndex={-1}
+      aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
       <div className="card-head">
         <h2 className="title">{ask.toolName}</h2>
         <span className="meta wait">{waitLabel(ask.openedAt, now)}</span>
