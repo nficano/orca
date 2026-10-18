@@ -21,6 +21,16 @@ export const IPC = {
   accountsPreview: 'accounts:preview',
   /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
   accountsConnect: 'accounts:connect',
+  /** main → quick-answer panel (send): the global shortcut just showed the panel. */
+  quickAnswerOpened: 'quick-answer:opened',
+  /** quick-answer panel → main (send): hide the panel. */
+  quickAnswerClose: 'quick-answer:close',
+  /** quick-answer panel → main (send): its content height in px. */
+  quickAnswerResize: 'quick-answer:resize',
+  /** renderer → main (invoke): rebind the quick-answer shortcut. Returns IpcResult; a refusal keeps the old one. */
+  quickAnswerRebind: 'quick-answer:rebind',
+  /** renderer → main (invoke): the quick-answer shortcut's accelerator, or null when none is held. */
+  quickAnswerShortcutGet: 'quick-answer:shortcut',
 } as const;
 
 export interface ApprovalDecideRequest {
@@ -33,7 +43,7 @@ export interface ApprovalDecideRequest {
 }
 
 /** Where the user decided an Ask. */
-export type DecisionSurface = 'tray' | 'notification';
+export type DecisionSurface = 'tray' | 'panel' | 'notification';
 
 /** Exactly one of `optionIndex` (a picked option) or `text` (a typed answer). */
 export interface QuestionAnswerRequest {
@@ -42,8 +52,9 @@ export interface QuestionAnswerRequest {
   text?: string;
 }
 
-/** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending. */
-export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved';
+/** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending.
+ *  `shortcut-unavailable`: another app holds that shortcut; the old one stays. */
+export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved' | 'shortcut-unavailable';
 
 export type IpcResult = { ok: true } | { ok: false; error: IpcError };
 

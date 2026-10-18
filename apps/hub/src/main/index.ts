@@ -6,13 +6,14 @@ import { IPC, type ApprovalDecideRequest, type IpcResult, type PopoverTarget, ty
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
-import { startApprovalNotifications } from './approval-notifications';
 import { accountsIpcHandlers } from './accounts/ipc';
+import { startApprovalNotifications } from './approval-notifications';
 import { fileDecisionsLog } from './decisions-log';
 import { electronNotifier } from './electron-notifier';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
+import { startQuickAnswer } from './quick-answer-electron';
 import { startQuestionNotifications } from './question-notifications';
 import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
@@ -57,6 +58,7 @@ const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
+let quickAnswer: { stop(): void } | undefined;
 let sessionTracking: SessionTracking | undefined;
 /** True while a sheet (the folder picker) is up: the popover must not hide on blur. */
 let holdPopover = false;
@@ -69,7 +71,7 @@ app.whenReady().then(async () => {
   ipcMain.handle(IPC.inboxGet, () => hubSnapshot());
   ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
-    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason });
+    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
   });
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
@@ -118,6 +120,14 @@ app.whenReady().then(async () => {
     });
   }
 
+  quickAnswer = startQuickAnswer({
+    inbox,
+    preload: join(here, '../preload/index.cjs'),
+    load: loadRenderer,
+    isPopoverVisible: () => popover?.isVisible() ?? false,
+    holdOnBlur: () => touchIdSheetUp,
+  });
+
   hubSocket = await listenForShims({ path: socketPath, inbox });
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
   if (firstRun) {
@@ -138,6 +148,7 @@ app.on('before-quit', () => {
   sessionTracking?.stop();
   void hubSocket?.close();
 });
+app.on('will-quit', () => quickAnswer?.stop());
 app.on('window-all-closed', () => {
   // A tray app keeps running with no windows.
 });
@@ -205,4 +216,10 @@ function trayIcon(hasOpenAsks: boolean) {
   const img = nativeImage.createFromPath(join(resources, hasOpenAsks ? 'trayActiveTemplate.png' : 'trayTemplate.png'));
   img.setTemplateImage(true);
   return img;
+}
+
+/** Loads the renderer bundle; `hash` picks the view (`quick-answer`), none is the popover. */
+function loadRenderer(win: BrowserWindow, hash?: string) {
+  if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}${hash ? `#${hash}` : ''}`);
+  else void win.loadFile(join(here, '../renderer/index.html'), hash ? { hash } : undefined);
 }

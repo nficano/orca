@@ -134,7 +134,7 @@ export function createInbox({
       return { ok: true };
     },
 
-    async decide({ id, decision, reason, via = 'tray' }) {
+    async decide({ id, decision, reason, via }) {
       let ask = open.get(id);
       if (!ask) return { ok: false, error: 'already-resolved' };
       if (decision !== 'allow' && decision !== 'deny') return { ok: false, error: 'invalid-request' };
@@ -169,7 +169,7 @@ export function createInbox({
           command: view.command,
           risk: view.risk,
           ...answer,
-          via,
+          via: via === 'panel' || via === 'notification' ? via : 'tray',
         })
         .catch(onLogError);
       ask.reply(answer);
