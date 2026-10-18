@@ -1,4 +1,5 @@
 import type { SessionView } from './sessions';
+import type { SetupView } from './setup';
 
 /**
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
@@ -61,4 +62,6 @@ export interface InboxSnapshot {
    * with an open Ask is Blocked. Absent until the transcript tailers run.
    */
   sessions?: SessionView[];
+  /** Setup errors: Hooks missing banners, the Settings pip and the restart banner. Absent until checked. */
+  setup?: SetupView;
 }

@@ -21,6 +21,10 @@ export const IPC = {
   accountsPreview: 'accounts:preview',
   /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
   accountsConnect: 'accounts:connect',
+  /** renderer → main (invoke, Account dir): rewrite that Account's hook (ReinstallResult). */
+  setupReinstall: 'setup:reinstall',
+  /** renderer → main (invoke): close the restart banner. */
+  setupDismissRestart: 'setup:dismiss-restart',
 } as const;
 
 export interface ApprovalDecideRequest {

@@ -31,3 +31,8 @@ export function runningLabel(since: number, now: number): string {
 export function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
+
+/** "10:12 AM": a time of day in the banner copy. */
+export function clockTime(t: number): string {
+  return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}

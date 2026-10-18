@@ -13,6 +13,8 @@ import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
 import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
+import { setupIpcHandlers } from './setup/ipc';
+import { createSetup } from './setup/setup';
 import { createSessions } from './sessions/sessions';
 import { startSessionTracking, type SessionTracking } from './sessions/track';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
@@ -40,8 +42,10 @@ const accounts = createAccounts({
 });
 const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')), accountName: accounts.nameOf });
 const sessions = createSessions();
-/** What the renderer sees: open Asks plus the Sessions from transcripts. */
-const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
+/** Hooks missing and the restart banner (Storyboard F9). The shim spools next to the socket. */
+const setup = createSetup({ accounts, home: accountsHome, spoolPath: join(dataDir, 'spool.jsonl') });
+/** What the renderer sees: open Asks, the Sessions from transcripts and setup errors. */
+const hubSnapshot = () => ({ ...withSessions(inbox.snapshot(), sessions.list()), setup: setup.view() });
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -64,6 +68,14 @@ app.whenReady().then(async () => {
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
   });
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
+    ipcMain.handle(channel, async (_e, arg: unknown) => {
+      const result = await handle(arg);
+      // Newly connected Accounts get their settings files watched too.
+      if (channel === IPC.accountsConnect) await setup.refresh();
+      return result;
+    });
+  }
+  for (const [channel, handle] of Object.entries(setupIpcHandlers(setup))) {
     ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
   }
   // Load connected Accounts before any Ask arrives, so every Ask gets its Account's name.
@@ -93,6 +105,9 @@ app.whenReady().then(async () => {
   inbox.subscribe(publish);
 
   hubSocket = await listenForShims({ path: socketPath, inbox });
+  // After listening: a shim that spools from here on is read on the next start.
+  await setup.start();
+  setup.subscribe(publish);
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
   if (firstRun) {
     if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', showPopover);
@@ -110,6 +125,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   sessionTracking?.stop();
+  setup.stop();
   void hubSocket?.close();
 });
 app.on('window-all-closed', () => {

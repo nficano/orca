@@ -1,5 +1,14 @@
 import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
+import type { ReinstallResult } from '@orca/protocol';
+
+/** Setup-error banners (Storyboard F9). */
+export interface SetupBridge {
+  /** The Hooks missing banner's Reinstall: rewrites that Account's hook. */
+  reinstallHooks(dir: string): Promise<ReinstallResult>;
+  /** Closes the restart banner. */
+  dismissRestart(): Promise<void>;
+}
 
 /** First run and hook install (Storyboard F1). */
 export interface AccountsBridge {
@@ -14,7 +23,7 @@ export interface AccountsBridge {
 }
 
 /** What the preload exposes to the renderer as `window.orca`. */
-export interface OrcaBridge extends AccountsBridge {
+export interface OrcaBridge extends AccountsBridge, SetupBridge {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   onPopoverOpened(listener: () => void): () => void;

@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
 import { connectedAccountsBridge } from './accounts-bridge.fixture';
+import { quietSetupBridge } from './setup-bridge.fixture';
 import { App } from './App';
 
 const NOW = Date.parse('2026-10-18T10:10:00Z');
@@ -49,6 +50,7 @@ function fakeHub(initial: InboxSnapshot) {
   let reply: (r: IpcResult) => void = () => {};
   const bridge: OrcaBridge = {
     ...connectedAccountsBridge,
+    ...quietSetupBridge,
     getInbox: async () => initial,
     onInbox: (l) => (inboxListeners.add(l), () => inboxListeners.delete(l)),
     onPopoverOpened: (l) => (openedListeners.add(l), () => openedListeners.delete(l)),

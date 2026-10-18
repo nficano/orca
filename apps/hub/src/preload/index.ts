@@ -21,6 +21,8 @@ const bridge: OrcaBridge = {
   chooseAccountFolder: () => ipcRenderer.invoke(IPC.accountsChooseFolder),
   previewConnect: (choices) => ipcRenderer.invoke(IPC.accountsPreview, choices),
   connectAccounts: (choices) => ipcRenderer.invoke(IPC.accountsConnect, choices),
+  reinstallHooks: (dir) => ipcRenderer.invoke(IPC.setupReinstall, dir),
+  dismissRestart: () => ipcRenderer.invoke(IPC.setupDismissRestart),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);
