@@ -3,6 +3,8 @@
 export const IPC = {
   /** renderer → main (invoke): decide one Approval. Returns IpcResult. */
   approvalDecide: 'approval:decide',
+  /** renderer → main (invoke): answer one Question. Returns IpcResult. */
+  questionAnswer: 'question:answer',
   /** renderer → main (invoke): the current InboxSnapshot. */
   inboxGet: 'inbox:get',
   /** main → renderer (send): a full InboxSnapshot. */
@@ -16,6 +18,13 @@ export interface ApprovalDecideRequest {
   decision: 'allow' | 'deny';
   /** Deny message; defaults to "Denied in Orca". */
   reason?: string;
+}
+
+/** Exactly one of `optionIndex` (a picked option) or `text` (a typed answer). */
+export interface QuestionAnswerRequest {
+  id: string;
+  optionIndex?: number;
+  text?: string;
 }
 
 export type IpcError = 'already-resolved' | 'invalid-request';

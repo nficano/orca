@@ -15,6 +15,7 @@ const bridge: OrcaBridge = {
     return () => ipcRenderer.off(IPC.popoverOpened, handler);
   },
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
+  answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);
