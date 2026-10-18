@@ -1,4 +1,5 @@
 import type { SessionView } from './sessions';
+import type { SetupView } from './setup';
 
 /**
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
@@ -31,6 +32,11 @@ export interface ApprovalView {
   risk: RiskTier;
   /** The Approval was raised by a subagent of this Session. */
   viaSubagent: boolean;
+  /**
+   * Its cwd lies in no Worktree (or is unknown), so even a read-only command
+   * reads outside one. The batch row lists it unticked with the reason.
+   */
+  readsOutsideWorktree?: true;
   /** Epoch ms when the shim connected. */
   openedAt: number;
   /**
@@ -99,4 +105,11 @@ export interface InboxSnapshot {
    * with an open Ask is Blocked. Absent until the transcript tailers run.
    */
   sessions?: SessionView[];
+  /** Setup errors: Hooks missing banners, the Settings pip and the restart banner. Absent until checked. */
+  setup?: SetupView;
+  /** Orca's Cursor extension; `missing` shows the banner with Install. Absent until the hub checks. */
+  cursor?: { extension: CursorExtensionStatus };
 }
+
+/** Whether Orca's extension is installed in Cursor (it links windows for Open in Cursor). */
+export type CursorExtensionStatus = 'installed' | 'missing';

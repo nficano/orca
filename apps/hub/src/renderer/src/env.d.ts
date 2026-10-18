@@ -1,7 +1,7 @@
-import type { OrcaBridge } from '../../preload/api';
+import type { OrcaBridge, QuickAnswerBridge, ShortcutBridge } from '../../preload/api';
 
 declare global {
   interface Window {
-    orca: OrcaBridge;
+    orca: OrcaBridge & QuickAnswerBridge & ShortcutBridge;
   }
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ApprovalDecideRequest, ApprovalView, AskView, InboxSnapshot, IpcResult, QuestionView } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, AskView, InboxSnapshot, IpcResult, PopoverTarget, QuestionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -38,11 +38,12 @@ const snapshotOf = (...pending: AskView[]): InboxSnapshot => ({ pending, counts:
 
 function fakeHub(initial: InboxSnapshot) {
   const listeners = new Set<(s: InboxSnapshot) => void>();
+  const opened = new Set<(t?: PopoverTarget) => void>();
   const decisions: ApprovalDecideRequest[] = [];
   const bridge: OrcaBridge = {
     getInbox: async () => initial,
     onInbox: (l) => (listeners.add(l), () => listeners.delete(l)),
-    onPopoverOpened: () => () => {},
+    onPopoverOpened: (l) => (opened.add(l), () => opened.delete(l)),
     decideApproval: async (req): Promise<IpcResult> => {
       decisions.push(req);
       return { ok: true };
@@ -54,7 +55,12 @@ function fakeHub(initial: InboxSnapshot) {
     previewConnect: async () => [],
     connectAccounts: async () => ({ connected: [], failed: [] }),
   };
-  return { bridge, decisions, push: (s: InboxSnapshot) => act(() => listeners.forEach((l) => l(s))) };
+  return {
+    bridge,
+    decisions,
+    push: (s: InboxSnapshot) => act(() => listeners.forEach((l) => l(s))),
+    openPopover: (t?: PopoverTarget) => act(() => opened.forEach((l) => l(t))),
+  };
 }
 
 async function renderApp(hub: ReturnType<typeof fakeHub>) {
@@ -183,6 +189,33 @@ describe('Approval detail', () => {
     expect(within(detail()).getAllByText('pnpm lint').length).toBeGreaterThan(0);
 
     hub.push(snapshotOf());
+    expect(screen.queryByRole('region', { name: 'Approval' })).toBeNull();
+  });
+});
+
+describe('opening from a notification', () => {
+  it('Review on a red banner opens that Approval in detail', async () => {
+    const hub = fakeHub(snapshotOf(SEED, { ...LINT, risk: 'red' }));
+    await renderApp(hub);
+    hub.openPopover({ askId: 'lint', view: 'detail' });
+    expect(within(detail()).getByText('2 of 2')).toBeTruthy();
+    expect(within(detail()).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+
+  it('stays on the inbox for a banner click, or an Ask that already resolved', async () => {
+    const hub = fakeHub(snapshotOf(SEED));
+    await renderApp(hub);
+    hub.openPopover({ askId: 'seed', view: 'card' });
+    expect(screen.queryByRole('region', { name: 'Approval' })).toBeNull();
+    hub.openPopover({ askId: 'gone', view: 'detail' });
+    expect(screen.queryByRole('region', { name: 'Approval' })).toBeNull();
+  });
+
+  it('a banner click goes back to the inbox from detail', async () => {
+    const hub = fakeHub(snapshotOf(SEED));
+    await renderApp(hub);
+    openDetail('Bash');
+    hub.openPopover({ askId: 'seed', view: 'card' });
     expect(screen.queryByRole('region', { name: 'Approval' })).toBeNull();
   });
 });

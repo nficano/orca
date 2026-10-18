@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, PopoverTarget, SessionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -30,7 +30,7 @@ const WORK: ConnectedAccount = { kind: 'claude', dir: '/Users/me/.claude-work', 
 /** A stand-in for the main process: pushes snapshots, records decisions. */
 function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: ConnectedAccount[] } = {}) {
   const inboxListeners = new Set<(s: InboxSnapshot) => void>();
-  const openedListeners = new Set<() => void>();
+  const openedListeners = new Set<(target?: PopoverTarget) => void>();
   const decisions: ApprovalDecideRequest[] = [];
   let answer: (r: IpcResult) => void = () => {};
   const bridge: OrcaBridge = {
@@ -42,6 +42,8 @@ function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: Con
       return new Promise((resolve) => (answer = resolve));
     },
     answerQuestion: async () => ({ ok: true }),
+    openInCursor: async () => ({ ok: true }),
+    installCursorExtension: async () => ({ ok: true }),
     listAccounts: async () => accounts,
     scanAccounts: async () => [
       { kind: 'claude', dir: WORK.dir, displayDir: '~/.claude-work', sessionCount: 6, suggestedName: 'Work', connected: false },
@@ -55,7 +57,7 @@ function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: Con
     bridge,
     decisions,
     push: (s: InboxSnapshot) => act(() => inboxListeners.forEach((l) => l(s))),
-    openPopover: () => act(() => openedListeners.forEach((l) => l())),
+    openPopover: (target?: PopoverTarget) => act(() => openedListeners.forEach((l) => l(target))),
     answer: (r: IpcResult) => act(async () => answer(r)),
   };
 }
@@ -112,6 +114,28 @@ describe('Inbox', () => {
     await renderApp(hub);
 
     hub.openPopover();
+
+    expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
+  });
+
+  it('opens on the Approval a red banner’s Review asked for, ready to approve with Touch ID', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' }), approval({ id: 'red', risk: 'red', command: 'git push --force' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'red', view: 'detail' });
+
+    // Approval detail (design 2) for that Ask, focused so ↑ / ↓ and Esc work.
+    const detail = screen.getByRole('region', { name: 'Approval' });
+    expect(document.activeElement).toBe(detail);
+    expect(within(detail).getByText('2 of 2')).toBeTruthy();
+    expect(within(detail).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+
+  it('falls back to the oldest card when the Ask a banner named has already resolved', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'gone', view: 'card' });
 
     expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
   });

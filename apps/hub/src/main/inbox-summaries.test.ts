@@ -1,7 +1,10 @@
 import type { ApprovalAskMessage, ApprovalDecision, ApprovalView, QuestionAnswer, QuestionAskMessage, QuestionView } from '@orca/protocol';
 import { describe, expect, it } from 'vitest';
 import type { DecisionsLog, DecisionRecord } from './decisions-log';
+import { startApprovalNotifications } from './approval-notifications';
 import { createInbox } from './inbox';
+import type { Banner, Notifier } from './notifier';
+import { startQuestionNotifications } from './question-notifications';
 import type { Summary, SummaryRequest } from './summaries';
 
 const KEY = 'sk-ant-api03-Zx8vQ2mN7pL4kR9tW1yB6cD3fG5hJ0aE3f9a';
@@ -125,6 +128,21 @@ describe('secrets', () => {
     const id = inbox.open(approval(`TOKEN=${KEY} pnpm release`), () => {});
     await inbox.decide({ id, decision: 'deny' });
     expect(JSON.stringify(records)).not.toContain(KEY);
+  });
+
+  it('never puts a secret in a notification banner', () => {
+    const { inbox } = setup();
+    const banners: Banner[] = [];
+    const notifier: Notifier = { show: (banner) => (banners.push(banner), { remove: () => {} }) };
+    startApprovalNotifications({ inbox, notifier });
+    startQuestionNotifications({ inbox, notifier });
+
+    inbox.open(approval(`curl -H "Authorization: Bearer ${KEY}" https://api.vendor.example`, `Rotate ${KEY}`), () => {});
+    inbox.openQuestion(question({ question: `Rotate ${KEY}?`, options: [`Keep ${KEY}`, 'Rotate'] }), () => {});
+
+    expect(banners).toHaveLength(2);
+    expect(JSON.stringify(banners)).not.toContain(KEY);
+    expect(JSON.stringify(banners)).toContain('sk-ant-••••••3f9a');
   });
 
   it('masks a Question but answers the agent with the option it actually offered', async () => {

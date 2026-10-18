@@ -31,3 +31,16 @@ export function runningLabel(since: number, now: number): string {
 export function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
 }
+
+/** "10:12 AM": a time of day in the banner copy. */
+export function clockTime(t: number): string {
+  return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+/** "14 minutes" since the transcript last grew; "1h 5m" past an hour. */
+export function quietLabel(lastActivityAt: number, now: number): string {
+  const minutes = Math.max(1, Math.floor((now - lastActivityAt) / 60_000));
+  if (minutes === 1) return '1 minute';
+  if (minutes < 60) return `${minutes} minutes`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}

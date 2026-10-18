@@ -7,7 +7,7 @@
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "build": "pnpm --filter orca-cursor package && electron-vite build",
     "build:shim": "go build -o resources/bin/agentd-hook ../../cmd/agentd-hook",
     "start": "electron-vite preview",
     "test": "vitest run",
