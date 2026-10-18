@@ -3,7 +3,10 @@ import type {
   ApprovalBatchResult,
   ApprovalDecideRequest,
   InboxSnapshot,
+  InstallExtensionResult,
   IpcResult,
+  OpenInCursorRequest,
+  OpenInCursorResult,
   PopoverTarget,
   QuestionAnswerRequest,
   SessionStopRequest,
@@ -41,6 +44,10 @@ export interface OrcaBridge extends AccountsBridge, SetupBridge {
   /** "Approve N" in the batch row: main re-checks each tier and reports what it skipped. Absent: no batch row. */
   approveBatch?(req: ApprovalBatchRequest): Promise<ApprovalBatchResult>;
   answerQuestion(req: QuestionAnswerRequest): Promise<IpcResult>;
+  /** ⌘O / Open in Cursor: focus the Cursor window holding the Ask's Worktree. Optional so bridges without it hide it. */
+  openInCursor?(req: OpenInCursorRequest): Promise<OpenInCursorResult>;
+  /** The "Cursor extension missing" banner's Install action. */
+  installCursorExtension?(): Promise<InstallExtensionResult>;
   /** Stop… on a Stalled Session. Optional so bridges without it hide Stop. */
   stopSession?(req: SessionStopRequest): Promise<IpcResult>;
 }

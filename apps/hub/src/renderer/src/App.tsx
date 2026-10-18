@@ -1,6 +1,7 @@
 import type { ApprovalBatchResult, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, ReinstallResult, RiskTier, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
+import { CursorBanner, openKey, useAskMenu } from './Cursor';
 import { BatchReport, BatchRow, batchLines } from './BatchRow';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, plural, runningLabel, waitLabel } from './format';
@@ -83,6 +84,10 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const canOpenInCursor = typeof bridge.openInCursor === 'function';
+  const openInCursor = useCallback((id: string) => void bridge.openInCursor?.({ id }), [bridge]);
+  const askMenu = useAskMenu(inbox.pending, openInCursor);
+  const openSessionInCursor = useCallback((sessionKey: string) => void bridge.openInCursor?.({ sessionKey }), [bridge]);
   const approveBatch = useCallback(
     async (ids: string[]) => {
       const result = await bridge.approveBatch!({ ids }).catch((): ApprovalBatchResult => ({ ok: false, error: 'invalid-request' }));
@@ -146,8 +151,16 @@ export function App({ bridge, now = Date.now }: AppProps) {
             All
           </button>
         </div>
-        <div className="list" ref={listRef}>
+        <div
+          className="list"
+          ref={listRef}
+          onKeyDown={canOpenInCursor ? (e) => openKey(e, openInCursor) : undefined}
+          onContextMenu={canOpenInCursor ? askMenu.onContextMenu : undefined}
+        >
           <SetupBanners setup={inbox.setup} reinstall={reinstall} dismissRestart={dismissRestart} />
+          {inbox.cursor?.extension === 'missing' && bridge.installCursorExtension && (
+            <CursorBanner install={bridge.installCursorExtension} />
+          )}
           {batch.length > 0 && <BatchRow lines={batch} sessions={inbox.sessions ?? []} onApprove={approveBatch} />}
           {inbox.pending.length === 0 ? (
             <div className={running.length + stalled.length > 0 ? 'empty above-running' : 'empty'}>
@@ -163,12 +176,21 @@ export function App({ bridge, now = Date.now }: AppProps) {
               ),
             )
           )}
-          {stalled.length > 0 && <NeedsALook sessions={stalled} now={clock} accountName={accountName} {...(canStop ? { onStop } : {})} />}
+          {stalled.length > 0 && (
+            <NeedsALook
+              sessions={stalled}
+              now={clock}
+              accountName={accountName}
+              {...(canStop ? { onStop } : {})}
+              {...(canOpenInCursor ? { onOpenInCursor: openSessionInCursor } : {})}
+            />
+          )}
           {running.length > 0 && <RunningList sessions={running} now={clock} />}
           {stopped.length > 0 && <StoppedList sessions={stopped} />}
         </div>
         {batchReport && <BatchReport result={batchReport} onDismiss={() => setBatchReport(null)} />}
       </section>
+      {askMenu.element}
     </div>
   );
 }
