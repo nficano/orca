@@ -5,12 +5,13 @@ import type {
   ConnectedAccount,
   InboxSnapshot,
   IpcResult,
+  ProfileColor,
   ReinstallResult,
   RiskTier,
   SessionView,
 } from '@orca/protocol';
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { OrcaBridge } from '../../preload/api';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import type { OrcaBridge, ProfilesBridge } from '../../preload/api';
 import { CursorBanner, openKey, useAskMenu } from './Cursor';
 import { BatchReport, BatchRow, batchLines } from './BatchRow';
 import { FirstRun } from './FirstRun';
@@ -27,6 +28,8 @@ import {
 } from './format';
 import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
+import { focusLabel, nextTab, profileDot } from './profiles';
+import { ProfilesSettings } from './ProfilesSettings';
 import { SetupBanners } from './SetupBanners';
 import { Spinner } from './Spinner';
 
@@ -42,6 +45,10 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
+  /** The rail section on show. */
+  const [section, setSection] = useState<'inbox' | 'settings'>('inbox');
+  /** The open Profile tab: 'all' or a Profile id. */
+  const [tab, setTab] = useState('all');
   /** What the last "Approve N" skipped, until dismissed. */
   const [batchReport, setBatchReport] = useState<ApprovalBatchResult | null>(null);
   const inFlight = useRef(new Set<string>());
@@ -106,9 +113,6 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   const canOpenInCursor = typeof bridge.openInCursor === 'function';
   const openInCursor = useCallback((id: string) => void bridge.openInCursor?.({ id }), [bridge]);
-  /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
-  const cards: AskView[] = [...inbox.pending, ...(inbox.handedBack ?? [])].sort((a, b) => a.openedAt - b.openedAt);
-  const askMenu = useAskMenu(cards, openInCursor);
   const openSessionInCursor = useCallback((sessionKey: string) => void bridge.openInCursor?.({ sessionKey }), [bridge]);
   const approveBatch = useCallback(
     async (ids: string[]) => {
@@ -122,23 +126,53 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const accountName = (dir: string) => accounts?.find((a) => a.dir === dir)?.name ?? baseName(dir);
   const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
 
+  const profilesBridge = useMemo(() => profilesOf(bridge), [bridge]);
   const count = inbox.counts.pending;
-  const batch = typeof bridge.approveBatch === 'function' ? batchLines(inbox.pending) : [];
   const badge = badgeText(count);
-  const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
+  const profiles = inbox.profiles ?? [];
+  const tabIds = ['all', ...profiles.map((p) => p.id)];
+  // A tab the Focus filter (or a deleted Profile) took away falls back to All.
+  const current = tabIds.includes(tab) ? tab : 'all';
+  const inTab = (x: { profileId?: string }) => current === 'all' || x.profileId === current;
+  const colorOf = (profileId: string | undefined) => profiles.find((p) => p.id === profileId)?.color;
+  const pending = inbox.pending.filter(inTab);
+  /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
+  const cards: AskView[] = [...pending, ...(inbox.handedBack ?? []).filter(inTab)].sort((a, b) => a.openedAt - b.openedAt);
+  const askMenu = useAskMenu(cards, openInCursor);
+  const running = (inbox.sessions ?? []).filter((s) => (s.state === 'running' || s.state === 'waiting') && inTab(s));
+  const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled' && inTab(s));
+  const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou && inTab(s));
+  const currentName = profiles.find((p) => p.id === current)?.name;
+  const batch = typeof bridge.approveBatch === 'function' ? batchLines(pending) : [];
+
+  // ⌃Tab = next Profile tab, ⌃⇧Tab = previous (spec › Design changes needed).
+  const tabIdsKey = tabIds.join('\u0000');
+  useEffect(() => {
+    const ids = tabIdsKey.split('\u0000');
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Tab' || !e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
+      setTab((t) => nextTab(ids, ids.includes(t) ? t : 'all', e.shiftKey ? -1 : 1));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tabIdsKey]);
   const problems = inbox.setup?.problems.length ?? 0;
   const reinstall = useCallback(
     (dir: string): Promise<ReinstallResult> => bridge.reinstallHooks?.(dir) ?? Promise.resolve({ ok: false, error: "Orca can't reinstall from here." }),
     [bridge],
   );
   const dismissRestart = useCallback(() => void bridge.dismissRestart?.(), [bridge]);
-  const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled');
-  const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou);
 
   return (
     <div className="pop">
       <nav className="rail" aria-label="Sections">
-        <button className="rail-item on" aria-current="page" aria-label={count ? `Inbox, ${count} waiting` : 'Inbox'}>
+        <button
+          className={section === 'inbox' ? 'rail-item on' : 'rail-item'}
+          aria-current={section === 'inbox' ? 'page' : undefined}
+          aria-label={count ? `Inbox, ${count} waiting` : 'Inbox'}
+          onClick={() => setSection('inbox')}
+        >
           <span className="tile">
             <InboxIcon />
             {badge && (
@@ -149,8 +183,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
           </span>
           <span aria-hidden="true">Inbox</span>
         </button>
-        {/* The Settings screen is #17; the pip (I3 §7) shows while any Account has a problem. */}
-        <button className="rail-item settings" aria-label={problems ? `Settings, ${plural(problems, 'problem')}` : 'Settings'}>
+        {/* The pip (I3 §7) shows while any Account has a problem. */}
+        <button
+          className={section === 'settings' ? 'rail-item settings on' : 'rail-item settings'}
+          aria-current={section === 'settings' ? 'page' : undefined}
+          aria-label={problems ? `Settings, ${plural(problems, 'problem')}` : 'Settings'}
+          onClick={() => {
+            if (profilesBridge && accounts?.length) setSection('settings');
+          }}
+        >
           <span className="tile">
             <SettingsIcon />
             {problems > 0 && (
@@ -167,11 +208,47 @@ export function App({ bridge, now = Date.now }: AppProps) {
           <FirstRun bridge={bridge} onConnected={setAccounts} />
         </section>
       )}
-      <section className="main" aria-label="Inbox" hidden={!accounts?.length}>
-        <div className="tabs" role="tablist" aria-label="Profile">
-          <button className="tab on" role="tab" aria-selected="true">
-            All
-          </button>
+      {section === 'settings' && !!accounts?.length && profilesBridge && (
+        <section className="main" aria-label="Settings">
+          <div className="tabs-row">
+            <div className="tabs" role="tablist" aria-label="Settings">
+              <button className="tab on" role="tab" aria-selected="true">
+                Profiles
+              </button>
+            </div>
+          </div>
+          <ProfilesSettings bridge={profilesBridge} />
+        </section>
+      )}
+      <section className="main" aria-label="Inbox" hidden={!accounts?.length || section !== 'inbox'}>
+        <div className="tabs-row">
+          <div className="tabs" role="tablist" aria-label="Profile">
+            <button className={current === 'all' ? 'tab on' : 'tab'} role="tab" aria-selected={current === 'all'} onClick={() => setTab('all')}>
+              All
+            </button>
+            {profiles.map((p) => {
+              const n = [...inbox.pending, ...(inbox.handedBack ?? [])].filter((a) => a.profileId === p.id).length;
+              return (
+                <button
+                  key={p.id}
+                  className={current === p.id ? 'tab on' : 'tab'}
+                  role="tab"
+                  aria-selected={current === p.id}
+                  onClick={() => setTab(p.id)}
+                >
+                  <span className="dot" style={profileDot(p.color)} aria-hidden="true" />
+                  {p.name}
+                  {n > 0 && <span className="count">{n}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {inbox.focus && (
+            <span className="meta focus-note">
+              {focusLabel(inbox.focus.name)}
+              {inbox.focus.hiddenAsks > 0 && ` · ${inbox.focus.hiddenAsks} hidden`}
+            </span>
+          )}
         </div>
         <div
           className="list"
@@ -186,13 +263,20 @@ export function App({ bridge, now = Date.now }: AppProps) {
           {batch.length > 0 && <BatchRow lines={batch} sessions={inbox.sessions ?? []} onApprove={approveBatch} />}
           {cards.length === 0 ? (
             <div className={running.length + stalled.length > 0 ? 'empty above-running' : 'empty'}>
-              <h2>Nothing needs you</h2>
+              <h2>{currentName ? `Nothing needs you in ${currentName}` : 'Nothing needs you'}</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
           ) : (
             cards.map((ask) =>
               ask.kind === 'question' ? (
-                <QuestionCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onAnswer={answer} />
+                <QuestionCard
+                  key={ask.id}
+                  ask={ask}
+                  now={clock}
+                  busy={busy.has(ask.id)}
+                  onAnswer={answer}
+                  profileColor={colorOf(ask.profileId)}
+                />
               ) : ask.handedBackAt !== undefined ? (
                 <HandedBackCard
                   key={ask.id}
@@ -201,7 +285,14 @@ export function App({ bridge, now = Date.now }: AppProps) {
                   {...(canOpenInCursor ? { onOpenInCursor: openInCursor } : {})}
                 />
               ) : (
-                <ApprovalCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onDecide={decide} />
+                <ApprovalCard
+                  key={ask.id}
+                  ask={ask}
+                  now={clock}
+                  busy={busy.has(ask.id)}
+                  onDecide={decide}
+                  profileColor={colorOf(ask.profileId)}
+                />
               ),
             )
           )}
@@ -214,7 +305,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
               {...(canOpenInCursor ? { onOpenInCursor: openSessionInCursor } : {})}
             />
           )}
-          {running.length > 0 && <RunningList sessions={running} now={clock} />}
+          {running.length > 0 && <RunningList sessions={running} now={clock} colorOf={colorOf} />}
           {stopped.length > 0 && <StoppedList sessions={stopped} />}
         </div>
         {batchReport && <BatchReport result={batchReport} onDismiss={() => setBatchReport(null)} />}
@@ -225,7 +316,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
 }
 
 /** Running and Waiting Sessions (design 6 · States, empty inbox with running list). */
-function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }) {
+function RunningList({
+  sessions,
+  now,
+  colorOf,
+}: {
+  sessions: SessionView[];
+  now: number;
+  colorOf: (profileId: string | undefined) => ProfileColor | undefined;
+}) {
   return (
     <section className="running">
       <p className="cap" id="running-cap">
@@ -236,7 +335,7 @@ function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }
           const meta = [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
           return (
             <li key={s.key} className="row">
-              <span className="dot" aria-hidden="true" />
+              <span className="dot" aria-hidden="true" style={profileDot(colorOf(s.profileId))} />
               <span className="row-text">
                 <span className="ellipsis">{s.title ?? (baseName(s.cwd) || 'Session')}</span>
                 {meta && <span className="meta ellipsis">{meta}</span>}
@@ -255,12 +354,13 @@ interface CardProps {
   now: number;
   busy: boolean;
   onDecide: (id: string, decision: 'allow' | 'deny') => Promise<IpcResult | undefined>;
+  profileColor?: ProfileColor;
 }
 
 /** How long "Not approved" stays under the buttons after Touch ID fails (I6 §1). */
 const NOT_APPROVED_MS = 3000;
 
-function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
+function ApprovalCard({ ask, now, busy, onDecide, profileColor }: CardProps) {
   const [pressed, setPressed] = useState<'allow' | 'deny' | null>(null);
   const [notApproved, setNotApproved] = useState(false);
   useEffect(() => {
@@ -300,6 +400,7 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
       </div>
       {(meta.length > 0 || ask.viaSubagent) && (
         <div className="meta">
+          {profileColor && <span className="dot" style={profileDot(profileColor)} aria-hidden="true" />}
           {meta.map((m, i) => (
             <span key={i} className="meta-part">
               {i > 0 && <span aria-hidden="true">·</span>}
@@ -417,6 +518,13 @@ export function useSystemTheme() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
+}
+
+/** The Profiles half of the bridge, when the hub has one. */
+function profilesOf(bridge: OrcaBridge): (ProfilesBridge & Pick<OrcaBridge, 'listAccounts'>) | null {
+  const { getProfiles, createProfile, updateProfile, deleteProfile, assignAccount, setFocusFilter } = bridge;
+  if (!getProfiles || !createProfile || !updateProfile || !deleteProfile || !assignAccount || !setFocusFilter) return null;
+  return { getProfiles, createProfile, updateProfile, deleteProfile, assignAccount, setFocusFilter, listAccounts: bridge.listAccounts };
 }
 
 const RISK_LABEL: Record<RiskTier, string> = { green: 'Low risk', yellow: 'Medium risk', red: 'High risk' };
