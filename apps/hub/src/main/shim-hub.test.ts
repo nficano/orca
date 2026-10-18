@@ -12,6 +12,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { createInbox, type Inbox } from './inbox';
+import { drainSpool } from './setup/spool';
 
 const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 const hasGo = (() => {
@@ -172,4 +173,12 @@ describe.skipIf(!hasGo)('agentd-hook ↔ hub', () => {
     await expect(inbox.decide({ id, decision: 'allow' })).resolves.toEqual({ ok: false, error: 'already-resolved' });
     await expect(readFile(logPath, 'utf8')).rejects.toThrow();
   });
+
+  it('with no hub running, the hook spools the Approval for the next start to report', async () => {
+    await runShim(hookInput('pnpm test'), join(dir, 'nobody-home.sock')).exited;
+
+    expect(await drainSpool(join(dir, 'spool.jsonl'))).toEqual([
+      { account: '/Users/me/.claude-work', sessionId: 'session-a', toolName: 'Bash', cwd: '/Users/me/code/orca', at: expect.any(Number) },
+    ]);
+  }, 10_000);
 });

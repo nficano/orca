@@ -27,6 +27,10 @@ export const IPC = {
   accountsPreview: 'accounts:preview',
   /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
   accountsConnect: 'accounts:connect',
+  /** renderer → main (invoke, Account dir): rewrite that Account's hook (ReinstallResult). */
+  setupReinstall: 'setup:reinstall',
+  /** renderer → main (invoke): close the restart banner. */
+  setupDismissRestart: 'setup:dismiss-restart',
   /** main → quick-answer panel (send): the global shortcut just showed the panel. */
   quickAnswerOpened: 'quick-answer:opened',
   /** quick-answer panel → main (send): hide the panel. */

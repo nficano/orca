@@ -9,6 +9,15 @@ import type {
   SessionStopRequest,
 } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
+import type { ReinstallResult } from '@orca/protocol';
+
+/** Setup-error banners (Storyboard F9). Optional so renderer test fakes that aren't about setup can leave them out. */
+export interface SetupBridge {
+  /** The Hooks missing banner's Reinstall: rewrites that Account's hook. */
+  reinstallHooks?(dir: string): Promise<ReinstallResult>;
+  /** Closes the restart banner. */
+  dismissRestart?(): Promise<void>;
+}
 
 /** First run and hook install (Storyboard F1). */
 export interface AccountsBridge {
@@ -23,7 +32,7 @@ export interface AccountsBridge {
 }
 
 /** What the preload exposes to the renderer as `window.orca`. */
-export interface OrcaBridge extends AccountsBridge {
+export interface OrcaBridge extends AccountsBridge, SetupBridge {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   /** `target` is set when a notification opened the popover for one Ask. */

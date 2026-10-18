@@ -63,6 +63,11 @@ export function handedBackText(openedAt: number, handedBackAt: number): string {
   return `No answer here for ${plural(minutes, 'minute')}, so Cursor is asking now. Answer it there.`;
 }
 
+/** "10:12 AM": a time of day in the banner copy. */
+export function clockTime(t: number): string {
+  return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
 /** "14 minutes" since the transcript last grew; "1h 5m" past an hour. */
 export function quietLabel(lastActivityAt: number, now: number): string {
   const minutes = Math.max(1, Math.floor((now - lastActivityAt) / 60_000));
