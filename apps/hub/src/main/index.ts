@@ -5,9 +5,12 @@
 import {
   CURSOR_IPC,
   IPC,
+  RULES_IPC,
   type ApprovalBatchRequest,
   type ApprovalBatchResult,
   type ApprovalDecideRequest,
+  type AskDismissRequest,
+  type ApprovalDecideResult,
   type IpcResult,
   type OpenInCursorRequest,
   type OpenInCursorResult,
@@ -43,6 +46,7 @@ import { createIdleWatch, watchPower } from './done/idle';
 import { headlessResumer } from './done/resume';
 import { electronNotifier } from './electron-notifier';
 import { defaultSummarizer } from './haiku-summarizer';
+import { followSessions } from './follow-sessions';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { openAsk, withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
@@ -65,6 +69,9 @@ import { createSettings, highRiskConfirmer } from './settings/settings';
 import { gatedBatch, settingsIpcHandlers } from './settings/ipc';
 import { notifyingInbox } from './settings/notify';
 import { hookTimeoutsFor, rewriteHookTimeouts } from './accounts/hook-timeouts';
+import { createApprovalHistory, readApprovalHistory } from './rules/history';
+import { rulesIpcHandlers } from './rules/ipc';
+import { createLearnedRules } from './rules/learned-rules';
 import { touchIdConfirmer, touchIdPrompter } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
@@ -113,8 +120,15 @@ const settings = createSettings({
   },
   shortcut: () => quickAnswer?.shortcut,
 });
+const decisionsPath = join(dataDir, 'decisions.jsonl');
+/** Learned rules, owned by the hub and applied to every Account's Approvals (spec › Decisions). */
+const rules = createLearnedRules({ storePath: join(dataDir, 'rules.json') });
+/** Earlier Approvals for the Always allow preview; filled from decisions.jsonl at startup. */
+const approvalHistory = createApprovalHistory();
 const inbox = createInbox({
-  log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')),
+  log: fileDecisionsLog(decisionsPath),
+  rules,
+  history: approvalHistory,
   accountName: accounts.nameOf,
   // Touch ID before a red Approve, unless Settings turned it off.
   confirmWithTouchId: highRiskConfirmer(settings, touchIdConfirmer(systemPreferences, onTouchIdSheet)),
@@ -123,6 +137,8 @@ const inbox = createInbox({
   summarize: defaultSummarizer(process.env),
 });
 const sessions = createSessions();
+/** Answers in the editor and Sessions ending settle Approvals Orca no longer asks about (I6 §1). */
+const stopFollowingSessions = followSessions({ inbox, sessions });
 /** Where the morning recap starts: the last time the user was away. */
 const idle = createIdleWatch();
 /** Status lines, Done cards and the recap, from report_status and handoff. */
@@ -183,10 +199,20 @@ app.whenReady().then(async () => {
   app.dock?.hide();
 
   ipcMain.handle(IPC.inboxGet, () => hubSnapshot());
-  ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
+  ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<ApprovalDecideResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
-    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
+    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via, ...(req.rule !== undefined ? { rule: req.rule } : {}) });
   });
+  ipcMain.handle(IPC.askDismiss, (_e, req: AskDismissRequest): IpcResult => {
+    if (!req || typeof req.id !== 'string') return { ok: false, error: 'invalid-request' };
+    return inbox.dismiss(req.id);
+  });
+  for (const [channel, handle] of Object.entries(rulesIpcHandlers(rules))) {
+    ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
+  }
+  // Rules load before any shim can connect, so the first matching Approval is already covered.
+  await rules.load();
+  for (const entry of await readApprovalHistory(decisionsPath)) approvalHistory.add(entry);
   const approveBatch = gatedBatch(settings, (req) => inbox.approveBatch(req));
   ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => approveBatch(req));
   for (const [channel, handle] of Object.entries(settingsIpcHandlers(settings))) {
@@ -315,6 +341,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   sessionTracking?.stop();
+  stopFollowingSessions();
   focus.stop();
   setup.stop();
   void hubSocket?.close();

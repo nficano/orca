@@ -3,6 +3,7 @@ import type {
   ApprovalBatchRequest,
   ApprovalBatchResult,
   ApprovalDecideRequest,
+  ApprovalDecideResult,
   ApprovalDecision,
   ApprovalView,
   AskView,
@@ -14,16 +15,22 @@ import type {
   QuestionAskMessage,
   QuestionView,
   RiskTier,
+  RuleSaveOutcome,
 } from '@orca/protocol';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { posix } from 'node:path';
 import { commandSteps, withExplanations } from './command-steps';
-import type { DecisionsLog } from './decisions-log';
+import type { DecisionRecord, DecisionsLog } from './decisions-log';
 import { riskTier, type ToolCall } from './risk-tier';
+import { sameToolCall } from './same-tool-call';
+import type { ApprovalHistory } from './rules/history';
+import { repoName, type LearnedRules, type RuleSaveRequest } from './rules/learned-rules';
 import { maskSecrets } from './secrets';
 import { joinArgv } from './shell';
+import type { ToolAnswer } from './sessions/sessions';
 import { isLongCommand, type Summarize, type Summary, type SummaryRequest } from './summaries';
+import { repoOf as gitRepoOf } from './sessions/stall-threshold';
 import { TIER_WAITS_MS, type TierWaits } from './tier-waits';
 import { worktreeRoot } from './worktree';
 
@@ -43,11 +50,26 @@ export interface Inbox {
   /** The orca MCP server connected: open one Question. `reply` sends the answer back down that connection. */
   openQuestion(msg: QuestionAskMessage, reply: (answer: QuestionAnswer) => void): string;
   /**
-   * The Ask's connection closed. The Ask leaves the inbox if it was still
-   * open; a handed-back Approval stays ("Cursor is asking now").
+   * The Ask's connection closed. An Approval still open was answered in the
+   * editor first: it is resolved elsewhere ("Handled in Cursor"). A Question
+   * leaves the inbox; a handed-back Approval stays ("Cursor is asking now").
    */
   close(id: string): void;
-  decide(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /**
+   * A transcript shows a tool call answered. The oldest matching Approval
+   * that was handed back leaves the inbox, or the oldest one resolved
+   * elsewhere turns "Approved in Cursor" when the call ran.
+   */
+  toolAnswered(answer: ToolAnswer): void;
+  /**
+   * The Session ended. Its Approvals nobody answered are orphaned ("Nothing
+   * was run."): open ones get no decision and their shims are let go.
+   */
+  sessionEnded(account: string, sessionId: string): void;
+  /** The X on a resolved-elsewhere or orphaned card. Open Asks can't be dismissed. */
+  dismiss(id: string): IpcResult;
+  /** With `rule` ("Allow and approve"): saves that Learned rule, then allows. */
+  decide(req: ApprovalDecideRequest): Promise<ApprovalDecideResult>;
   /**
    * "Approve N" in the batch row. Re-checks each Approval's Risk tier now and
    * allows only those still green; every other id is skipped with its reason.
@@ -64,8 +86,20 @@ interface OpenAsk {
   reply: (decision: ApprovalDecision) => void;
   /** The tool call as the hook sent it, so its tier can be re-checked. */
   call: ToolCall;
+  /** The Repo (shared git dir) its cwd is in. */
+  repo?: string;
   /** Hands the Ask back to the editor when its tier wait runs out. */
   timer: ReturnType<typeof setTimeout>;
+  /** Closes the shim's connection with no decision. */
+  handBack?: () => void;
+}
+
+/** An Approval Orca no longer asks about, kept for its card. */
+interface ClosedAsk {
+  view: ApprovalView;
+  call: ToolCall;
+  /** The transcript showed its answer: it ran, or the user rejected it. */
+  settled?: true;
 }
 
 interface OpenQuestion {
@@ -97,6 +131,16 @@ export interface InboxOptions {
    */
   summarize?: Summarize;
   /**
+   * Learned rules: an Approval whose every step has a rule is allowed at once
+   * and never becomes an Ask. Without them, every Approval asks and there is no
+   * Always allow.
+   */
+  rules?: LearnedRules;
+  /** Earlier Approvals, for "Would have covered N earlier Approvals"; fed every decided Approval. */
+  history?: ApprovalHistory;
+  /** The Repo (shared git dir) that holds an Ask's cwd. */
+  repoOf?: (cwd: string | undefined) => string | undefined;
+  /**
    * How long the inbox asks, per Risk tier, before it hands an Approval back
    * to the editor. A function is read as each Approval opens (Settings › General).
    */
@@ -113,6 +157,9 @@ export function createInbox({
   homeDir = homedir(),
   confirmWithTouchId = async () => false,
   summarize,
+  rules,
+  history,
+  repoOf = (cwd) => (cwd && posix.isAbsolute(cwd) ? gitRepoOf(cwd) : undefined),
   tierWaits = TIER_WAITS_MS,
 }: InboxOptions): Inbox {
   // Map keeps insertion order, which is arrival order: oldest first.
@@ -124,7 +171,9 @@ export function createInbox({
    * Approvals whose tier wait ran out: handed back to the editor, never
    * decided here. They stay in the inbox as "Cursor is asking now".
    */
-  const handedBack = new Map<string, ApprovalView>();
+  const handedBack = new Map<string, ClosedAsk>();
+  /** Approvals resolved elsewhere or orphaned, until dismissed (I6 §1). */
+  const resolved = new Map<string, ClosedAsk>();
   const listeners = new Set<(s: InboxSnapshot) => void>();
 
   const snapshot = (): InboxSnapshot => {
@@ -133,8 +182,15 @@ export function createInbox({
       ...[...open.values()].map((a) => a.view),
       ...[...questions.values()].map((q) => q.view),
     ].sort((a, b) => a.openedAt - b.openedAt);
-    const back = [...handedBack.values()].sort((a, b) => a.openedAt - b.openedAt);
-    return { pending, ...(back.length ? { handedBack: back } : {}), counts: { pending: pending.length + back.length } };
+    const oldestFirst = (m: Map<string, ClosedAsk>) => [...m.values()].map((a) => a.view).sort((a, b) => a.openedAt - b.openedAt);
+    const back = oldestFirst(handedBack);
+    const done = oldestFirst(resolved);
+    return {
+      pending,
+      ...(back.length ? { handedBack: back } : {}),
+      ...(done.length ? { resolved: done } : {}),
+      counts: { pending: pending.length + back.length },
+    };
   };
   const emit = () => {
     const s = snapshot();
@@ -161,6 +217,66 @@ export function createInbox({
       });
   };
 
+  /** What decisions.jsonl keeps of an Approval for the Always allow preview, and feeding the history. */
+  const remember = (view: ApprovalView, repo: string | undefined): Partial<DecisionRecord> => {
+    const steps = stepsOf(view);
+    if (!steps) return repo ? { repo } : {};
+    history?.add({ steps, ...(repo ? { repo } : {}) });
+    return { steps, ...(repo ? { repo } : {}) };
+  };
+
+  /** Spec › Approval path 4: a matching Learned rule allows at once. Not an Ask: no card, no notification. */
+  const allowedByRule = (view: ApprovalView, repo: string | undefined, reply: (d: ApprovalDecision) => void): boolean => {
+    const steps = stepsOf(view);
+    if (!rules || !steps || view.risk === 'red') return false;
+    const matched = rules.match(steps, repo);
+    if (!matched) return false;
+    const ruleIds = matched.map((r) => r.id);
+    reply({ behavior: 'allow' });
+    void log
+      .append({
+        at: new Date(now()).toISOString(),
+        askId: view.id,
+        account: view.account,
+        sessionId: view.sessionId,
+        toolName: view.toolName,
+        command: view.command,
+        risk: view.risk,
+        behavior: 'allow',
+        via: 'rule',
+        ruleIds,
+        steps,
+        ...(repo ? { repo } : {}),
+      })
+      .catch(onLogError);
+    void rules.recordUse(ruleIds).catch(onLogError);
+    return true;
+  };
+
+  /** "Allow and approve": the rule to save, or null when the request can't make one. */
+  const ruleRequest = (ask: OpenAsk, req: ApprovalDecideRequest): RuleSaveRequest | null => {
+    const { rule } = req;
+    if (!rules || req.decision !== 'allow' || ask.view.risk === 'red') return null;
+    if (typeof rule !== 'object' || rule === null || typeof rule.pattern !== 'string') return null;
+    const pattern = rule.pattern.trim();
+    if (!pattern || !stepsOf(ask.view)?.includes(pattern)) return null;
+    if (rule.scope === 'all') return { pattern, scope: 'all' };
+    if (rule.scope === 'repo' && ask.repo) return { pattern, scope: 'repo', repo: ask.repo };
+    return null;
+  };
+
+  /** Writes the rule, counting the Approval it came from as its first use. */
+  const saveRule = async (req: RuleSaveRequest): Promise<RuleSaveOutcome> => {
+    try {
+      const rule = await rules!.save(req);
+      await rules!.recordUse([rule.id]).catch(onLogError);
+      return { saved: true, ruleId: rule.id };
+    } catch (err) {
+      onLogError(err);
+      return { saved: false };
+    }
+  };
+
   return {
     open(msg, reply, handBack) {
       const id = newId();
@@ -170,21 +286,37 @@ export function createInbox({
       const openedAt = now();
       const wait = (typeof tierWaits === 'function' ? tierWaits() : tierWaits)[risk];
       const view: ApprovalView = { ...approvalView(id, msg, risk, openedAt), waitEndsAt: openedAt + wait };
+      const repo = rules ? repoOf(cwd) : undefined;
+      if (allowedByRule(view, repo, reply)) return id;
       if (readsOutsideWorktree) view.readsOutsideWorktree = true;
+      const steps = stepsOf(view);
+      if (rules && steps) {
+        view.alwaysAllow = {
+          ...(repo ? { repoName: repoName(repo) } : {}),
+          covered: history?.covered(steps, repo) ?? steps.map(() => ({ repo: 0, all: 0 })),
+        };
+      }
       const name = msg.account ? accountName(msg.account) : undefined;
       // A wait running out never allows: the Ask leaves `open`, so nothing can decide it, and the shim gets no decision.
       const timer = setTimeout(() => {
         const ask = open.get(id);
         if (!ask) return;
         open.delete(id);
-        handedBack.set(id, { ...ask.view, handedBackAt: now() });
+        handedBack.set(id, { view: { ...ask.view, handedBackAt: now() }, call: ask.call });
         handBack?.();
         emit();
       }, wait);
       // An open Ask alone never keeps the process alive.
       timer.unref?.();
       const wantsSummary = summarize !== undefined && isLongCommand(view.command);
-      open.set(id, { view: { ...view, ...(name ? { accountName: name } : {}), ...(wantsSummary ? { summaryPending: true } : {}) }, reply, call, timer });
+      open.set(id, {
+        view: { ...view, ...(name ? { accountName: name } : {}), ...(wantsSummary ? { summaryPending: true } : {}) },
+        reply,
+        call,
+        timer,
+        ...(handBack ? { handBack } : {}),
+        ...(repo ? { repo } : {}),
+      });
       if (wantsSummary) {
         const steps = view.steps?.map((s) => s.command) ?? [];
         requestSummary(
@@ -228,8 +360,77 @@ export function createInbox({
 
     close(id) {
       const ask = open.get(id);
-      if (ask) clearTimeout(ask.timer);
-      if (open.delete(id) || questions.delete(id)) emit();
+      if (ask) {
+        // The editor answered first: its prompt killed the shim (spec › Approval path 6).
+        open.delete(id);
+        clearTimeout(ask.timer);
+        resolved.set(id, { view: { ...closedView(ask.view), resolvedElsewhere: { at: now() } }, call: ask.call });
+        emit();
+        return;
+      }
+      if (questions.delete(id)) emit();
+    },
+
+    toolAnswered(answer) {
+      const answers = (a: ClosedAsk) =>
+        asksIn(a.view, answer.account, answer.sessionId) &&
+        (answer.at === undefined || answer.at >= a.view.openedAt) &&
+        sameToolCall({ tool: a.call.toolName, input: a.call.toolInput }, answer);
+      const back = [...handedBack.entries()].filter(([, a]) => answers(a));
+      const elsewhere = [...resolved.entries()].filter(([, a]) => a.view.resolvedElsewhere && !a.settled && answers(a));
+      const [match] = [...back, ...elsewhere].sort(([, a], [, b]) => a.view.openedAt - b.view.openedAt);
+      if (!match) return;
+      const [id, ask] = match;
+      if (handedBack.delete(id)) {
+        // "Cursor is asking now" clears: the editor has its answer (spec › Approval path 7).
+        emit();
+        return;
+      }
+      ask.settled = true;
+      if (answer.outcome === 'ran') {
+        ask.view = { ...ask.view, resolvedElsewhere: { ...ask.view.resolvedElsewhere!, approved: true } };
+        emit();
+      }
+    },
+
+    sessionEnded(account, sessionId) {
+      const at = now();
+      const orphan = (view: ApprovalView): ApprovalView => {
+        const { resolvedElsewhere: _, ...rest } = closedView(view);
+        return { ...rest, orphanedAt: at };
+      };
+      let changed = false;
+      const letGo: (() => void)[] = [];
+      for (const [id, ask] of open) {
+        if (!asksIn(ask.view, account, sessionId)) continue;
+        open.delete(id);
+        clearTimeout(ask.timer);
+        resolved.set(id, { view: orphan(ask.view), call: ask.call });
+        if (ask.handBack) letGo.push(ask.handBack);
+        changed = true;
+      }
+      for (const [id, ask] of handedBack) {
+        if (!asksIn(ask.view, account, sessionId)) continue;
+        handedBack.delete(id);
+        resolved.set(id, { view: orphan(ask.view), call: ask.call });
+        changed = true;
+      }
+      for (const ask of resolved.values()) {
+        // Subagent tool calls never reach the hub's transcript reader, so their silence proves nothing.
+        if (!ask.view.resolvedElsewhere || ask.settled || ask.view.viaSubagent) continue;
+        if (!asksIn(ask.view, account, sessionId)) continue;
+        ask.view = orphan(ask.view);
+        changed = true;
+      }
+      // No decision goes down: nothing was run.
+      for (const close of letGo) close();
+      if (changed) emit();
+    },
+
+    dismiss(id) {
+      if (!resolved.delete(id)) return { ok: false, error: 'invalid-request' };
+      emit();
+      return { ok: true };
     },
 
     async answer({ id, optionIndex, text }) {
@@ -243,10 +444,14 @@ export function createInbox({
       return { ok: true };
     },
 
-    async decide({ id, decision, reason, via }) {
+    async decide(req) {
+      const { id, decision, reason, via } = req;
       let ask = open.get(id);
       if (!ask) return { ok: false, error: 'already-resolved' };
       if (decision !== 'allow' && decision !== 'deny') return { ok: false, error: 'invalid-request' };
+      // Red-tier Approvals can never become Learned rules (spec › Decisions).
+      const rule = req.rule === undefined ? undefined : ruleRequest(ask, req);
+      if (rule === null) return { ok: false, error: 'invalid-request' };
 
       if (decision === 'allow' && ask.view.risk === 'red') {
         // One sheet per Ask: a second Approve waits on the sheet already up.
@@ -265,6 +470,8 @@ export function createInbox({
       // Claim the Ask before any await so a racing decide sees it gone.
       open.delete(id);
       clearTimeout(ask.timer);
+      // Write the rule, then allow (I6 §1). A failed write still approves once.
+      const saved = rule ? await saveRule(rule) : undefined;
 
       const answer: ApprovalDecision =
         decision === 'allow' ? { behavior: 'allow' } : { behavior: 'deny', message: reason?.trim() || DEFAULT_DENY_MESSAGE };
@@ -280,11 +487,12 @@ export function createInbox({
           risk: view.risk,
           ...(answer.behavior === 'deny' ? { ...answer, message: maskSecrets(answer.message).text } : answer),
           via: via === 'panel' || via === 'notification' ? via : 'tray',
+          ...(rules ? remember(view, ask.repo) : {}),
         })
         .catch(onLogError);
       ask.reply(answer);
       emit();
-      return { ok: true };
+      return saved ? { ok: true, rule: saved } : { ok: true };
     },
 
     async approveBatch(req) {
@@ -321,7 +529,7 @@ export function createInbox({
       }
 
       const at = new Date(now()).toISOString();
-      for (const { view } of approved) {
+      for (const { view, repo } of approved) {
         await log
           .append({
             at,
@@ -334,6 +542,7 @@ export function createInbox({
             behavior: 'allow',
             via: 'tray',
             batch: true,
+            ...(rules ? remember(view, repo) : {}),
           })
           .catch(onLogError);
       }
@@ -349,6 +558,22 @@ export function createInbox({
       return () => listeners.delete(listener);
     },
   };
+}
+
+/** The Ask belongs to the Session. The hook names its Account only when CLAUDE_CONFIG_DIR / CODEX_HOME is set. */
+function asksIn(view: ApprovalView, account: string, sessionId: string): boolean {
+  return view.sessionId === sessionId && (view.account === '' || view.account === account);
+}
+
+/** A card Orca no longer asks about: no countdown, no summary on the way, not handed back, no Always allow. */
+function closedView(view: ApprovalView): ApprovalView {
+  const { summaryPending: _, waitEndsAt: __, handedBackAt: ___, alwaysAllow: ____, ...rest } = view;
+  return rest;
+}
+
+/** The Approval's steps as shown (secrets masked); undefined when it has none. */
+function stepsOf(view: ApprovalView): string[] | undefined {
+  return view.steps?.length ? view.steps.map((s) => s.command) : undefined;
 }
 
 /** Every agent-written string in the view is masked; `secretsHidden` counts what was hidden. */

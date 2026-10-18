@@ -4,7 +4,7 @@ import type { ProfilesBridge } from '../../preload/api';
 import { GeneralSettings } from './GeneralSettings';
 import { ProfilesSettings } from './ProfilesSettings';
 
-type SettingsTab = 'general' | 'accounts' | 'profiles';
+type SettingsTab = 'general' | 'accounts' | 'profiles' | 'rules';
 
 export interface SettingsPaneProps {
   /** Settings › General; null while loading or when the bridge has none. */
@@ -14,15 +14,18 @@ export interface SettingsPaneProps {
   /** Settings › Accounts. */
   accounts: ReactNode;
   profilesBridge: (ProfilesBridge & { listAccounts(): Promise<ConnectedAccount[]> }) | null;
+  /** Settings › Rules; absent when the bridge has none. */
+  rules?: ReactNode;
 }
 
-/** The Settings section (design 10): General, Accounts and Profiles tabs. */
-export function SettingsPane({ settings, updateSettings, onSettings, accounts, profilesBridge }: SettingsPaneProps) {
+/** The Settings section (design 10): General, Accounts, Profiles and Rules tabs. */
+export function SettingsPane({ settings, updateSettings, onSettings, accounts, profilesBridge, rules }: SettingsPaneProps) {
   const general = settings && updateSettings ? { settings, updateSettings } : null;
   const tabs: [SettingsTab, string][] = [
     ...(general ? [['general', 'General'] as [SettingsTab, string]] : []),
     ['accounts', 'Accounts'],
     ...(profilesBridge ? [['profiles', 'Profiles'] as [SettingsTab, string]] : []),
+    ...(rules ? [['rules', 'Rules'] as [SettingsTab, string]] : []),
   ];
   const [tab, setTab] = useState<SettingsTab | null>(null);
   // General first (design 10), once it has loaded.
@@ -44,6 +47,7 @@ export function SettingsPane({ settings, updateSettings, onSettings, accounts, p
       )}
       {current === 'accounts' && accounts}
       {current === 'profiles' && profilesBridge && <ProfilesSettings bridge={profilesBridge} />}
+      {current === 'rules' && rules}
     </section>
   );
 }

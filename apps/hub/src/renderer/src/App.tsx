@@ -1,4 +1,5 @@
 import type {
+  AlwaysAllowRequest,
   ApprovalBatchResult,
   ApprovalView,
   AskView,
@@ -12,7 +13,7 @@ import type {
   SettingsView,
 } from '@orca/protocol';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { OrcaBridge, ProfilesBridge } from '../../preload/api';
+import type { OrcaBridge, ProfilesBridge, RulesBridge } from '../../preload/api';
 import { ApprovalDetail, SecretsHidden } from './ApprovalDetail';
 import { CursorBanner, openKey, useAskMenu } from './Cursor';
 import { BatchReport, BatchRow, batchLines } from './BatchRow';
@@ -31,12 +32,15 @@ import {
 } from './format';
 import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
+import { isResolved, ResolvedCard } from './ResolvedCard';
 import { focusLabel, nextTab, profileDot } from './profiles';
 import { AccountsSettings } from './AccountsSettings';
 import { SettingsPane } from './SettingsPane';
+import { RulesSettings } from './RulesSettings';
 import { FingerprintIcon, RiskChip } from './RiskChip';
 import { SetupBanners } from './SetupBanners';
 import { Spinner } from './Spinner';
+import { ErrorToast, UndoToast } from './Toast';
 
 const EMPTY: InboxSnapshot = { pending: [], counts: { pending: 0 } };
 
@@ -52,12 +56,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
   /** The rail section on show. */
   const [section, setSection] = useState<'inbox' | 'done' | 'settings'>('inbox');
+  /** The Settings tab on show. */
   /** The open Profile tab: 'all' or a Profile id. */
   const [tab, setTab] = useState('all');
   /** The Approval open in Approval detail, or null for the inbox list. */
   const [detailId, setDetailId] = useState<string | null>(null);
   /** Where the open Approval sat, so the next one opens when it resolves. */
   const detailIndex = useRef(0);
+  /** After "Allow and approve": Undo for the saved rule, or the rule wasn't saved. */
+  const [ruleToast, setRuleToast] = useState<{ ruleId: string } | { notSaved: true } | null>(null);
   /** What the last "Approve N" skipped, until dismissed. */
   const [batchReport, setBatchReport] = useState<ApprovalBatchResult | null>(null);
   const inFlight = useRef(new Set<string>());
@@ -121,7 +128,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
    * The renderer locks a card on send and unlocks it only on error (I6 §5).
    * A red Approve stays locked while the Touch ID sheet is up (I6 §1 confirming).
    */
-  const send = useCallback(async (id: string, intent: () => Promise<IpcResult>): Promise<IpcResult | undefined> => {
+  const send = useCallback(async <R extends IpcResult,>(id: string, intent: () => Promise<R>): Promise<R | undefined> => {
     if (inFlight.current.has(id)) return undefined;
     inFlight.current.add(id);
     setBusy(new Set(inFlight.current));
@@ -136,6 +143,22 @@ export function App({ bridge, now = Date.now }: AppProps) {
     (id: string, decision: 'allow' | 'deny', reason?: string) =>
       send(id, () => bridge.decideApproval(reason === undefined ? { id, decision } : { id, decision, reason })),
     [bridge, send],
+  );
+  /** "Allow and approve": main writes the rule, then allows (I6 §1). */
+  const alwaysAllow = useCallback(
+    (id: string, rule: AlwaysAllowRequest) =>
+      void send(id, () => bridge.decideApproval({ id, decision: 'allow', rule })).then((result) => {
+        if (!result?.ok || !result.rule) return;
+        setRuleToast(result.rule.saved ? { ruleId: result.rule.ruleId } : { notSaved: true });
+      }),
+    [bridge, send],
+  );
+  const undoRule = useCallback(
+    (ruleId: string) => {
+      setRuleToast(null);
+      void bridge.undoRule?.({ ruleId });
+    },
+    [bridge],
   );
   const answer = useCallback(
     (id: string, intent: AnswerIntent) => send(id, () => bridge.answerQuestion({ id, ...intent })),
@@ -163,6 +186,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
 
   const profilesBridge = useMemo(() => profilesOf(bridge), [bridge]);
+  const rulesBridge = useMemo(() => rulesOf(bridge), [bridge]);
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const profiles = inbox.profiles ?? [];
@@ -173,8 +197,11 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const colorOf = (profileId: string | undefined) => profiles.find((p) => p.id === profileId)?.color;
   const pending = inbox.pending.filter(inTab);
   /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
-  const cards: AskView[] = [...pending, ...(inbox.handedBack ?? []).filter(inTab)].sort((a, b) => a.openedAt - b.openedAt);
-  const askMenu = useAskMenu(cards, openInCursor);
+  const openCards: AskView[] = [...pending, ...(inbox.handedBack ?? []).filter(inTab)];
+  /** ...plus resolved-elsewhere and orphaned cards, until dismissed. */
+  const cards: AskView[] = [...openCards, ...(inbox.resolved ?? []).filter(inTab)].sort((a, b) => a.openedAt - b.openedAt);
+  const askMenu = useAskMenu(openCards, openInCursor);
+  const dismissAsk = bridge.dismissAsk ? (id: string) => void bridge.dismissAsk!({ id }) : undefined;
   const running = (inbox.sessions ?? []).filter((s) => (s.state === 'running' || s.state === 'waiting') && inTab(s));
   const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled' && inTab(s));
   const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou && inTab(s));
@@ -296,6 +323,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           onSettings={setSettings}
           accounts={<AccountsSettings accounts={accounts} problems={inbox.setup?.problems ?? []} reinstall={reinstall} />}
           profilesBridge={profilesBridge}
+          rules={rulesBridge && <RulesSettings bridge={rulesBridge} now={now} />}
         />
       )}
       {detail && section === 'inbox' && accounts?.length ? (
@@ -309,6 +337,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
             onBack={closeDetail}
             onMove={moveDetail}
             onDecide={decide}
+            {...(bridge.undoRule ? { onAlwaysAllow: alwaysAllow } : {})}
           />
         </section>
       ) : null}
@@ -369,6 +398,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
                   onAnswer={answer}
                   profileColor={colorOf(ask.profileId)}
                 />
+              ) : isResolved(ask) ? (
+                <ResolvedCard key={ask.id} ask={ask} onKeyDown={(e) => void moveCardFocus(e)} {...(dismissAsk ? { onDismiss: dismissAsk } : {})} />
               ) : ask.handedBackAt !== undefined ? (
                 <HandedBackCard
                   key={ask.id}
@@ -404,6 +435,16 @@ export function App({ bridge, now = Date.now }: AppProps) {
         {batchReport && <BatchReport result={batchReport} onDismiss={() => setBatchReport(null)} />}
       </section>
       {askMenu.element}
+      {ruleToast &&
+        ('ruleId' in ruleToast ? (
+          <UndoToast key={ruleToast.ruleId} className="pop-toast" onUndo={() => undoRule(ruleToast.ruleId)} onDone={() => setRuleToast(null)}>
+            Rule saved
+          </UndoToast>
+        ) : (
+          <ErrorToast className="pop-toast" onClose={() => setRuleToast(null)}>
+            Approved once. The rule wasn't saved.
+          </ErrorToast>
+        ))}
     </div>
   );
 }
@@ -634,6 +675,12 @@ export function useSystemTheme() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
+}
+
+/** The Rules half of the bridge, when the hub has one. */
+function rulesOf(bridge: OrcaBridge): RulesBridge | null {
+  const { listRules, removeRule, undoRule } = bridge;
+  return listRules && removeRule && undoRule ? { listRules, removeRule, undoRule } : null;
 }
 
 /** The Profiles half of the bridge, when the hub has one. */

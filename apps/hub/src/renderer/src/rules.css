@@ -1,0 +1,148 @@
+/* Design 2 · Always allow sheet (values from html/Approval.html; I6 §3: 344 wide, r14, padding 8). */
+.detail {
+  position: relative;
+}
+.contents {
+  display: contents;
+}
+.split {
+  display: flex;
+  gap: 1px;
+}
+.split > .btn:first-child {
+  border-radius: var(--r-9) 0 0 var(--r-9);
+}
+.split > .btn.more {
+  border-radius: 0 var(--r-9) var(--r-9) 0;
+  padding: 0 9px;
+}
+.sheet {
+  position: absolute;
+  right: var(--s-16);
+  bottom: 60px;
+  z-index: 2;
+  width: 344px;
+  box-sizing: border-box;
+  max-height: calc(100% - 76px);
+  overflow-y: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-14);
+  box-shadow: var(--shadow-menu);
+  padding: var(--s-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.sheet .opt:hover:not(:has(:disabled)) {
+  background: var(--control);
+}
+.sheet .opt:has(:disabled) {
+  color: var(--text-2);
+}
+.sheet-once {
+  justify-content: space-between;
+  font-weight: 600;
+}
+.sheet-key {
+  color: var(--text-2);
+  font-weight: 500;
+}
+.sheet-divider {
+  height: 1px;
+  background: var(--border-1);
+  margin: var(--s-4) var(--s-6);
+}
+.sheet-label {
+  padding: var(--s-4) var(--s-10) 0;
+}
+.sheet-code {
+  margin: var(--s-2) var(--s-10) 0;
+  font-size: 12px;
+}
+.sheet-step .code {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+.sheet-note {
+  margin: var(--s-2) var(--s-10) var(--s-4);
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.sheet-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.sheet-sub {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.sheet-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--s-6) var(--s-4) var(--s-2);
+}
+
+/* Undo toast (I6 §4): over the main column, never the rail. */
+.toast.pop-toast {
+  left: calc(88px + var(--s-16));
+  z-index: 3;
+}
+.toast-action {
+  flex: none;
+  margin: -4px 0;
+}
+.toast.error {
+  border-color: var(--risk-high);
+}
+
+/* Design 10 · Settings › Rules. */
+.rules-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+.rules-search {
+  flex: none;
+}
+.rules-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.rules-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-10);
+  min-height: 44px;
+  padding: 0 var(--s-6) 0 var(--s-10);
+  border-radius: var(--r-10);
+}
+.rule-row:hover {
+  background: var(--surface-2);
+}
+.rule-row .code {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rule-row > .meta {
+  flex: none;
+}
+.rules-foot {
+  margin: auto 0 0;
+  padding-top: var(--s-8);
+  font-size: 12px;
+  color: var(--text-2);
+}

@@ -1,5 +1,6 @@
-import type { ApprovalStep, ApprovalView, IpcResult } from '@orca/protocol';
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import type { AlwaysAllowRequest, ApprovalStep, ApprovalView, IpcResult } from '@orca/protocol';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { AlwaysAllowSheet } from './AlwaysAllowSheet';
 import { baseName, waitLabel } from './format';
 import { FingerprintIcon, RiskChip } from './RiskChip';
 import { Spinner } from './Spinner';
@@ -14,6 +15,8 @@ export interface ApprovalDetailProps {
   onBack: () => void;
   onMove: (delta: -1 | 1) => void;
   onDecide: (id: string, decision: 'allow' | 'deny', reason?: string) => Promise<IpcResult | undefined>;
+  /** "Allow and approve" in the Always allow sheet. Absent: Approve is a plain button. */
+  onAlwaysAllow?: (id: string, rule: AlwaysAllowRequest) => void;
 }
 
 /** How long "Not approved" stays under the buttons after Touch ID fails (I6 §1). */
@@ -24,8 +27,11 @@ const NOT_APPROVED_MS = 3000;
  * explanations and risky flags highlighted, the agent's reason, and a field to
  * tell the agent what to do instead. ↑ / ↓ move between Approvals; Esc goes back.
  */
-export function ApprovalDetail({ ask, position, total, now, busy, onBack, onMove, onDecide }: ApprovalDetailProps) {
+export function ApprovalDetail({ ask, position, total, now, busy, onBack, onMove, onDecide, onAlwaysAllow }: ApprovalDetailProps) {
   const [instead, setInstead] = useState('');
+  /** The Always allow sheet above the split Approve. */
+  const [sheet, setSheet] = useState(false);
+  const closeSheet = useCallback(() => setSheet(false), []);
   const [pressed, setPressed] = useState<'allow' | 'deny' | 'instead' | null>(null);
   const [notApproved, setNotApproved] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
@@ -33,6 +39,7 @@ export function ApprovalDetail({ ask, position, total, now, busy, onBack, onMove
   // A different Ask starts clean.
   useEffect(() => {
     setInstead('');
+    setSheet(false);
     setPressed(null);
     setNotApproved(false);
     rootRef.current?.focus();
@@ -45,6 +52,7 @@ export function ApprovalDetail({ ask, position, total, now, busy, onBack, onMove
 
   const decide = (decision: 'allow' | 'deny', reason?: string) => {
     if (busy) return;
+    setSheet(false);
     setPressed(reason === undefined ? decision : 'instead');
     setNotApproved(false);
     void onDecide(ask.id, decision, reason).then((result) => {
@@ -71,6 +79,13 @@ export function ApprovalDetail({ ask, position, total, now, busy, onBack, onMove
 
   const red = ask.risk === 'red';
   const steps = ask.steps ?? [];
+  const alwaysAllow = onAlwaysAllow && ask.alwaysAllow && steps.length > 0 ? { ...ask, alwaysAllow: ask.alwaysAllow, steps } : undefined;
+  const allowAndApprove = (rule: AlwaysAllowRequest) => {
+    if (busy || !onAlwaysAllow) return;
+    setSheet(false);
+    setPressed('allow');
+    onAlwaysAllow(ask.id, rule);
+  };
   const title = ask.title ?? ask.toolName;
   const worktree = baseName(ask.cwd);
   const meta = [ask.accountName ?? baseName(ask.account), worktree].filter(Boolean);
@@ -185,17 +200,34 @@ export function ApprovalDetail({ ask, position, total, now, busy, onBack, onMove
         <button className="btn" disabled={busy} aria-label="Deny" onClick={() => decide('deny')}>
           {busy && pressed === 'deny' ? <Spinner /> : 'Deny'}
         </button>
-        <button className={red ? 'btn' : 'btn primary'} disabled={busy} aria-label={red ? 'Approve with Touch ID' : 'Approve'} onClick={() => decide('allow')}>
-          {busy && pressed === 'allow' ? (
-            <Spinner />
-          ) : (
-            <>
-              {red && <FingerprintIcon />}
-              Approve
-            </>
+        <div className={alwaysAllow ? 'split' : 'contents'}>
+          <button className={red ? 'btn' : 'btn primary'} disabled={busy} aria-label={red ? 'Approve with Touch ID' : 'Approve'} onClick={() => decide('allow')}>
+            {busy && pressed === 'allow' ? (
+              <Spinner />
+            ) : (
+              <>
+                {red && <FingerprintIcon />}
+                Approve
+              </>
+            )}
+          </button>
+          {alwaysAllow && (
+            <button
+              className={red ? 'btn more' : 'btn primary more'}
+              disabled={busy}
+              aria-label="More approve options"
+              aria-haspopup="dialog"
+              aria-expanded={sheet}
+              onClick={() => setSheet((s) => !s)}
+            >
+              <ChevronUpIcon />
+            </button>
           )}
-        </button>
+        </div>
       </div>
+      {alwaysAllow && sheet && (
+        <AlwaysAllowSheet ask={alwaysAllow} onApproveOnce={() => decide('allow')} onAllowAndApprove={allowAndApprove} onClose={closeSheet} />
+      )}
     </section>
   );
 }

@@ -62,6 +62,21 @@ export interface Sessions {
   /** Every Session seen, Ended ones included. */
   list(): SessionView[];
   subscribe(listener: () => void): () => void;
+  /** Each tool call a transcript shows answered (it ran, or the user rejected it), as its lines are read. */
+  onToolAnswer(listener: (answer: ToolAnswer) => void): () => void;
+}
+
+/**
+ * A transcript shows a top-level tool call answered: it ran (whether or not it
+ * succeeded) or the user rejected it. `at` is the result's timestamp.
+ */
+export interface ToolAnswer {
+  account: string;
+  sessionId: string;
+  tool: string;
+  input: unknown;
+  outcome: 'ran' | 'rejected';
+  at?: number;
 }
 
 export interface SessionsOptions {
@@ -89,6 +104,7 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
   const readers = new Map<string, TranscriptReader>();
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((l) => l());
+  const answerListeners = new Set<(answer: ToolAnswer) => void>();
 
   const readerFor = ({ agent, path }: TranscriptSource) => {
     let r = readers.get(path);
@@ -167,13 +183,18 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
     ingest(source, lines) {
       const read = readerFor(source);
       let changed = false;
+      const answers: ToolAnswer[] = [];
       for (const line of lines) {
         for (const u of read(line)) {
           apply(source, u);
           changed = true;
+          if (u.toolAnswer) {
+            answers.push({ account: source.account, sessionId: u.sessionId, ...u.toolAnswer, ...(u.at !== undefined ? { at: u.at } : {}) });
+          }
         }
       }
       if (changed) emit();
+      for (const a of answers) answerListeners.forEach((l) => l(a));
     },
     reconcile(processes) {
       let changed = false;
@@ -236,6 +257,10 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    onToolAnswer(listener) {
+      answerListeners.add(listener);
+      return () => answerListeners.delete(listener);
     },
   };
 }

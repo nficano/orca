@@ -25,6 +25,11 @@ export interface TranscriptUpdate {
   step?: string;
   /** A tool call finished; `error` is its failure text when it failed. Feeds loop detection. */
   toolResult?: { tool: string; error?: string };
+  /**
+   * What happened to the tool call that result answers: it ran (even if it
+   * failed), or the user rejected it. Matches an Approval answered in the editor.
+   */
+  toolAnswer?: { tool: string; input: unknown; outcome: 'ran' | 'rejected' };
 }
 
 /** Reads one transcript file's lines in order; keeps whatever per-file state the format needs. */
@@ -53,6 +58,16 @@ export function parseLine(line: string): Record<string, unknown> | undefined {
 /** orca's `handoff` MCP tool, as Claude (`mcp__orca__handoff`) or Codex names it. */
 export function isHandoffTool(name: unknown): boolean {
   return name === 'mcp__orca__handoff' || name === 'orca__handoff' || name === 'orca.handoff';
+}
+
+/** Claude Code's tool result when the user rejects a tool call in its prompt. */
+const CLAUDE_REJECTED = /doesn't want to proceed with this tool use|tool use was rejected/i;
+/** Codex's tool output when the user declines a call ("exec command rejected by user"). */
+const CODEX_REJECTED = /\b(rejected|declined|denied|aborted) by (the )?user\b/i;
+
+/** Whether a tool result's text says the user rejected the call rather than that it ran. */
+export function wasRejected(agent: 'claude' | 'codex', text: string): boolean {
+  return (agent === 'claude' ? CLAUDE_REJECTED : CODEX_REJECTED).test(text);
 }
 
 /** A non-negative whole token count, or 0. */
