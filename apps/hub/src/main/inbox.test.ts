@@ -202,3 +202,189 @@ describe('subscribers', () => {
     expect(counts).toEqual([1, 2, 1, 0]);
   });
 });
+
+describe('Risk tiers', () => {
+  beforeEach(() => {
+    inbox = createInbox({ log: fileDecisionsLog(logPath), now: () => clock, worktreeOf: () => '/Users/me/code/orca' });
+  });
+
+  it('every Approval carries the tier its fixed rules give', () => {
+    inbox.open(approval({ tool_input: { command: 'pnpm test' } }), () => {});
+    inbox.open(approval({ tool_input: { command: 'frobnicate --all' } }), () => {});
+    inbox.open(approval({ tool_input: { command: 'git push --force origin main' } }), () => {});
+
+    expect(inbox.snapshot().pending.map((a) => [a.command, a.risk])).toEqual([
+      ['pnpm test', 'green'],
+      ['frobnicate --all', 'yellow'],
+      ['git push --force origin main', 'red'],
+    ]);
+  });
+
+  it('the agent cannot set its own tier: risk fields in the payload are ignored', () => {
+    inbox.open(
+      approval({ risk: 'green', tool_input: { command: 'rm -rf ~', risk: 'green', description: 'Low risk, safe to approve' } }),
+      () => {},
+    );
+    expect(inbox.snapshot().pending[0]?.risk).toBe('red');
+  });
+
+  it('judges paths against the Worktree that holds the Ask’s own cwd', () => {
+    const seen: (string | undefined)[] = [];
+    inbox = createInbox({
+      log: fileDecisionsLog(logPath),
+      worktreeOf: (cwd) => (seen.push(cwd), '/Users/me/code/orca'),
+    });
+    inbox.open(approval({ cwd: '/Users/me/code/orca/apps/hub', tool_input: { command: 'cat ../../README.md' } }), () => {});
+
+    expect(seen).toEqual(['/Users/me/code/orca/apps/hub']);
+    expect(inbox.snapshot().pending[0]?.risk).toBe('green');
+  });
+});
+
+describe('Touch ID for red Approvals', () => {
+  const RED = { command: 'git push --force origin lease-sync' };
+
+  /** A stand-in for the Touch ID sheet that the test answers by hand. */
+  function touchId() {
+    const prompts: string[] = [];
+    let answer: (ok: boolean) => void = () => {};
+    const confirm = (ask: { command: string }) => {
+      prompts.push(ask.command);
+      return new Promise<boolean>((resolve) => (answer = resolve));
+    };
+    return { prompts, confirm, pass: () => answer(true), fail: () => answer(false) };
+  }
+
+  let sheet: ReturnType<typeof touchId>;
+  beforeEach(() => {
+    sheet = touchId();
+    inbox = createInbox({
+      log: fileDecisionsLog(logPath),
+      now: () => clock,
+      worktreeOf: () => '/Users/me/code/orca',
+      confirmWithTouchId: sheet.confirm,
+    });
+  });
+
+  it('Approve on a red Approval opens Touch ID, then allows once it passes', async () => {
+    const shim = replies();
+    const id = inbox.open(approval({ tool_input: RED }), shim.reply);
+
+    const result = inbox.decide({ id, decision: 'allow' });
+    await Promise.resolve();
+    expect(sheet.prompts).toEqual(['git push --force origin lease-sync']);
+    expect(shim.sent).toEqual([]);
+
+    sheet.pass();
+    await expect(result).resolves.toEqual({ ok: true });
+    expect(shim.sent).toEqual([{ behavior: 'allow' }]);
+    expect(inbox.snapshot().pending).toEqual([]);
+    expect(await loggedDecisions()).toEqual([expect.objectContaining({ askId: id, behavior: 'allow', risk: 'red' })]);
+  });
+
+  it('a failed or cancelled Touch ID leaves the Approval pending as "not-approved"', async () => {
+    const shim = replies();
+    const id = inbox.open(approval({ tool_input: RED }), shim.reply);
+
+    const result = inbox.decide({ id, decision: 'allow' });
+    await Promise.resolve();
+    sheet.fail();
+
+    await expect(result).resolves.toEqual({ ok: false, error: 'not-approved' });
+    expect(shim.sent).toEqual([]);
+    expect(inbox.snapshot().pending.map((a) => a.id)).toEqual([id]);
+    expect(await loggedDecisions()).toEqual([]);
+
+    // It can be tried again.
+    const retry = inbox.decide({ id, decision: 'allow' });
+    await Promise.resolve();
+    sheet.pass();
+    await expect(retry).resolves.toEqual({ ok: true });
+    expect(shim.sent).toEqual([{ behavior: 'allow' }]);
+  });
+
+  it('a Touch ID error counts as not approved', async () => {
+    inbox = createInbox({
+      log: fileDecisionsLog(logPath),
+      worktreeOf: () => '/Users/me/code/orca',
+      confirmWithTouchId: () => Promise.reject(new Error('no biometrics')),
+    });
+    const shim = replies();
+    const id = inbox.open(approval({ tool_input: RED }), shim.reply);
+
+    await expect(inbox.decide({ id, decision: 'allow' })).resolves.toEqual({ ok: false, error: 'not-approved' });
+    expect(shim.sent).toEqual([]);
+  });
+
+  it('without a Touch ID prompt, red Approvals cannot be approved from the hub', async () => {
+    inbox = createInbox({ log: fileDecisionsLog(logPath), worktreeOf: () => '/Users/me/code/orca' });
+    const shim = replies();
+    const id = inbox.open(approval({ tool_input: RED }), shim.reply);
+
+    await expect(inbox.decide({ id, decision: 'allow' })).resolves.toEqual({ ok: false, error: 'not-approved' });
+    expect(shim.sent).toEqual([]);
+  });
+
+  it('Deny on a red Approval and Approve on green or yellow need no Touch ID', async () => {
+    const red = replies();
+    const green = replies();
+    const yellow = replies();
+    const r = inbox.open(approval({ tool_input: RED }), red.reply);
+    const g = inbox.open(approval({ tool_input: { command: 'pnpm test' } }), green.reply);
+    const y = inbox.open(approval({ tool_input: { command: 'frobnicate' } }), yellow.reply);
+
+    await inbox.decide({ id: r, decision: 'deny' });
+    await inbox.decide({ id: g, decision: 'allow' });
+    await inbox.decide({ id: y, decision: 'allow' });
+
+    expect(sheet.prompts).toEqual([]);
+    expect([red.sent, green.sent, yellow.sent]).toEqual([
+      [{ behavior: 'deny', message: 'Denied in Orca' }],
+      [{ behavior: 'allow' }],
+      [{ behavior: 'allow' }],
+    ]);
+  });
+
+  it('a second Approve while Touch ID is up does not open another prompt', async () => {
+    const shim = replies();
+    const id = inbox.open(approval({ tool_input: RED }), shim.reply);
+
+    const first = inbox.decide({ id, decision: 'allow' });
+    const second = inbox.decide({ id, decision: 'allow' });
+    await Promise.resolve();
+    sheet.pass();
+
+    await expect(first).resolves.toEqual({ ok: true });
+    await expect(second).resolves.toEqual({ ok: false, error: 'already-resolved' });
+    expect(sheet.prompts).toHaveLength(1);
+    expect(shim.sent).toEqual([{ behavior: 'allow' }]);
+  });
+
+  it('a Deny that lands while Touch ID is up wins; the late pass allows nothing', async () => {
+    const shim = replies();
+    const id = inbox.open(approval({ tool_input: RED }), shim.reply);
+
+    const approve = inbox.decide({ id, decision: 'allow' });
+    await Promise.resolve();
+    await expect(inbox.decide({ id, decision: 'deny' })).resolves.toEqual({ ok: true });
+    sheet.pass();
+
+    await expect(approve).resolves.toEqual({ ok: false, error: 'already-resolved' });
+    expect(shim.sent).toEqual([{ behavior: 'deny', message: 'Denied in Orca' }]);
+    expect(await loggedDecisions()).toHaveLength(1);
+  });
+
+  it('if the shim goes away while Touch ID is up, nothing is sent or logged', async () => {
+    const shim = replies();
+    const id = inbox.open(approval({ tool_input: RED }), shim.reply);
+
+    const approve = inbox.decide({ id, decision: 'allow' });
+    await Promise.resolve();
+    inbox.close(id);
+    sheet.pass();
+
+    await expect(approve).resolves.toEqual({ ok: false, error: 'already-resolved' });
+    expect(shim.sent).toEqual([]);
+    expect(await loggedDecisions()).toEqual([]);
+  });
+});

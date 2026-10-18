@@ -3,11 +3,12 @@
  * tray popover only renders snapshots and sends intents.
  */
 import { IPC, type ApprovalDecideRequest, type IpcResult } from '@orca/protocol';
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { createInbox } from './inbox';
+import { touchIdConfirmer } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -18,7 +19,14 @@ app.setName('Orca');
 // Chromium's own profile lives with the hub's data, never in a dir named after the package.
 app.setPath('userData', dataDir);
 
-const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')) });
+/** The popover stays up behind the Touch ID sheet instead of hiding on blur (I6 §3). */
+let touchIdSheetUp = false;
+const inbox = createInbox({
+  log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')),
+  confirmWithTouchId: touchIdConfirmer(systemPreferences, (up) => {
+    touchIdSheetUp = up;
+  }),
+});
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -79,7 +87,9 @@ function createPopover(): BrowserWindow {
     webPreferences: { contextIsolation: true, sandbox: true, preload: join(here, '../preload/index.cjs') },
   });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.on('blur', () => win.hide());
+  win.on('blur', () => {
+    if (!touchIdSheetUp) win.hide();
+  });
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(join(here, '../renderer/index.html'));
   return win;

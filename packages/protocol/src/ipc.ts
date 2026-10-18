@@ -18,6 +18,7 @@ export interface ApprovalDecideRequest {
   reason?: string;
 }
 
-export type IpcError = 'already-resolved' | 'invalid-request';
+/** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending. */
+export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved';
 
 export type IpcResult = { ok: true } | { ok: false; error: IpcError };
