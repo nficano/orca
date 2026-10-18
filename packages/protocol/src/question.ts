@@ -85,3 +85,10 @@ export function parseAnswerMessage(line: string): QuestionAnswer | null {
 
 /** The one line Orca adds to every Account's global agent instructions. */
 export const ASK_USER_INSTRUCTION = 'When you need input, call ask_user.';
+
+/**
+ * The Question wait: how long ask_user blocks before giving up (25m). Kept
+ * under the transport limits: Claude's stdio MCP aborts after 30m idle, and
+ * Codex Account install raises `tool_timeout_sec` above it.
+ */
+export const QUESTION_WAIT_MS = 25 * 60_000;

@@ -112,7 +112,7 @@ describe('First run: pick Accounts', () => {
   it('with nothing found, says so and still offers "Choose another folder…"', async () => {
     await renderFirstRun(fakeAccounts({ scan: [] }));
 
-    expect(screen.getByText('No Claude Code accounts found in your home folder.')).toBeTruthy();
+    expect(screen.getByText('No Claude Code or Codex accounts found in your home folder.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Choose another folder…' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^Connect/ })).toBeNull();
   });

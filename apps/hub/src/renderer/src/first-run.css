@@ -194,3 +194,7 @@
 .main[hidden] {
   display: none;
 }
+
+.change .change-note {
+  padding: 0 var(--s-2);
+}
