@@ -2,9 +2,10 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ApprovalAskMessage, ApprovalDecision, ApprovalView, PermissionRequestPayload } from '@orca/protocol';
+import type { ApprovalAskMessage, ApprovalDecision, ApprovalView, PermissionRequestPayload, SessionView } from '@orca/protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fileDecisionsLog } from './decisions-log';
+import { withSessions } from './hub-snapshot';
 import { createInbox, type Inbox, type InboxOptions } from './inbox';
 
 const START = Date.parse('2026-10-18T10:00:00Z');
@@ -54,7 +55,11 @@ function connection() {
   };
 }
 
-const view = (inbox: Inbox, id: string) => inbox.snapshot().pending.find((a) => a.id === id) as ApprovalView | undefined;
+/** The Ask's card, asking or handed back. */
+const view = (inbox: Inbox, id: string): ApprovalView | undefined => {
+  const s = inbox.snapshot();
+  return [...s.pending, ...(s.handedBack ?? [])].find((a) => a.id === id) as ApprovalView | undefined;
+};
 
 async function loggedDecisions() {
   const text = await readFile(logPath, 'utf8').catch(() => '');
@@ -92,7 +97,7 @@ describe('tier waits', () => {
 });
 
 describe('handing back to the editor', () => {
-  it('keeps the card as "Cursor is asking now": still open, so its Session stays Blocked', () => {
+  it('keeps the card as "Cursor is asking now": still an open Ask, so it counts and its Session stays Blocked', () => {
     const inbox = inboxWith();
     const conn = connection();
     const updates: number[] = [];
@@ -101,9 +106,24 @@ describe('handing back to the editor', () => {
 
     vi.advanceTimersByTime(2 * MIN);
 
-    expect(view(inbox, id)).toMatchObject({ id, handedBackAt: START + 2 * MIN });
-    expect(inbox.snapshot().counts.pending).toBe(1);
+    const snap = inbox.snapshot();
+    expect(snap.handedBack).toEqual([expect.objectContaining({ id, handedBackAt: START + 2 * MIN })]);
+    expect(snap.counts.pending).toBe(1);
     expect(updates).toEqual([1, 1]);
+    const sessions = withSessions(snap, [
+      { key: 'k', account: '/Users/me/.claude-work', agent: 'claude', sessionId: 'session-a', cwd: WORKTREE, state: 'running', since: START },
+    ] as SessionView[]).sessions;
+    expect(sessions?.[0]?.state).toBe('blocked');
+  });
+
+  it('leaves the asking list, so the tray, banners, panel and batch row stop asking', () => {
+    const inbox = inboxWith();
+    const id = inbox.open(approval(COMMANDS.green), () => {}, () => {});
+    expect(inbox.snapshot().pending.map((a) => a.id)).toEqual([id]);
+
+    vi.advanceTimersByTime(2 * MIN);
+
+    expect(inbox.snapshot().pending).toEqual([]);
   });
 
   it('the connection closing after the hand-back leaves the card in place', () => {
@@ -117,16 +137,19 @@ describe('handing back to the editor', () => {
     expect(view(inbox, id)?.handedBackAt).toBe(START + 2 * MIN);
   });
 
-  it('keeps arrival order among open and handed-back Asks', () => {
+  it('lists handed-back Approvals oldest first', () => {
     const inbox = inboxWith();
     const first = inbox.open(approval(COMMANDS.green), () => {}, () => {});
     vi.advanceTimersByTime(MIN);
-    const second = inbox.open(approval(COMMANDS.yellow), () => {}, () => {});
+    const second = inbox.open(approval(COMMANDS.green), () => {}, () => {});
+    const third = inbox.open(approval(COMMANDS.yellow), () => {}, () => {});
+    vi.advanceTimersByTime(MIN);
     vi.advanceTimersByTime(MIN);
 
-    expect(inbox.snapshot().pending.map((a) => a.id)).toEqual([first, second]);
-    expect(view(inbox, first)?.handedBackAt).toBeDefined();
-    expect(view(inbox, second)?.handedBackAt).toBeUndefined();
+    const snap = inbox.snapshot();
+    expect(snap.handedBack?.map((a) => a.id)).toEqual([first, second]);
+    expect(snap.pending.map((a) => a.id)).toEqual([third]);
+    expect(snap.counts.pending).toBe(3);
   });
 });
 
@@ -195,5 +218,31 @@ describe('a wait running out never allows anything', () => {
 
     expect(conn.handedBack()).toBe(0);
     expect(inbox.snapshot().pending).toEqual([]);
+    expect(inbox.snapshot().handedBack).toBeUndefined();
+  });
+
+  it('an Approval allowed in a batch is never handed back later', async () => {
+    const inbox = inboxWith();
+    const a = connection();
+    const b = connection();
+    const ids = [inbox.open(approval(COMMANDS.green), a.reply, a.handBack), inbox.open(approval(COMMANDS.green), b.reply, b.handBack)];
+
+    await inbox.approveBatch({ ids });
+    vi.advanceTimersByTime(60 * MIN);
+
+    expect(a.handedBack() + b.handedBack()).toBe(0);
+    expect(inbox.snapshot().handedBack).toBeUndefined();
+  });
+
+  it('a handed-back Approval is skipped by the batch', async () => {
+    const inbox = inboxWith();
+    const conn = connection();
+    const id = inbox.open(approval(COMMANDS.green), conn.reply, conn.handBack);
+    vi.advanceTimersByTime(2 * MIN);
+
+    const result = await inbox.approveBatch({ ids: [id] });
+
+    expect(result).toMatchObject({ ok: true, approved: [] });
+    expect(conn.sent).toEqual([]);
   });
 });

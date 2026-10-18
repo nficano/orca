@@ -167,7 +167,8 @@ describe.skipIf(!hasGo)('agentd-hook ↔ hub', () => {
     expect(Date.now() - start).toBeGreaterThanOrEqual(300);
     // The socket is closed now, and the card is still there, handed back.
     await new Promise((r) => setTimeout(r, 50));
-    expect(inbox.snapshot().pending).toEqual([expect.objectContaining({ id, handedBackAt: expect.any(Number) })]);
+    expect(inbox.snapshot().pending).toEqual([]);
+    expect(inbox.snapshot().handedBack).toEqual([expect.objectContaining({ id, handedBackAt: expect.any(Number) })]);
     await expect(inbox.decide({ id, decision: 'allow' })).resolves.toEqual({ ok: false, error: 'already-resolved' });
     await expect(readFile(logPath, 'utf8')).rejects.toThrow();
   });

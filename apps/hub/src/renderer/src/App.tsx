@@ -1,4 +1,4 @@
-import type { ApprovalBatchResult, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, RiskTier, SessionView } from '@orca/protocol';
+import type { ApprovalBatchResult, ApprovalView, AskView, ConnectedAccount, InboxSnapshot, IpcResult, RiskTier, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
 import { BatchReport, BatchRow, batchLines } from './BatchRow';
@@ -95,6 +95,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
 
   const count = inbox.counts.pending;
+  /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
+  const cards: AskView[] = [...inbox.pending, ...(inbox.handedBack ?? [])].sort((a, b) => a.openedAt - b.openedAt);
   const batch = typeof bridge.approveBatch === 'function' ? batchLines(inbox.pending) : [];
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
@@ -129,13 +131,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
         </div>
         <div className="list" ref={listRef}>
           {batch.length > 0 && <BatchRow lines={batch} sessions={inbox.sessions ?? []} onApprove={approveBatch} />}
-          {inbox.pending.length === 0 ? (
+          {cards.length === 0 ? (
             <div className={running.length + stalled.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
           ) : (
-            inbox.pending.map((ask) =>
+            cards.map((ask) =>
               ask.kind === 'question' ? (
                 <QuestionCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onAnswer={answer} />
               ) : ask.handedBackAt !== undefined ? (

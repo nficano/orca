@@ -29,6 +29,8 @@ function approval(over: Partial<ApprovalView> = {}): ApprovalView {
 }
 
 const snapshotOf = (...pending: ApprovalView[]): InboxSnapshot => ({ pending, counts: { pending: pending.length } });
+/** What the hub sends once a tier wait ran out: the Approval moves to `handedBack`. */
+const handedBack = (...back: ApprovalView[]): InboxSnapshot => ({ pending: [], handedBack: back, counts: { pending: back.length } });
 
 let clock: number;
 let push: (s: InboxSnapshot) => void;
@@ -123,7 +125,7 @@ describe('Cursor is asking now', () => {
     await renderApp(snapshotOf(approval()));
     tick(10 * MIN);
 
-    push(snapshotOf(approval({ handedBackAt: OPENED + 10 * MIN })));
+    push(handedBack(approval({ handedBackAt: OPENED + 10 * MIN })));
 
     const card = screen.getByRole('article');
     expect(within(card).getByText('No answer here for 10 minutes, so Cursor is asking now. Answer it there.')).toBeTruthy();
@@ -135,12 +137,12 @@ describe('Cursor is asking now', () => {
   });
 
   it('says how long the inbox asked, by tier', async () => {
-    await renderApp(snapshotOf(approval({ risk: 'green', waitEndsAt: OPENED + 2 * MIN, handedBackAt: OPENED + 2 * MIN })));
+    await renderApp(handedBack(approval({ risk: 'green', waitEndsAt: OPENED + 2 * MIN, handedBackAt: OPENED + 2 * MIN })));
     expect(screen.getByText('No answer here for 2 minutes, so Cursor is asking now. Answer it there.')).toBeTruthy();
   });
 
   it('Return and ⌘⌫ on a handed-back card decide nothing', async () => {
-    await renderApp(snapshotOf(approval({ handedBackAt: OPENED + 10 * MIN })));
+    await renderApp(handedBack(approval({ handedBackAt: OPENED + 10 * MIN })));
     const card = screen.getByRole('article');
     card.focus();
 
@@ -150,8 +152,20 @@ describe('Cursor is asking now', () => {
     expect(decisions).toEqual([]);
   });
 
+  it('sits among the asking cards, oldest first', async () => {
+    await renderApp({
+      pending: [approval({ id: 'newer', command: 'pnpm build', openedAt: OPENED + MIN, waitEndsAt: OPENED + 11 * MIN })],
+      handedBack: [approval({ id: 'older', handedBackAt: OPENED + 10 * MIN })],
+      counts: { pending: 2 },
+    });
+    const cards = screen.getAllByRole('article');
+    expect(within(cards[0]!).getByText(/Cursor is asking now/)).toBeTruthy();
+    expect(within(cards[1]!).getByText('pnpm build')).toBeTruthy();
+    expect(screen.queryByText('Nothing needs you')).toBeNull();
+  });
+
   it('still counts as an open Ask on the Inbox badge', async () => {
-    await renderApp(snapshotOf(approval({ handedBackAt: OPENED + 10 * MIN })));
+    await renderApp(handedBack(approval({ handedBackAt: OPENED + 10 * MIN })));
     expect(screen.getByRole('button', { name: 'Inbox, 1 waiting' })).toBeTruthy();
   });
 });

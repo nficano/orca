@@ -72,10 +72,17 @@ export interface QuestionView {
 export type AskView = ApprovalView | QuestionView;
 
 export interface InboxSnapshot {
-  /** Open Asks, oldest first. */
+  /** Open Asks the inbox is asking about, oldest first. */
   pending: AskView[];
+  /**
+   * Approvals whose tier wait ran out, oldest first: handed back to the
+   * editor with no decision, so the card reads "Cursor is asking now". They
+   * are still open Asks (counted, and their Session stays Blocked) but nothing
+   * in Orca may decide them. Absent when there are none.
+   */
+  handedBack?: ApprovalView[];
   counts: {
-    /** Open Asks across every Account: the tray title and the Inbox badge. */
+    /** Open Asks across every Account, handed back ones included: the tray title and the Inbox badge. */
     pending: number;
   };
   /**
