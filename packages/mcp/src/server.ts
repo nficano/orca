@@ -1,5 +1,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { ASK_USER_INSTRUCTION, QUESTION_WAIT_MS, URGENCIES, WIRE_VERSION, type QuestionAskMessage, type Urgency } from '@orca/protocol';
+import {
+  ASK_USER_INSTRUCTION,
+  QUESTION_WAIT_MS,
+  URGENCIES,
+  WIRE_VERSION,
+  type QuestionAskMessage,
+  type ReportMessage,
+  type Urgency,
+} from '@orca/protocol';
 import { z } from 'zod';
 import type { HubLink } from './hub-link';
 
@@ -12,6 +20,9 @@ export type AskUserResult =
   /** The agent set timeout_s and default; `answer` is its own default. */
   | { answered: false; reason: 'timed_out'; used_default: true; answer: string }
   | { answered: false; reason: 'hub_unavailable' };
+
+/** What report_status and handoff return; neither waits for the user. */
+export type ReportResult = { ok: true } | { ok: false; reason: 'hub_unavailable' };
 
 export interface OrcaMcpOptions {
   hub: HubLink;
@@ -76,8 +87,76 @@ export function createOrcaMcpServer({
     },
   );
 
+  const report = async (msg: ReportMessage) =>
+    toolResult<ReportResult>((await hub.report(msg)) ? { ok: true } : { ok: false, reason: 'hub_unavailable' });
+  const where = { account, sessionId, ...(cwd ? { cwd } : {}) };
+
+  server.registerTool(
+    'report_status',
+    {
+      title: 'Report status',
+      description: REPORT_STATUS_DESCRIPTION,
+      inputSchema: {
+        phase: z.string().trim().optional().describe('One word for where you are, such as "reading", "editing" or "testing".'),
+        summary: z.string().trim().min(1).describe('One short line for the status line, such as "Running tests".'),
+        blockers: z.array(z.string().trim().min(1)).optional().describe('Anything slowing you down that the user should know.'),
+      },
+    },
+    (args) =>
+      report({
+        v: WIRE_VERSION,
+        kind: 'status',
+        ...where,
+        phase: args.phase ?? '',
+        summary: args.summary,
+        blockers: args.blockers ?? [],
+      }),
+  );
+
+  server.registerTool(
+    'handoff',
+    {
+      title: 'Hand off finished work',
+      description: HANDOFF_DESCRIPTION,
+      inputSchema: {
+        summary: z.string().trim().min(1).describe('What you did, as a short title such as "Add rent-roll export".'),
+        files_changed: z.array(z.string().trim().min(1)).optional().describe('Paths you changed, relative to the repo root.'),
+        tests: z
+          .object({
+            passed: z.number().int().nonnegative().describe('Tests that passed in your last run.'),
+            failed: z.number().int().nonnegative().describe('Tests that failed in your last run.'),
+          })
+          .optional()
+          .describe('Results of your last test run. Omit if you did not run tests.'),
+        next_steps: z.array(z.string().trim().min(1)).optional().describe('What should happen next, most important first.'),
+      },
+    },
+    (args) =>
+      report({
+        v: WIRE_VERSION,
+        kind: 'handoff',
+        ...where,
+        summary: args.summary,
+        filesChanged: args.files_changed ?? [],
+        ...(args.tests ? { tests: { passed: args.tests.passed, failed: args.tests.failed } } : {}),
+        nextSteps: args.next_steps ?? [],
+      }),
+  );
+
   return server;
 }
+
+const REPORT_STATUS_DESCRIPTION = [
+  'Update the one-line status the user sees for this session in Orca, such as "Running tests".',
+  'Call it when you move to a new phase of the work. It returns at once.',
+].join(' ');
+
+const HANDOFF_DESCRIPTION = [
+  'Hand off finished work: call it once when your task is done, before you end your turn.',
+  'Orca shows a Done card with your summary, the files you changed, your test results and the next step.',
+  'Report test counts from your last real run; if tests fail, say so and put the fix first in next_steps.',
+  'It returns at once.',
+].join(' ');
 
 function resultFor(
   outcome: Awaited<ReturnType<HubLink['ask']>>,
@@ -96,6 +175,6 @@ function resultFor(
   }
 }
 
-function toolResult(result: AskUserResult) {
+function toolResult<T>(result: T) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
 }

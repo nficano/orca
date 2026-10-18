@@ -13,9 +13,22 @@ import {
   type OpenInCursorResult,
   type PopoverTarget,
   type QuestionAnswerRequest,
+  type SendBackRequest,
   type SessionStopRequest,
 } from '@orca/protocol';
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, systemPreferences, Tray } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  Notification,
+  powerMonitor,
+  screen,
+  systemPreferences,
+  Tray,
+} from 'electron';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
@@ -24,6 +37,10 @@ import { accountsIpcHandlers } from './accounts/ipc';
 import { createCursorLink } from './cursor/link';
 import { startApprovalNotifications } from './approval-notifications';
 import { fileDecisionsLog } from './decisions-log';
+import { gitDiffStats } from './done/diff-stats';
+import { createDoneBoard } from './done/done-board';
+import { createIdleWatch, watchPower } from './done/idle';
+import { headlessResumer } from './done/resume';
 import { electronNotifier } from './electron-notifier';
 import { defaultSummarizer } from './haiku-summarizer';
 import { listenForShims, type HubSocket } from './hub-socket';
@@ -87,6 +104,18 @@ const inbox = createInbox({
   summarize: defaultSummarizer(process.env),
 });
 const sessions = createSessions();
+/** Where the morning recap starts: the last time the user was away. */
+const idle = createIdleWatch();
+/** Status lines, Done cards and the recap, from report_status and handoff. */
+const done = createDoneBoard({
+  sessions: () => sessions.list(),
+  idleSince: () => idle.since(),
+  // The agents run with the user's real home, not ORCA_ACCOUNTS_HOME.
+  resume: headlessResumer({ home: app.getPath('home'), logDir: join(dataDir, 'resume') }),
+  onResumed: (key, at) => void sessions.resume(key, at),
+  diffStats: gitDiffStats,
+  accountName: accounts.nameOf,
+});
 const cursor = createCursorLink({
   home: app.getPath('home'),
   resources,
@@ -102,11 +131,13 @@ const focus = createFocusWatcher({ dbDir: process.env.ORCA_FOCUS_DB ?? join(app.
  * What the renderer sees: open Asks and the Sessions from transcripts, tagged by Profile, less what the Focus filter
  * hides; setup errors and the Cursor extension.
  */
-const hubSnapshot = () => ({
+const baseSnapshot = () => ({
   ...withProfiles(withSessions(inbox.snapshot(), sessions.list()), profiles.config(), focus.current()),
   setup: setup.view(),
   cursor: { extension: cursor.extension.status() },
 });
+/** ...plus status lines, Done cards and the recap. */
+const hubSnapshot = () => done.decorate(baseSnapshot());
 /** The inbox less what the Focus filter hides, for the surfaces that read it directly: notifications and the quick-answer panel. */
 const shownInbox = focusedInbox(inbox, {
   shows: () => focusFilter(profiles.config(), focus.current()),
@@ -141,6 +172,10 @@ app.whenReady().then(async () => {
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
+  });
+  ipcMain.handle(IPC.doneSendBack, (_e, req: SendBackRequest): Promise<IpcResult> => {
+    if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
+    return done.sendBack({ id: req.id, ...(typeof req.text === 'string' ? { text: req.text } : {}) });
   });
   ipcMain.handle(CURSOR_IPC.open, (_e, req: OpenInCursorRequest): Promise<OpenInCursorResult> => {
     const valid = req && (('id' in req && typeof req.id === 'string') || ('sessionKey' in req && typeof req.sessionKey === 'string'));
@@ -193,6 +228,8 @@ app.whenReady().then(async () => {
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
   };
   inbox.subscribe(publish);
+  done.subscribe(publish);
+  watchPower({ power: powerMonitor, idle, onChange: publish });
   profiles.subscribe(publish);
   focus.subscribe(publish);
   focus.start();
@@ -224,7 +261,7 @@ app.whenReady().then(async () => {
     holdOnBlur: () => touchIdSheetUp,
   });
 
-  hubSocket = await listenForShims({ path: socketPath, inbox, windows: cursor.windows });
+  hubSocket = await listenForShims({ path: socketPath, inbox, windows: cursor.windows, reports: done });
   cursor.extension.subscribe(publish);
   await cursor.extension.refresh();
   // After listening: a shim that spools from here on is read on the next start.

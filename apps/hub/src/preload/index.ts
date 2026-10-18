@@ -17,6 +17,7 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
   approveBatch: (req) => ipcRenderer.invoke(IPC.approvalBatch, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
+  sendBack: (req) => ipcRenderer.invoke(IPC.doneSendBack, req),
   openInCursor: (req) => ipcRenderer.invoke(CURSOR_IPC.open, req),
   installCursorExtension: () => ipcRenderer.invoke(CURSOR_IPC.installExtension),
   onQuickAnswerOpened(listener) {

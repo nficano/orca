@@ -1,3 +1,4 @@
+import type { DoneSnapshot } from './done';
 import type { FocusFilterView, ProfileTab } from './profiles';
 import type { SessionView } from './sessions';
 import type { SetupView } from './setup';
@@ -110,6 +111,8 @@ export interface InboxSnapshot {
    * with an open Ask is Blocked. Absent until the transcript tailers run.
    */
   sessions?: SessionView[];
+  /** Done cards and the recap bar. Absent until the hub has a Done board. */
+  done?: DoneSnapshot;
   /** Profile tabs after All, in the user's order. Absent until Profiles load. */
   profiles?: ProfileTab[];
   /** Present while a macOS Focus with a Focus filter is on. */

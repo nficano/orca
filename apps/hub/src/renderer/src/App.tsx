@@ -6,6 +6,7 @@ import type {
   IpcResult,
   ProfileColor,
   ReinstallResult,
+  SessionStatus,
   SessionView,
 } from '@orca/protocol';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
@@ -13,6 +14,7 @@ import type { OrcaBridge, ProfilesBridge } from '../../preload/api';
 import { ApprovalDetail, SecretsHidden } from './ApprovalDetail';
 import { CursorBanner, openKey, useAskMenu } from './Cursor';
 import { BatchReport, BatchRow, batchLines } from './BatchRow';
+import { DoneIcon, DoneView } from './Done';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, plural, runningLabel, waitLabel } from './format';
 import { NeedsALook, StoppedList } from './NeedsALook';
@@ -36,7 +38,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
   /** The rail section on show. */
-  const [section, setSection] = useState<'inbox' | 'settings'>('inbox');
+  const [section, setSection] = useState<'inbox' | 'done' | 'settings'>('inbox');
   /** The open Profile tab: 'all' or a Profile id. */
   const [tab, setTab] = useState('all');
   /** The Approval open in Approval detail, or null for the inbox list. */
@@ -117,6 +119,11 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const sendBack = useCallback(
+    (id: string, text: string) =>
+      void send(id, () => bridge.sendBack?.({ id, text }) ?? Promise.resolve<IpcResult>({ ok: false, error: 'invalid-request' })),
+    [bridge, send],
+  );
   const canOpenInCursor = typeof bridge.openInCursor === 'function';
   const openInCursor = useCallback((id: string) => void bridge.openInCursor?.({ id }), [bridge]);
   const askMenu = useAskMenu(inbox.pending, openInCursor);
@@ -203,6 +210,17 @@ export function App({ bridge, now = Date.now }: AppProps) {
           </span>
           <span aria-hidden="true">Inbox</span>
         </button>
+        <button
+          className={section === 'done' ? 'rail-item on' : 'rail-item'}
+          aria-current={section === 'done' ? 'page' : undefined}
+          aria-label="Done"
+          onClick={() => setSection('done')}
+        >
+          <span className="tile">
+            <DoneIcon />
+          </span>
+          <span aria-hidden="true">Done</span>
+        </button>
         {/* The pip (I3 §7) shows while any Account has a problem. */}
         <button
           className={section === 'settings' ? 'rail-item settings on' : 'rail-item settings'}
@@ -228,6 +246,23 @@ export function App({ bridge, now = Date.now }: AppProps) {
           <FirstRun bridge={bridge} onConnected={setAccounts} />
         </section>
       )}
+      <section className="main" aria-label="Done" hidden={!accounts?.length || section !== 'done'}>
+        <div className="tabs-row">
+          <div className="tabs" role="tablist" aria-label="Profile">
+            <button className="tab on" role="tab" aria-selected="true">
+              All
+            </button>
+          </div>
+        </div>
+        <DoneView
+          done={inbox.done}
+          now={clock}
+          busy={busy}
+          onSendBack={sendBack}
+          {...(canOpenInCursor ? { onOpenInCursor: openSessionInCursor } : {})}
+          onShowInbox={() => setSection('inbox')}
+        />
+      </section>
       {section === 'settings' && !!accounts?.length && profilesBridge && (
         <section className="main" aria-label="Settings">
           <div className="tabs-row">
@@ -360,7 +395,10 @@ function RunningList({
       </p>
       <ul aria-labelledby="running-cap">
         {sessions.map((s) => {
-          const meta = [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
+          // report_status's line wins; otherwise where the Session is working.
+          const meta = s.status
+            ? statusLine(s.status)
+            : [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
           return (
             <li key={s.key} className="row">
               <span className="dot" aria-hidden="true" style={profileDot(colorOf(s.profileId))} />
@@ -375,6 +413,12 @@ function RunningList({
       </ul>
     </section>
   );
+}
+
+/** "Running tests", or "Running tests · blocked: CI is slow". */
+function statusLine({ summary, phase, blockers }: SessionStatus): string {
+  const line = summary || phase;
+  return blockers.length ? `${line} · blocked: ${blockers.join(', ')}` : line;
 }
 
 interface CardProps {

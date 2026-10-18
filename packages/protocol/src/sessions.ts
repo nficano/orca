@@ -4,6 +4,8 @@
  * Account plus the agent's session id. Subagent work never appears here.
  */
 
+import type { SessionStatus } from './done';
+
 export type AgentKind = 'claude' | 'codex';
 
 export type SessionState = 'blocked' | 'running' | 'waiting' | 'stalled' | 'done' | 'ended';
@@ -31,6 +33,10 @@ export interface SessionView {
   /** Working directory from the newest transcript entry. */
   cwd?: string;
   branch?: string;
+  /** Tokens the Session has used, from transcript usage (input + cache writes + output). Absent until known. */
+  tokens?: number;
+  /** The status line from the Session's latest `report_status`. */
+  status?: SessionStatus;
   /** The Profile the Account belongs to; absent when it is in none. */
   profileId?: string;
   /** What the agent last said it was doing, or the last tool it called. */

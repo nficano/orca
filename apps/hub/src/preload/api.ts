@@ -9,6 +9,7 @@ import type {
   OpenInCursorResult,
   PopoverTarget,
   QuestionAnswerRequest,
+  SendBackRequest,
   SessionStopRequest,
 } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
@@ -43,6 +44,12 @@ export interface AccountsBridge {
   connectAccounts(choices: AccountChoice[]): Promise<ConnectResult>;
 }
 
+/** The Done tab (Storyboard F7). */
+export interface DoneBridge {
+  /** Send back to fix: resume the card's Session headlessly in its Worktree. Optional so fakes that don't test Done can skip it. */
+  sendBack?(req: SendBackRequest): Promise<IpcResult>;
+}
+
 /** Settings › Profiles. Each change answers with the whole ProfilesView. */
 export interface ProfilesBridge {
   getProfiles(): Promise<ProfilesView>;
@@ -55,7 +62,7 @@ export interface ProfilesBridge {
 
 /** What the preload exposes to the renderer as `window.orca`. */
 /** Profiles methods are optional so renderer tests that aren't about Profiles can leave them out. */
-export interface OrcaBridge extends AccountsBridge, SetupBridge, Partial<ProfilesBridge> {
+export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge, Partial<ProfilesBridge> {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   /** `target` is set when a notification opened the popover for one Ask. */

@@ -39,6 +39,11 @@ export interface Sessions {
    */
   reconcile(processes: AgentProcess[]): void;
   /**
+   * The hub resumed the Session (Send back to fix): it is Running from `at`
+   * until its transcript says otherwise. False when the key is unknown.
+   */
+  resume(key: string, at: number): boolean;
+  /**
    * Marks Stalled every Running Session whose transcript has not grown for its
    * stall threshold (`thresholdFor`, in ms: 10m global or the Repo's override).
    */
@@ -115,6 +120,7 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
       s.cwds.add(u.cwd);
     }
     if (u.branch) v.branch = u.branch;
+    if (u.tokens) v.tokens = (v.tokens ?? 0) + u.tokens;
     if (u.step) v.lastStep = u.step;
     if (v.stoppedByYou) {
       // Stopped from Orca: the interrupt and anything after it stay Done until a new turn.
@@ -213,6 +219,18 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
     },
     forget(path) {
       readers.delete(path);
+    },
+    resume(key, at) {
+      const s = byKey.get(key);
+      if (!s) return false;
+      s.handedOff = false;
+      delete s.view.stall;
+      delete s.view.stoppedByYou;
+      s.view.state = 'running';
+      s.view.since = at;
+      s.view.lastActivityAt = Math.max(s.view.lastActivityAt, at);
+      emit();
+      return true;
     },
     list: () => [...byKey.values()].map((s) => ({ ...s.view, ...(s.view.stall ? { stall: { ...s.view.stall } } : {}) })),
     subscribe(listener) {

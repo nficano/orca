@@ -19,6 +19,8 @@ export interface TranscriptUpdate {
    * handoff: the agent called orca's `handoff` tool. ended: the turn ended.
    */
   turn?: 'started' | 'working' | 'handoff' | 'ended';
+  /** Tokens this line adds to the Session: input + cache writes + output, never cache reads. */
+  tokens?: number;
   /** What the agent says it is doing now, or the tool it just called: a Stalled Session's "Last step". */
   step?: string;
   /** A tool call finished; `error` is its failure text when it failed. Feeds loop detection. */
@@ -52,6 +54,9 @@ export function parseLine(line: string): Record<string, unknown> | undefined {
 export function isHandoffTool(name: unknown): boolean {
   return name === 'mcp__orca__handoff' || name === 'orca__handoff' || name === 'orca.handoff';
 }
+
+/** A non-negative whole token count, or 0. */
+export const count = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? Math.floor(x) : 0);
 
 const STEP_MAX = 120;
 
