@@ -1,4 +1,4 @@
-import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest } from '@orca/protocol';
+import type { ApprovalBatchRequest, ApprovalBatchResult, ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
 
 /** First run and hook install (Storyboard F1). */
@@ -19,5 +19,7 @@ export interface OrcaBridge extends AccountsBridge {
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   onPopoverOpened(listener: () => void): () => void;
   decideApproval(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /** "Approve N" in the batch row: main re-checks each tier and reports what it skipped. */
+  approveBatch(req: ApprovalBatchRequest): Promise<ApprovalBatchResult>;
   answerQuestion(req: QuestionAnswerRequest): Promise<IpcResult>;
 }

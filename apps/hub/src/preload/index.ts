@@ -15,6 +15,7 @@ const bridge: OrcaBridge = {
     return () => ipcRenderer.off(IPC.popoverOpened, handler);
   },
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
+  approveBatch: (req) => ipcRenderer.invoke(IPC.approvalBatch, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
   listAccounts: () => ipcRenderer.invoke(IPC.accountsList),
   scanAccounts: () => ipcRenderer.invoke(IPC.accountsScan),

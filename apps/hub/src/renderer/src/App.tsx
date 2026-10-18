@@ -1,6 +1,7 @@
-import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, RiskTier, SessionView } from '@orca/protocol';
+import type { ApprovalBatchResult, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, RiskTier, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
+import { BatchReport, BatchRow, batchLines } from './BatchRow';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, runningLabel, waitLabel } from './format';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
@@ -18,6 +19,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
+  /** What the last "Approve N" skipped, until dismissed. */
+  const [batchReport, setBatchReport] = useState<ApprovalBatchResult | null>(null);
   const inFlight = useRef(new Set<string>());
   const listRef = useRef<HTMLDivElement>(null);
   const clock = useClock(now);
@@ -73,7 +76,17 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const approveBatch = useCallback(
+    async (ids: string[]) => {
+      const result = await bridge.approveBatch({ ids }).catch((): ApprovalBatchResult => ({ ok: false, error: 'invalid-request' }));
+      setBatchReport(result);
+      return result;
+    },
+    [bridge],
+  );
+
   const count = inbox.counts.pending;
+  const batch = batchLines(inbox.pending);
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
 
@@ -104,6 +117,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           </button>
         </div>
         <div className="list" ref={listRef}>
+          {batch.length > 0 && <BatchRow lines={batch} sessions={inbox.sessions ?? []} onApprove={approveBatch} />}
           {inbox.pending.length === 0 ? (
             <div className={running.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
@@ -120,6 +134,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           )}
           {running.length > 0 && <RunningList sessions={running} now={clock} />}
         </div>
+        {batchReport && <BatchReport result={batchReport} onDismiss={() => setBatchReport(null)} />}
       </section>
     </div>
   );

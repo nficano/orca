@@ -2,7 +2,14 @@
  * Orca hub: Electron main process. Owns the hub socket and every Ask; the
  * tray popover only renders snapshots and sends intents.
  */
-import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
+import {
+  IPC,
+  type ApprovalBatchRequest,
+  type ApprovalBatchResult,
+  type ApprovalDecideRequest,
+  type IpcResult,
+  type QuestionAnswerRequest,
+} from '@orca/protocol';
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
@@ -68,6 +75,7 @@ app.whenReady().then(async () => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason });
   });
+  ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => inbox.approveBatch(req));
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
