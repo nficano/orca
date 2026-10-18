@@ -5,6 +5,7 @@
  * newline-terminated JSON line (a ShimMessage), then blocks reading one line
  * back (a DecisionMessage). If the connection closes without a decision, the
  * shim exits with no decision and the agent's normal permission flow runs.
+ * The hub closes it that way when the Ask's tier wait runs out.
  */
 
 export const WIRE_VERSION = 1 as const;

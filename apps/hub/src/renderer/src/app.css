@@ -314,6 +314,46 @@ button:focus-visible {
   color: var(--risk-high);
 }
 
+/* I1 §8 · countdown bar: width = time gone ÷ tier wait, one shared 1Hz timer.
+ * No radius of its own; the card's overflow clips it to the corner. */
+.wait-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--border-2);
+}
+.wait-bar-fill {
+  height: 100%;
+}
+.wait-bar-green {
+  background: var(--risk-low);
+}
+.wait-bar-yellow {
+  background: var(--risk-medium);
+}
+.wait-bar-red {
+  background: var(--risk-high);
+}
+/* I1 §7 · status text on the left of the action row. */
+.countdown {
+  flex: 1;
+}
+
+/* Errors · "inbox stopped asking": the tier wait ran out, Cursor is asking now. */
+.handed-back {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.handed-back-icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--risk-medium);
+}
+
 /* I1 §7 · action row; Approve is always rightmost. */
 .actions {
   display: flex;

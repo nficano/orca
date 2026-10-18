@@ -82,7 +82,12 @@ export async function listenForShims({
       }
       const msg = parseShimMessage(line);
       if (msg) {
-        askId = inbox.open(msg, (decision) => socket.end(encodeDecision(decision)));
+        askId = inbox.open(
+          msg,
+          (decision) => socket.end(encodeDecision(decision)),
+          // Tier wait ran out: close with no decision, so the shim exits and the editor asks.
+          () => socket.end(),
+        );
         return;
       }
       // The orca MCP server's ask_user uses the same socket, one Question per connection.

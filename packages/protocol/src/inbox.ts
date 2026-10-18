@@ -56,6 +56,14 @@ export interface ApprovalView {
   summaryPending?: boolean;
   /** How many secrets were masked in `command` and `reason` ("1 secret hidden"). */
   secretsHidden?: number;
+  /** Epoch ms when the tier wait runs out and the inbox stops asking ("Inbox stops asking in 9m"). */
+  waitEndsAt?: number;
+  /**
+   * Epoch ms when the tier wait ran out and the Approval was handed back to
+   * the editor with no decision. The card reads "Cursor is asking now" and
+   * can no longer be decided here; the Session is still Blocked.
+   */
+  handedBackAt?: number;
 }
 
 /** One step of a compound command. Secrets in `command` are already masked. */
@@ -100,10 +108,20 @@ export interface QuestionView {
 export type AskView = ApprovalView | QuestionView;
 
 export interface InboxSnapshot {
-  /** Open Asks, oldest first. */
+  /** Open Asks the inbox is asking about, oldest first. */
   pending: AskView[];
+  /**
+   * Approvals whose tier wait ran out, oldest first: handed back to the
+   * editor with no decision, so the card reads "Cursor is asking now". They
+   * are still open Asks (counted, and their Session stays Blocked) but nothing
+   * in Orca may decide them. Absent when there are none.
+   */
+  handedBack?: ApprovalView[];
   counts: {
-    /** Open Asks shown (every Account, less any the Focus filter hides): the tray title and the Inbox badge. */
+    /**
+     * Open Asks shown (every Account, less any the Focus filter hides),
+     * handed-back ones included: the tray title and the Inbox badge.
+     */
     pending: number;
   };
   /**

@@ -66,6 +66,37 @@ export function lowerFirst(s: string): string {
   return /^[A-Z][a-z]/.test(s) ? s[0]!.toLowerCase() + s.slice(1) : s;
 }
 
+/** Time left in a tier wait: whole minutes rounded up, each second under 60s. */
+function waitLeft(waitEndsAt: number, now: number): { n: number; unit: 'm' | 's' } {
+  const ms = Math.max(0, waitEndsAt - now);
+  return ms < 60_000 ? { n: Math.ceil(ms / 1000), unit: 's' } : { n: Math.ceil(ms / 60_000), unit: 'm' };
+}
+
+/** "Inbox stops asking in 9m", "… in 45s" (spec › Timeouts). */
+export function stopsAskingLabel(waitEndsAt: number, now: number): string {
+  const { n, unit } = waitLeft(waitEndsAt, now);
+  return `Inbox stops asking in ${n}${unit}`;
+}
+
+/** The countdown bar's accessible name: "Inbox stops asking in 9 minutes". */
+export function stopsAskingSpoken(waitEndsAt: number, now: number): string {
+  const { n, unit } = waitLeft(waitEndsAt, now);
+  return `Inbox stops asking in ${plural(n, unit === 'm' ? 'minute' : 'second')}`;
+}
+
+/** Countdown bar fill: the share of the tier wait gone, as a CSS width. */
+export function waitGoneWidth(openedAt: number, waitEndsAt: number, now: number): string {
+  const total = waitEndsAt - openedAt;
+  const gone = total > 0 ? Math.min(1, Math.max(0, (now - openedAt) / total)) : 1;
+  return `${Math.round(gone * 1000) / 10}%`;
+}
+
+/** A handed-back Approval (Errors · "inbox stopped asking"). */
+export function handedBackText(openedAt: number, handedBackAt: number): string {
+  const minutes = Math.max(1, Math.round((handedBackAt - openedAt) / 60_000));
+  return `No answer here for ${plural(minutes, 'minute')}, so Cursor is asking now. Answer it there.`;
+}
+
 /** "10:12 AM": a time of day in the banner copy. */
 export function clockTime(t: number): string {
   return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });

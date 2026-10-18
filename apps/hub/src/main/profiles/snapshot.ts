@@ -44,15 +44,20 @@ export function withProfiles(snapshot: InboxSnapshot, config: ProfilesConfig, fo
 
   const tagged = snapshot.pending.map(tag);
   const pending = tagged.filter((a) => shows(a.profileId));
+  // Handed-back Approvals ("Cursor is asking now") are still open Asks.
+  const taggedBack = (snapshot.handedBack ?? []).map(tag);
+  const handedBack = taggedBack.filter((a) => shows(a.profileId));
   const next: InboxSnapshot = {
     ...snapshot,
     pending,
-    counts: { ...snapshot.counts, pending: pending.length },
+    counts: { ...snapshot.counts, pending: pending.length + handedBack.length },
     profiles: config.profiles.filter((p) => !hidden.has(p.id)).map(({ id, name, color }) => ({ id, name, color })),
   };
+  if (handedBack.length > 0) next.handedBack = handedBack;
+  else delete next.handedBack;
   if (snapshot.sessions) next.sessions = snapshot.sessions.map(tag).filter((s) => shows(s.profileId));
   if (focus.current && hidden.size > 0) {
-    next.focus = { name: focus.current.name, hiddenProfiles: [...hidden], hiddenAsks: tagged.length - pending.length };
+    next.focus = { name: focus.current.name, hiddenProfiles: [...hidden], hiddenAsks: tagged.length + taggedBack.length - pending.length - handedBack.length };
   } else {
     delete next.focus;
   }

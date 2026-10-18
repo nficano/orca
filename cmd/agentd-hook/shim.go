@@ -20,6 +20,10 @@ type Config struct {
 	DialWindow time.Duration
 	// DialInterval is the pause between dial attempts.
 	DialInterval time.Duration
+	// MaxWait caps one run, from start to exit. The hub hands an Ask back to
+	// the editor when its tier wait runs out; this is the backstop for a hub
+	// that never does. Zero means the default.
+	MaxWait time.Duration
 	// SpoolPath is where an Ask that couldn't reach the hub is recorded.
 	// Empty means spool.jsonl next to the socket.
 	SpoolPath string
@@ -34,12 +38,23 @@ func (c Config) spoolPath() string {
 	return filepath.Join(filepath.Dir(c.SocketPath), "spool.jsonl")
 }
 
+// LongestTierWait is the red-tier wait, the longest of the hub's tier waits
+// (spec › Timeouts). Keep it equal to TIER_WAITS_MS.red in
+// apps/hub/src/main/tier-waits.ts; a hub test checks that it is.
+const LongestTierWait = 60 * time.Minute
+
+// DefaultMaxWait gives the hub 30s past the longest tier wait to hand the Ask
+// back itself, and still exits 30s before the hook timeout Orca installs
+// (longest tier wait + 60s), so the agent never times the hook out.
+const DefaultMaxWait = LongestTierWait + 30*time.Second
+
 // DefaultConfig reads ORCA_SOCKET and CLAUDE_CONFIG_DIR / CODEX_HOME.
 func DefaultConfig(getenv func(string) string, home string) Config {
 	c := Config{
 		SocketPath:   filepath.Join(home, "Library", "Application Support", "Orca", "hub.sock"),
 		DialWindow:   2 * time.Second,
 		DialInterval: 100 * time.Millisecond,
+		MaxWait:      DefaultMaxWait,
 	}
 	if p := getenv("ORCA_SOCKET"); p != "" {
 		c.SocketPath = p
@@ -77,13 +92,19 @@ type hookOutput struct {
 }
 
 // Run forwards one PermissionRequest to the hub as one Ask and blocks until
-// the hub decides or the connection closes. When the hub can't be reached
-// within the dial window, it appends one line to the spool for the hub's
-// restart banner. It writes a decision to stdout
-// only when the hub sent a valid allow or deny. Every failure path writes
-// nothing, so the agent's normal permission prompt runs: the shim never
-// denies on its own.
+// the hub decides, the connection closes (the hub closes it with no decision
+// when the tier wait runs out) or MaxWait passes. When the hub can't be
+// reached within the dial window, it appends one line to the spool for the
+// hub's restart banner. It writes a decision to stdout only when the hub sent
+// a valid allow or deny in time. Every other path writes nothing, so the
+// agent's normal permission prompt runs: the shim never denies on its own,
+// and a wait running out never allows.
 func Run(cfg Config, stdin io.Reader, stdout io.Writer) {
+	maxWait := cfg.MaxWait
+	if maxWait <= 0 {
+		maxWait = DefaultMaxWait
+	}
+	deadline := time.Now().Add(maxWait)
 	raw, err := io.ReadAll(stdin)
 	if err != nil || !json.Valid(raw) {
 		return
@@ -108,6 +129,9 @@ func Run(cfg Config, stdin io.Reader, stdout io.Writer) {
 		return
 	}
 	defer conn.Close()
+	if conn.SetDeadline(deadline) != nil {
+		return
+	}
 
 	line, err := json.Marshal(askMessage{V: 1, Kind: "approval", Account: cfg.Account, Hook: raw})
 	if err != nil {
