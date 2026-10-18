@@ -1,4 +1,4 @@
-import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest } from '@orca/protocol';
+import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest, SessionStopRequest } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
 
 /** First run and hook install (Storyboard F1). */
@@ -20,6 +20,8 @@ export interface OrcaBridge extends AccountsBridge {
   onPopoverOpened(listener: () => void): () => void;
   decideApproval(req: ApprovalDecideRequest): Promise<IpcResult>;
   answerQuestion(req: QuestionAnswerRequest): Promise<IpcResult>;
+  /** Stop… on a Stalled Session. Optional so bridges without it hide Stop. */
+  stopSession?(req: SessionStopRequest): Promise<IpcResult>;
 }
 
 /** What the quick-answer panel needs: the same inbox and intents, plus its own window controls. */

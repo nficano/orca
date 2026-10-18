@@ -2,7 +2,13 @@
  * Orca hub: Electron main process. Owns the hub socket and every Ask; the
  * tray popover only renders snapshots and sends intents.
  */
-import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
+import {
+  IPC,
+  type ApprovalDecideRequest,
+  type IpcResult,
+  type QuestionAnswerRequest,
+  type SessionStopRequest,
+} from '@orca/protocol';
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
@@ -17,6 +23,8 @@ import { startQuestionNotifications } from './question-notifications';
 import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
 import { createSessions } from './sessions/sessions';
+import { createStallThresholds, fileStallConfig } from './sessions/stall-threshold';
+import { processSignals, stopSession } from './sessions/stop';
 import { startSessionTracking, type SessionTracking } from './sessions/track';
 import { touchIdConfirmer } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
@@ -82,6 +90,11 @@ app.whenReady().then(async () => {
   // Load connected Accounts before any Ask arrives, so every Ask gets its Account's name.
   const firstRun = (await accounts.list()).length === 0;
 
+  ipcMain.handle(IPC.sessionStop, (_e, req: SessionStopRequest): Promise<IpcResult> => {
+    if (!req || typeof req.key !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
+    return stopSession({ key: req.key, sessions, probe: () => probeAgentProcesses(), signals: processSignals });
+  });
+
   tray = new Tray(trayIcon(false));
   tray.setToolTip('Orca');
   tray.on('click', togglePopover);
@@ -129,6 +142,8 @@ app.whenReady().then(async () => {
     accounts: await findTailedAccounts({ home: accountsHome, env: process.env }),
     sessions,
     probe: () => probeAgentProcesses(),
+    // Stall threshold: 10m, or `stallThresholdMinutes` (global and per Repo) in Orca's config.json.
+    stallThresholdFor: createStallThresholds({ readConfig: fileStallConfig(join(dataDir, 'config.json')) }),
   });
   sessions.subscribe(publish);
   publish();

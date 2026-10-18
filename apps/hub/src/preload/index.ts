@@ -30,6 +30,7 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   chooseAccountFolder: () => ipcRenderer.invoke(IPC.accountsChooseFolder),
   previewConnect: (choices) => ipcRenderer.invoke(IPC.accountsPreview, choices),
   connectAccounts: (choices) => ipcRenderer.invoke(IPC.accountsConnect, choices),
+  stopSession: (req) => ipcRenderer.invoke(IPC.sessionStop, req),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);

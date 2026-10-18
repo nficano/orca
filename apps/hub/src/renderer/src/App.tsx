@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 import type { OrcaBridge } from '../../preload/api';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, runningLabel, waitLabel } from './format';
+import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { Spinner } from './Spinner';
 
@@ -73,9 +74,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const canStop = typeof bridge.stopSession === 'function';
+  const accountName = (dir: string) => accounts?.find((a) => a.dir === dir)?.name ?? baseName(dir);
+  const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
+
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
+  const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled');
+  const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou);
 
   return (
     <div className="pop">
@@ -105,7 +112,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
         </div>
         <div className="list" ref={listRef}>
           {inbox.pending.length === 0 ? (
-            <div className={running.length > 0 ? 'empty above-running' : 'empty'}>
+            <div className={running.length + stalled.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
@@ -118,7 +125,9 @@ export function App({ bridge, now = Date.now }: AppProps) {
               ),
             )
           )}
+          {stalled.length > 0 && <NeedsALook sessions={stalled} now={clock} accountName={accountName} {...(canStop ? { onStop } : {})} />}
           {running.length > 0 && <RunningList sessions={running} now={clock} />}
+          {stopped.length > 0 && <StoppedList sessions={stopped} />}
         </div>
       </section>
     </div>
