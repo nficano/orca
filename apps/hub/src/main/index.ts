@@ -2,10 +2,11 @@
  * Orca hub: Electron main process. Owns the hub socket and every Ask; the
  * tray popover only renders snapshots and sends intents.
  */
-import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
+import { IPC, type ApprovalDecideRequest, type IpcResult, type PopoverTarget, type QuestionAnswerRequest } from '@orca/protocol';
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
+import { startApprovalNotifications } from './approval-notifications';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
 import { electronNotifier } from './electron-notifier';
@@ -86,7 +87,7 @@ app.whenReady().then(async () => {
   tray.on('right-click', () =>
     tray?.popUpContextMenu(
       Menu.buildFromTemplate([
-        { label: 'Open Orca', click: showPopover },
+        { label: 'Open Orca', click: () => showPopover() },
         { type: 'separator' },
         { label: 'Quit Orca', accelerator: 'Command+Q', click: () => app.quit() },
       ]),
@@ -103,15 +104,24 @@ app.whenReady().then(async () => {
   };
   inbox.subscribe(publish);
 
-  // Question banners: answered from Options / Reply, removed once the Ask resolves anywhere.
+  // Banners, removed once the Ask resolves anywhere. Questions: answered from Options / Reply.
+  // Approvals (Storyboard F3): green and yellow from Approve / Deny; red gets Review / Deny.
   if (Notification.isSupported()) {
-    startQuestionNotifications({ inbox, notifier: electronNotifier(), onOpen: showPopover });
+    const notifier = electronNotifier();
+    const openCard = (askId: string) => showPopover({ askId, view: 'card' });
+    startQuestionNotifications({ inbox, notifier, onOpen: openCard });
+    startApprovalNotifications({
+      inbox,
+      notifier,
+      onOpen: openCard,
+      onReview: (askId) => showPopover({ askId, view: 'detail' }),
+    });
   }
 
   hubSocket = await listenForShims({ path: socketPath, inbox });
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
   if (firstRun) {
-    if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', showPopover);
+    if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', () => showPopover());
     else showPopover();
   }
 
@@ -156,14 +166,15 @@ function createPopover(): BrowserWindow {
   return win;
 }
 
-function showPopover() {
+/** `target`: a notification opened the popover for one Ask. */
+function showPopover(target?: PopoverTarget) {
   if (!tray || !popover) return;
   const trayBounds = tray.getBounds();
   const { workArea } = screen.getDisplayMatching(trayBounds);
   popover.setBounds(popoverWindowBounds(trayBounds, workArea));
   popover.show();
   popover.focus();
-  popover.webContents.send(IPC.popoverOpened);
+  popover.webContents.send(IPC.popoverOpened, target);
 }
 
 /** "Choose another folder…": a sheet on the popover, starting in the home folder. */

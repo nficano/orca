@@ -9,7 +9,7 @@ export const IPC = {
   inboxGet: 'inbox:get',
   /** main → renderer (send): a full InboxSnapshot. */
   inboxSnapshot: 'inbox:snapshot',
-  /** main → renderer (send): the popover was just shown. */
+  /** main → renderer (send, PopoverTarget?): the popover was just shown, optionally for one Ask. */
   popoverOpened: 'popover:opened',
   /** renderer → main (invoke): connected Accounts (ConnectedAccount[]); empty means first run. */
   accountsList: 'accounts:list',
@@ -28,7 +28,12 @@ export interface ApprovalDecideRequest {
   decision: 'allow' | 'deny';
   /** Deny message; defaults to "Denied in Orca". */
   reason?: string;
+  /** The surface the decision came from, for decisions.jsonl; defaults to the tray. */
+  via?: DecisionSurface;
 }
+
+/** Where the user decided an Ask. */
+export type DecisionSurface = 'tray' | 'notification';
 
 /** Exactly one of `optionIndex` (a picked option) or `text` (a typed answer). */
 export interface QuestionAnswerRequest {
@@ -41,3 +46,12 @@ export interface QuestionAnswerRequest {
 export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved';
 
 export type IpcResult = { ok: true } | { ok: false; error: IpcError };
+
+/**
+ * Why the popover opened, when a notification opened it for one Ask: `card`
+ * for a click on the banner, `detail` for Review on a red Approval banner.
+ */
+export interface PopoverTarget {
+  askId: string;
+  view: 'card' | 'detail';
+}

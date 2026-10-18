@@ -1,4 +1,4 @@
-import type { RiskTier } from '@orca/protocol';
+import type { DecisionSurface, RiskTier } from '@orca/protocol';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -15,7 +15,7 @@ export interface DecisionRecord {
   behavior: 'allow' | 'deny';
   message?: string;
   /** The surface the decision came from. */
-  via: 'tray';
+  via: DecisionSurface;
 }
 
 export interface DecisionsLog {
