@@ -31,10 +31,12 @@ async function openProfiles(config: Partial<ProfilesConfig> = {}, focus: FocusSt
     decideApproval: async () => ({ ok: true }),
     answerQuestion: async () => ({ ok: true }),
   };
-  render(<App bridge={bridge} />);
+  const getProfiles = vi.fn(bridge.getProfiles!);
+  bridge.getProfiles = getProfiles;
+  const { rerender } = render(<App bridge={bridge} />);
   await act(async () => {});
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Settings' })));
-  return profiles;
+  return { ...profiles, getProfiles, rerender: () => act(async () => rerender(<App bridge={bridge} />)) };
 }
 
 const group = (name: string) => screen.getByRole('group', { name: `Profile ${name}` });
@@ -140,6 +142,14 @@ describe('Settings › Profiles', () => {
     await openProfiles({ profiles: [{ id: 'work', name: 'Work', color: 'blue', accounts: [] }] }, { readable: false, current: null, modes: [] });
     expect(screen.getByText(/Orca can’t see your Focus\. Give Orca Full Disk Access/)).toBeTruthy();
     expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  it('a half-typed name survives the popover re-rendering (the 1Hz clock does it)', async () => {
+    const profiles = await openProfiles({ profiles: [{ id: 'work', name: 'Work', color: 'blue', accounts: [] }] });
+    fireEvent.change(within(group('Work')).getByRole('textbox', { name: 'Name' }), { target: { value: 'Day' } });
+    await profiles.rerender();
+    expect(profiles.getProfiles).toHaveBeenCalledTimes(1);
+    expect((within(group('Work')).getByRole('textbox', { name: 'Name' }) as HTMLInputElement).value).toBe('Day');
   });
 
   it('Inbox goes back to the inbox', async () => {

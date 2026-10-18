@@ -21,6 +21,7 @@ function approval(id: string, command: string, profileId?: string): ApprovalView
     sessionId: `s-${id}`,
     toolName: 'Bash',
     command,
+    risk: 'yellow',
     viaSubagent: false,
     openedAt: NOW - 60_000,
   };

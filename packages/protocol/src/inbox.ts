@@ -7,6 +7,13 @@ import type { SessionView } from './sessions';
  */
 import type { Urgency } from './question';
 
+/**
+ * Assigned to every Approval by the hub's fixed rules, never by a model.
+ * Red: destructive, writes outside the Worktree or touches a secret.
+ * Green: known safe commands inside the Worktree. Yellow: everything else.
+ */
+export type RiskTier = 'green' | 'yellow' | 'red';
+
 export interface ApprovalView {
   id: string;
   kind: 'approval';
@@ -23,8 +30,15 @@ export interface ApprovalView {
   cwd?: string;
   /** The Profile the Account belongs to; absent when it is in none. */
   profileId?: string;
+  /** Red-tier Approvals need Touch ID to approve. */
+  risk: RiskTier;
   /** The Approval was raised by a subagent of this Session. */
   viaSubagent: boolean;
+  /**
+   * Its cwd lies in no Worktree (or is unknown), so even a read-only command
+   * reads outside one. The batch row lists it unticked with the reason.
+   */
+  readsOutsideWorktree?: true;
   /** Epoch ms when the shim connected. */
   openedAt: number;
 }

@@ -23,7 +23,7 @@ const WORK_FOCUS: FocusState = {
 const NO_FOCUS: FocusState = { readable: true, current: null, modes: WORK_FOCUS.modes };
 
 function approval(id: string, account: string): ApprovalView {
-  return { id, kind: 'approval', account, sessionId: `s-${id}`, toolName: 'Bash', command: 'ls', viaSubagent: false, openedAt: T };
+  return { id, kind: 'approval', account, sessionId: `s-${id}`, toolName: 'Bash', command: 'ls', risk: 'yellow', viaSubagent: false, openedAt: T };
 }
 function question(id: string, account: string): QuestionView {
   return { id, kind: 'question', account, sessionId: `s-${id}`, question: 'Which?', options: [], urgency: 'normal', openedAt: T };
