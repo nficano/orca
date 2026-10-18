@@ -12,6 +12,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { createInbox, type Inbox } from './inbox';
+import { createLearnedRules } from './rules/learned-rules';
 import { drainSpool } from './setup/spool';
 
 const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -99,6 +100,23 @@ describe.skipIf(!hasGo)('agentd-hook ↔ hub', () => {
     const logged = (await readFile(logPath, 'utf8')).trim().split('\n');
     expect(logged).toHaveLength(1);
     expect(JSON.parse(logged[0]!)).toMatchObject({ askId: ask.id, behavior: 'allow' });
+  });
+
+  it('a Learned rule makes the hook print allow at once, with no Ask', async () => {
+    const rules = createLearnedRules({ storePath: join(dir, 'rules.json') });
+    await rules.load();
+    await rules.save({ pattern: 'pnpm test', scope: 'all' });
+    inbox = createInbox({ log: fileDecisionsLog(logPath), rules });
+    let snapshots = 0;
+    inbox.subscribe(() => snapshots++);
+    hub = await listenForShims({ path: sock, inbox });
+
+    const { code, stdout } = await runShim(hookInput('pnpm test')).exited;
+
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout).hookSpecificOutput.decision).toEqual({ behavior: 'allow' });
+    expect(snapshots).toBe(0);
+    await until(() => rules.list()[0]?.uses === 1);
   });
 
   it('Deny in the hub makes the hook print a deny decision with a message', async () => {

@@ -1,4 +1,5 @@
 import type { RiskTier } from './inbox';
+import type { AlwaysAllowRequest } from './rules';
 
 /** Renderer ↔ main IPC contract (design I6 §5, renamed to glossary terms). */
 
@@ -62,6 +63,8 @@ export interface ApprovalDecideRequest {
   reason?: string;
   /** The surface the decision came from, for decisions.jsonl; defaults to the tray. */
   via?: DecisionSurface;
+  /** "Allow and approve" in the Always allow sheet: save this Learned rule, then allow. Allow only; never red tier. */
+  rule?: AlwaysAllowRequest;
 }
 
 /** The ticked Approvals in the batch row. */

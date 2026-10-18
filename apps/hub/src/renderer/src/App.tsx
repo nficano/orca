@@ -1,4 +1,5 @@
 import type {
+  AlwaysAllowRequest,
   ApprovalBatchResult,
   ApprovalView,
   ConnectedAccount,
@@ -9,7 +10,7 @@ import type {
   SessionView,
 } from '@orca/protocol';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { OrcaBridge, ProfilesBridge } from '../../preload/api';
+import type { OrcaBridge, ProfilesBridge, RulesBridge } from '../../preload/api';
 import { ApprovalDetail, SecretsHidden } from './ApprovalDetail';
 import { CursorBanner, openKey, useAskMenu } from './Cursor';
 import { BatchReport, BatchRow, batchLines } from './BatchRow';
@@ -19,9 +20,11 @@ import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { focusLabel, nextTab, profileDot } from './profiles';
 import { ProfilesSettings } from './ProfilesSettings';
+import { RulesSettings } from './RulesSettings';
 import { FingerprintIcon, RiskChip } from './RiskChip';
 import { SetupBanners } from './SetupBanners';
 import { Spinner } from './Spinner';
+import { ErrorToast, UndoToast } from './Toast';
 
 const EMPTY: InboxSnapshot = { pending: [], counts: { pending: 0 } };
 
@@ -37,12 +40,16 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
   /** The rail section on show. */
   const [section, setSection] = useState<'inbox' | 'settings'>('inbox');
+  /** The Settings tab on show. */
+  const [settingsTab, setSettingsTab] = useState<'profiles' | 'rules'>('profiles');
   /** The open Profile tab: 'all' or a Profile id. */
   const [tab, setTab] = useState('all');
   /** The Approval open in Approval detail, or null for the inbox list. */
   const [detailId, setDetailId] = useState<string | null>(null);
   /** Where the open Approval sat, so the next one opens when it resolves. */
   const detailIndex = useRef(0);
+  /** After "Allow and approve": Undo for the saved rule, or the rule wasn't saved. */
+  const [ruleToast, setRuleToast] = useState<{ ruleId: string } | { notSaved: true } | null>(null);
   /** What the last "Approve N" skipped, until dismissed. */
   const [batchReport, setBatchReport] = useState<ApprovalBatchResult | null>(null);
   const inFlight = useRef(new Set<string>());
@@ -96,7 +103,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
    * The renderer locks a card on send and unlocks it only on error (I6 §5).
    * A red Approve stays locked while the Touch ID sheet is up (I6 §1 confirming).
    */
-  const send = useCallback(async (id: string, intent: () => Promise<IpcResult>): Promise<IpcResult | undefined> => {
+  const send = useCallback(async <R extends IpcResult,>(id: string, intent: () => Promise<R>): Promise<R | undefined> => {
     if (inFlight.current.has(id)) return undefined;
     inFlight.current.add(id);
     setBusy(new Set(inFlight.current));
@@ -111,6 +118,22 @@ export function App({ bridge, now = Date.now }: AppProps) {
     (id: string, decision: 'allow' | 'deny', reason?: string) =>
       send(id, () => bridge.decideApproval(reason === undefined ? { id, decision } : { id, decision, reason })),
     [bridge, send],
+  );
+  /** "Allow and approve": main writes the rule, then allows (I6 §1). */
+  const alwaysAllow = useCallback(
+    (id: string, rule: AlwaysAllowRequest) =>
+      void send(id, () => bridge.decideApproval({ id, decision: 'allow', rule })).then((result) => {
+        if (!result?.ok || !result.rule) return;
+        setRuleToast(result.rule.saved ? { ruleId: result.rule.ruleId } : { notSaved: true });
+      }),
+    [bridge, send],
+  );
+  const undoRule = useCallback(
+    (ruleId: string) => {
+      setRuleToast(null);
+      void bridge.undoRule?.({ ruleId });
+    },
+    [bridge],
   );
   const answer = useCallback(
     (id: string, intent: AnswerIntent) => send(id, () => bridge.answerQuestion({ id, ...intent })),
@@ -134,6 +157,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
 
   const profilesBridge = useMemo(() => profilesOf(bridge), [bridge]);
+  const rulesBridge = useMemo(() => rulesOf(bridge), [bridge]);
+  const shownSettingsTab = settingsTab === 'rules' && rulesBridge ? 'rules' : profilesBridge ? 'profiles' : 'rules';
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const profiles = inbox.profiles ?? [];
@@ -209,7 +234,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           aria-current={section === 'settings' ? 'page' : undefined}
           aria-label={problems ? `Settings, ${plural(problems, 'problem')}` : 'Settings'}
           onClick={() => {
-            if (profilesBridge && accounts?.length) setSection('settings');
+            if ((profilesBridge || rulesBridge) && accounts?.length) setSection('settings');
           }}
         >
           <span className="tile">
@@ -228,16 +253,34 @@ export function App({ bridge, now = Date.now }: AppProps) {
           <FirstRun bridge={bridge} onConnected={setAccounts} />
         </section>
       )}
-      {section === 'settings' && !!accounts?.length && profilesBridge && (
+      {section === 'settings' && !!accounts?.length && (profilesBridge || rulesBridge) && (
         <section className="main" aria-label="Settings">
           <div className="tabs-row">
             <div className="tabs" role="tablist" aria-label="Settings">
-              <button className="tab on" role="tab" aria-selected="true">
-                Profiles
-              </button>
+              {profilesBridge && (
+                <button
+                  className={shownSettingsTab === 'profiles' ? 'tab on' : 'tab'}
+                  role="tab"
+                  aria-selected={shownSettingsTab === 'profiles'}
+                  onClick={() => setSettingsTab('profiles')}
+                >
+                  Profiles
+                </button>
+              )}
+              {rulesBridge && (
+                <button
+                  className={shownSettingsTab === 'rules' ? 'tab on' : 'tab'}
+                  role="tab"
+                  aria-selected={shownSettingsTab === 'rules'}
+                  onClick={() => setSettingsTab('rules')}
+                >
+                  Rules
+                </button>
+              )}
             </div>
           </div>
-          <ProfilesSettings bridge={profilesBridge} />
+          {shownSettingsTab === 'profiles' && profilesBridge && <ProfilesSettings bridge={profilesBridge} />}
+          {shownSettingsTab === 'rules' && rulesBridge && <RulesSettings bridge={rulesBridge} now={now} />}
         </section>
       )}
       {detail && section === 'inbox' && accounts?.length ? (
@@ -251,6 +294,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
             onBack={closeDetail}
             onMove={moveDetail}
             onDecide={decide}
+            {...(bridge.undoRule ? { onAlwaysAllow: alwaysAllow } : {})}
           />
         </section>
       ) : null}
@@ -339,6 +383,16 @@ export function App({ bridge, now = Date.now }: AppProps) {
         {batchReport && <BatchReport result={batchReport} onDismiss={() => setBatchReport(null)} />}
       </section>
       {askMenu.element}
+      {ruleToast &&
+        ('ruleId' in ruleToast ? (
+          <UndoToast key={ruleToast.ruleId} className="pop-toast" onUndo={() => undoRule(ruleToast.ruleId)} onDone={() => setRuleToast(null)}>
+            Rule saved
+          </UndoToast>
+        ) : (
+          <ErrorToast className="pop-toast" onClose={() => setRuleToast(null)}>
+            Approved once. The rule wasn't saved.
+          </ErrorToast>
+        ))}
     </div>
   );
 }
@@ -509,6 +563,12 @@ export function useSystemTheme() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
+}
+
+/** The Rules half of the bridge, when the hub has one. */
+function rulesOf(bridge: OrcaBridge): RulesBridge | null {
+  const { listRules, removeRule, undoRule } = bridge;
+  return listRules && removeRule && undoRule ? { listRules, removeRule, undoRule } : null;
 }
 
 /** The Profiles half of the bridge, when the hub has one. */

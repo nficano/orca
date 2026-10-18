@@ -14,10 +14,16 @@ export interface DecisionRecord {
   risk: RiskTier;
   behavior: 'allow' | 'deny';
   message?: string;
-  /** The surface the decision came from. */
-  via: DecisionSurface;
+  /** The surface the decision came from, or `rule` when a Learned rule allowed it without asking. */
+  via: DecisionSurface | 'rule';
   /** Allowed by "Approve N" in the batch row. */
   batch?: true;
+  /** The Learned rules that allowed it (`via: 'rule'`). */
+  ruleIds?: string[];
+  /** The command's steps (secrets masked), for "Would have covered N earlier Approvals". */
+  steps?: string[];
+  /** The Repo (shared git dir) the Approval ran in. */
+  repo?: string;
 }
 
 export interface DecisionsLog {

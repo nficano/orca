@@ -1,6 +1,7 @@
 import type { FocusFilterView, ProfileTab } from './profiles';
 import type { SessionView } from './sessions';
 import type { SetupView } from './setup';
+import type { AlwaysAllowView } from './rules';
 
 /**
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
@@ -55,6 +56,8 @@ export interface ApprovalView {
   summaryPending?: boolean;
   /** How many secrets were masked in `command` and `reason` ("1 secret hidden"). */
   secretsHidden?: number;
+  /** What the Always allow sheet offers (Learned rules); absent when the Approval has no steps. */
+  alwaysAllow?: AlwaysAllowView;
 }
 
 /** One step of a compound command. Secrets in `command` are already masked. */

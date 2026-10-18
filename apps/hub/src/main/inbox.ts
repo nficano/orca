@@ -3,6 +3,7 @@ import type {
   ApprovalBatchRequest,
   ApprovalBatchResult,
   ApprovalDecideRequest,
+  ApprovalDecideResult,
   ApprovalDecision,
   ApprovalView,
   AskView,
@@ -14,16 +15,20 @@ import type {
   QuestionAskMessage,
   QuestionView,
   RiskTier,
+  RuleSaveOutcome,
 } from '@orca/protocol';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
 import { posix } from 'node:path';
 import { commandSteps, withExplanations } from './command-steps';
-import type { DecisionsLog } from './decisions-log';
+import type { DecisionRecord, DecisionsLog } from './decisions-log';
 import { riskTier, type ToolCall } from './risk-tier';
+import type { ApprovalHistory } from './rules/history';
+import { repoName, type LearnedRules, type RuleSaveRequest } from './rules/learned-rules';
 import { maskSecrets } from './secrets';
 import { joinArgv } from './shell';
 import { isLongCommand, type Summarize, type Summary, type SummaryRequest } from './summaries';
+import { repoOf as gitRepoOf } from './sessions/stall-threshold';
 import { worktreeRoot } from './worktree';
 
 export const DEFAULT_DENY_MESSAGE = 'Denied in Orca';
@@ -39,7 +44,8 @@ export interface Inbox {
   openQuestion(msg: QuestionAskMessage, reply: (answer: QuestionAnswer) => void): string;
   /** The Ask's connection closed. The Ask leaves the inbox if it was still open. */
   close(id: string): void;
-  decide(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /** With `rule` ("Allow and approve"): saves that Learned rule, then allows. */
+  decide(req: ApprovalDecideRequest): Promise<ApprovalDecideResult>;
   /**
    * "Approve N" in the batch row. Re-checks each Approval's Risk tier now and
    * allows only those still green; every other id is skipped with its reason.
@@ -56,6 +62,8 @@ interface OpenAsk {
   reply: (decision: ApprovalDecision) => void;
   /** The tool call as the hook sent it, so its tier can be re-checked. */
   call: ToolCall;
+  /** The Repo (shared git dir) its cwd is in. */
+  repo?: string;
 }
 
 interface OpenQuestion {
@@ -86,6 +94,16 @@ export interface InboxOptions {
    * Without one, every card shows its raw command.
    */
   summarize?: Summarize;
+  /**
+   * Learned rules: an Approval whose every step has a rule is allowed at once
+   * and never becomes an Ask. Without them, every Approval asks and there is no
+   * Always allow.
+   */
+  rules?: LearnedRules;
+  /** Earlier Approvals, for "Would have covered N earlier Approvals"; fed every decided Approval. */
+  history?: ApprovalHistory;
+  /** The Repo (shared git dir) that holds an Ask's cwd. */
+  repoOf?: (cwd: string | undefined) => string | undefined;
 }
 
 export function createInbox({
@@ -98,6 +116,9 @@ export function createInbox({
   homeDir = homedir(),
   confirmWithTouchId = async () => false,
   summarize,
+  rules,
+  history,
+  repoOf = (cwd) => (cwd && posix.isAbsolute(cwd) ? gitRepoOf(cwd) : undefined),
 }: InboxOptions): Inbox {
   // Map keeps insertion order, which is arrival order: oldest first.
   const open = new Map<string, OpenAsk>();
@@ -138,6 +159,66 @@ export function createInbox({
       });
   };
 
+  /** What decisions.jsonl keeps of an Approval for the Always allow preview, and feeding the history. */
+  const remember = (view: ApprovalView, repo: string | undefined): Partial<DecisionRecord> => {
+    const steps = stepsOf(view);
+    if (!steps) return repo ? { repo } : {};
+    history?.add({ steps, ...(repo ? { repo } : {}) });
+    return { steps, ...(repo ? { repo } : {}) };
+  };
+
+  /** Spec › Approval path 4: a matching Learned rule allows at once. Not an Ask: no card, no notification. */
+  const allowedByRule = (view: ApprovalView, repo: string | undefined, reply: (d: ApprovalDecision) => void): boolean => {
+    const steps = stepsOf(view);
+    if (!rules || !steps || view.risk === 'red') return false;
+    const matched = rules.match(steps, repo);
+    if (!matched) return false;
+    const ruleIds = matched.map((r) => r.id);
+    reply({ behavior: 'allow' });
+    void log
+      .append({
+        at: new Date(now()).toISOString(),
+        askId: view.id,
+        account: view.account,
+        sessionId: view.sessionId,
+        toolName: view.toolName,
+        command: view.command,
+        risk: view.risk,
+        behavior: 'allow',
+        via: 'rule',
+        ruleIds,
+        steps,
+        ...(repo ? { repo } : {}),
+      })
+      .catch(onLogError);
+    void rules.recordUse(ruleIds).catch(onLogError);
+    return true;
+  };
+
+  /** "Allow and approve": the rule to save, or null when the request can't make one. */
+  const ruleRequest = (ask: OpenAsk, req: ApprovalDecideRequest): RuleSaveRequest | null => {
+    const { rule } = req;
+    if (!rules || req.decision !== 'allow' || ask.view.risk === 'red') return null;
+    if (typeof rule !== 'object' || rule === null || typeof rule.pattern !== 'string') return null;
+    const pattern = rule.pattern.trim();
+    if (!pattern || !stepsOf(ask.view)?.includes(pattern)) return null;
+    if (rule.scope === 'all') return { pattern, scope: 'all' };
+    if (rule.scope === 'repo' && ask.repo) return { pattern, scope: 'repo', repo: ask.repo };
+    return null;
+  };
+
+  /** Writes the rule, counting the Approval it came from as its first use. */
+  const saveRule = async (req: RuleSaveRequest): Promise<RuleSaveOutcome> => {
+    try {
+      const rule = await rules!.save(req);
+      await rules!.recordUse([rule.id]).catch(onLogError);
+      return { saved: true, ruleId: rule.id };
+    } catch (err) {
+      onLogError(err);
+      return { saved: false };
+    }
+  };
+
   return {
     open(msg, reply) {
       const id = newId();
@@ -145,10 +226,24 @@ export function createInbox({
       const call: ToolCall = { toolName: msg.hook.tool_name, toolInput: msg.hook.tool_input, cwd };
       const { risk, readsOutsideWorktree } = assess(call);
       const view = approvalView(id, msg, risk, now());
+      const repo = rules ? repoOf(cwd) : undefined;
+      if (allowedByRule(view, repo, reply)) return id;
       if (readsOutsideWorktree) view.readsOutsideWorktree = true;
+      const steps = stepsOf(view);
+      if (rules && steps) {
+        view.alwaysAllow = {
+          ...(repo ? { repoName: repoName(repo) } : {}),
+          covered: history?.covered(steps, repo) ?? steps.map(() => ({ repo: 0, all: 0 })),
+        };
+      }
       const name = msg.account ? accountName(msg.account) : undefined;
       const wantsSummary = summarize !== undefined && isLongCommand(view.command);
-      open.set(id, { view: { ...view, ...(name ? { accountName: name } : {}), ...(wantsSummary ? { summaryPending: true } : {}) }, reply, call });
+      open.set(id, {
+        view: { ...view, ...(name ? { accountName: name } : {}), ...(wantsSummary ? { summaryPending: true } : {}) },
+        reply,
+        call,
+        ...(repo ? { repo } : {}),
+      });
       if (wantsSummary) {
         const steps = view.steps?.map((s) => s.command) ?? [];
         requestSummary(
@@ -205,10 +300,14 @@ export function createInbox({
       return { ok: true };
     },
 
-    async decide({ id, decision, reason, via }) {
+    async decide(req) {
+      const { id, decision, reason, via } = req;
       let ask = open.get(id);
       if (!ask) return { ok: false, error: 'already-resolved' };
       if (decision !== 'allow' && decision !== 'deny') return { ok: false, error: 'invalid-request' };
+      // Red-tier Approvals can never become Learned rules (spec › Decisions).
+      const rule = req.rule === undefined ? undefined : ruleRequest(ask, req);
+      if (rule === null) return { ok: false, error: 'invalid-request' };
 
       if (decision === 'allow' && ask.view.risk === 'red') {
         // One sheet per Ask: a second Approve waits on the sheet already up.
@@ -226,6 +325,8 @@ export function createInbox({
 
       // Claim the Ask before any await so a racing decide sees it gone.
       open.delete(id);
+      // Write the rule, then allow (I6 §1). A failed write still approves once.
+      const saved = rule ? await saveRule(rule) : undefined;
 
       const answer: ApprovalDecision =
         decision === 'allow' ? { behavior: 'allow' } : { behavior: 'deny', message: reason?.trim() || DEFAULT_DENY_MESSAGE };
@@ -241,11 +342,12 @@ export function createInbox({
           risk: view.risk,
           ...(answer.behavior === 'deny' ? { ...answer, message: maskSecrets(answer.message).text } : answer),
           via: via === 'panel' || via === 'notification' ? via : 'tray',
+          ...(rules ? remember(view, ask.repo) : {}),
         })
         .catch(onLogError);
       ask.reply(answer);
       emit();
-      return { ok: true };
+      return saved ? { ok: true, rule: saved } : { ok: true };
     },
 
     async approveBatch(req) {
@@ -281,7 +383,7 @@ export function createInbox({
       }
 
       const at = new Date(now()).toISOString();
-      for (const { view } of approved) {
+      for (const { view, repo } of approved) {
         await log
           .append({
             at,
@@ -294,6 +396,7 @@ export function createInbox({
             behavior: 'allow',
             via: 'tray',
             batch: true,
+            ...(rules ? remember(view, repo) : {}),
           })
           .catch(onLogError);
       }
@@ -309,6 +412,11 @@ export function createInbox({
       return () => listeners.delete(listener);
     },
   };
+}
+
+/** The Approval's steps as shown (secrets masked); undefined when it has none. */
+function stepsOf(view: ApprovalView): string[] | undefined {
+  return view.steps?.length ? view.steps.map((s) => s.command) : undefined;
 }
 
 /** Every agent-written string in the view is masked; `secretsHidden` counts what was hidden. */
