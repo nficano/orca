@@ -68,8 +68,8 @@ describe('Open in Cursor, hub and extension together', () => {
     await until(() => windows.count() === 3);
 
     const asks: AskView[] = [
-      { id: 'in-t13', kind: 'approval', account: '', sessionId: 's', toolName: 'Bash', command: 'pnpm test', cwd: join(linked, 'apps', 'hub'), viaSubagent: false, openedAt: 0 },
-      { id: 'in-main', kind: 'approval', account: '', sessionId: 's', toolName: 'Bash', command: 'pnpm test', cwd: join(main, 'apps', 'hub'), viaSubagent: false, openedAt: 0 },
+      { id: 'in-t13', kind: 'approval', account: '', sessionId: 's', toolName: 'Bash', command: 'pnpm test', cwd: join(linked, 'apps', 'hub'), risk: 'yellow', viaSubagent: false, openedAt: 0 },
+      { id: 'in-main', kind: 'approval', account: '', sessionId: 's', toolName: 'Bash', command: 'pnpm test', cwd: join(main, 'apps', 'hub'), risk: 'yellow', viaSubagent: false, openedAt: 0 },
       { id: 'in-ledger', kind: 'question', account: '', sessionId: '', cwd: ledger, question: 'Backfill?', options: [], urgency: 'normal', openedAt: 0 },
     ];
     const openInCursor = createOpenInCursor({

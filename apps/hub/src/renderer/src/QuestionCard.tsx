@@ -66,7 +66,7 @@ export function QuestionCard({ ask, now, busy, onAnswer }: QuestionCardProps) {
   };
 
   const worktree = baseName(ask.cwd);
-  const account = baseName(ask.account);
+  const account = ask.accountName ?? baseName(ask.account);
   const typeButton = !typing && (
     <button className={layout === 'list' ? 'opt ghost' : 'btn ghost'} disabled={busy} onClick={() => setTyping(true)}>
       {layout === 'list' && <span className="key ghost" aria-hidden="true" />}

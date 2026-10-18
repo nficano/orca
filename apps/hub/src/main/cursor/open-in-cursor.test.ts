@@ -14,6 +14,7 @@ const approval = (id: string, cwd?: string): AskView => ({
   toolName: 'Bash',
   command: 'pnpm test',
   cwd,
+  risk: 'yellow',
   viaSubagent: false,
   openedAt: 0,
 });

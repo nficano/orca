@@ -1,4 +1,4 @@
-import { isHandoffTool, isObject, parseLine, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
+import { isHandoffTool, isObject, parseLine, stepText, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
 
 const STARTED = new Set(['task_started', 'turn_started']);
 const ENDED = new Set(['task_complete', 'turn_complete', 'turn_aborted']);
@@ -13,6 +13,8 @@ const WORKING = new Set(['exec_command_begin', 'patch_apply_begin', 'mcp_tool_ca
 export function createCodexReader(): TranscriptReader {
   let sessionId: string | undefined;
   let subagent = false;
+  /** call_id → tool name, so an output knows which tool failed. */
+  const toolNames = new Map<string, string>();
 
   return (line) => {
     const e = parseLine(line);
@@ -50,6 +52,10 @@ export function createCodexReader(): TranscriptReader {
         const prompt = str(p.message);
         return [{ ...base, turn: 'working', ...(prompt ? { prompt } : {}) }];
       }
+      if (t === 'agent_message') {
+        const step = stepText(p.message);
+        return [step ? { ...base, step } : base];
+      }
       if (t === 'mcp_tool_call_begin' && isObject(p.invocation)) {
         const { server, tool } = p.invocation;
         if (server === 'orca' && tool === 'handoff') return [{ ...base, turn: 'handoff' }];
@@ -59,10 +65,70 @@ export function createCodexReader(): TranscriptReader {
     }
     if (e.type === 'response_item') {
       if (p.type === 'function_call' || p.type === 'custom_tool_call') {
-        return [{ ...base, turn: isHandoffTool(p.name) ? 'handoff' : 'working' }];
+        const name = str(p.name) ?? 'unknown';
+        const callId = str(p.call_id);
+        if (callId) toolNames.set(callId, name);
+        if (isHandoffTool(p.name)) return [{ ...base, turn: 'handoff' }];
+        const step = callStep(name, p.arguments ?? p.input);
+        return [{ ...base, turn: 'working', ...(step ? { step } : {}) }];
+      }
+      if (p.type === 'function_call_output' || p.type === 'custom_tool_call_output') {
+        const callId = str(p.call_id);
+        const tool = (callId && toolNames.get(callId)) || 'unknown';
+        const error = failure(p.output);
+        return [{ ...base, turn: 'working', toolResult: error === undefined ? { tool } : { tool, error } }];
       }
       return [base];
     }
     return [];
   };
+}
+
+/** The command a shell call runs, else the tool's name. */
+function callStep(name: string, args: unknown): string | undefined {
+  let input: unknown = args;
+  if (typeof args === 'string') {
+    try {
+      input = JSON.parse(args);
+    } catch {
+      input = undefined;
+    }
+  }
+  if (isObject(input)) {
+    const cmd = Array.isArray(input.command) ? input.command.join(' ') : input.command;
+    const step = stepText(cmd);
+    if (step) return step;
+  }
+  return stepText(name);
+}
+
+/**
+ * The failure text of a tool output, or undefined when it succeeded. Shell
+ * output starts "Exit code: N"; newer logs wrap it as JSON with
+ * `metadata.exit_code`.
+ */
+function failure(output: unknown): string | undefined {
+  let text: string | undefined;
+  let code: number | undefined;
+  if (typeof output === 'string') {
+    text = output;
+    try {
+      const v: unknown = JSON.parse(output);
+      if (isObject(v) && typeof v.output === 'string') {
+        text = v.output;
+        if (isObject(v.metadata) && typeof v.metadata.exit_code === 'number') code = v.metadata.exit_code;
+      }
+    } catch {
+      // plain text output
+    }
+  } else if (isObject(output) && typeof output.content === 'string') {
+    text = output.content;
+    if (output.success === false) code = 1;
+  }
+  if (text === undefined) return undefined;
+  if (code === undefined) {
+    const m = /^Exit code:\s*(-?\d+)/.exec(text);
+    if (m) code = Number(m[1]);
+  }
+  return code !== undefined && code !== 0 ? text : undefined;
 }

@@ -6,11 +6,20 @@ import type { SessionView } from './sessions';
  */
 import type { Urgency } from './question';
 
+/**
+ * Assigned to every Approval by the hub's fixed rules, never by a model.
+ * Red: destructive, writes outside the Worktree or touches a secret.
+ * Green: known safe commands inside the Worktree. Yellow: everything else.
+ */
+export type RiskTier = 'green' | 'yellow' | 'red';
+
 export interface ApprovalView {
   id: string;
   kind: 'approval';
   /** The Account's config dir; with sessionId it identifies the Session. */
   account: string;
+  /** The Account's name from first run ("Work"); absent for an Account Orca hasn't connected. */
+  accountName?: string;
   sessionId: string;
   toolName: string;
   /** What the tool call will do, shown raw in the card's code block. */
@@ -18,6 +27,8 @@ export interface ApprovalView {
   /** "Agent's reason": `tool_input.description` when the payload has one. */
   reason?: string;
   cwd?: string;
+  /** Red-tier Approvals need Touch ID to approve. */
+  risk: RiskTier;
   /** The Approval was raised by a subagent of this Session. */
   viaSubagent: boolean;
   /** Epoch ms when the shim connected. */
@@ -28,6 +39,8 @@ export interface QuestionView {
   id: string;
   kind: 'question';
   account: string;
+  /** The Account's name from first run ("Work"); absent for an Account Orca hasn't connected. */
+  accountName?: string;
   /** Empty when the MCP server can't tell. */
   sessionId: string;
   cwd?: string;

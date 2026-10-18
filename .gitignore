@@ -4,3 +4,4 @@ out/
 dist/
 *.tsbuildinfo
 apps/hub/resources/*.vsix
+apps/hub/resources/bin/

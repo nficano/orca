@@ -22,6 +22,7 @@ const approval: ApprovalView = {
   toolName: 'Bash',
   command: 'pnpm test',
   cwd: '/Users/me/code/orca-wt/t13',
+  risk: 'yellow',
   viaSubagent: false,
   openedAt: NOW - 60_000,
 };
@@ -49,6 +50,12 @@ function fakeHub(snapshot: InboxSnapshot) {
     answerQuestion: async () => ({ ok: true }),
     openInCursor: async (req): Promise<OpenInCursorResult> => (opened.push(req), { ok: true }),
     installCursorExtension: vi.fn(() => new Promise<InstallExtensionResult>((resolve) => (finishInstall = resolve))),
+    // Accounts are connected, so the inbox shows instead of first run.
+    listAccounts: async () => [{ kind: 'claude', dir: '/Users/me/.claude-work', name: 'Work' }],
+    scanAccounts: async () => [],
+    chooseAccountFolder: async () => ({ kind: 'cancelled' }),
+    previewConnect: async () => [],
+    connectAccounts: async () => ({ connected: [], failed: [] }),
   };
   return {
     bridge,

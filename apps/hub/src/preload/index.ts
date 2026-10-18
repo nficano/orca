@@ -1,8 +1,8 @@
 import { CURSOR_IPC, IPC, type InboxSnapshot } from '@orca/protocol';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import type { OrcaBridge } from './api';
+import type { OrcaBridge, QuickAnswerBridge, ShortcutBridge } from './api';
 
-const bridge: OrcaBridge = {
+const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   getInbox: () => ipcRenderer.invoke(IPC.inboxGet),
   onInbox(listener) {
     const handler = (_e: IpcRendererEvent, s: InboxSnapshot) => listener(s);
@@ -18,6 +18,21 @@ const bridge: OrcaBridge = {
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
   openInCursor: (req) => ipcRenderer.invoke(CURSOR_IPC.open, req),
   installCursorExtension: () => ipcRenderer.invoke(CURSOR_IPC.installExtension),
+  onQuickAnswerOpened(listener) {
+    const handler = () => listener();
+    ipcRenderer.on(IPC.quickAnswerOpened, handler);
+    return () => ipcRenderer.off(IPC.quickAnswerOpened, handler);
+  },
+  closeQuickAnswer: () => ipcRenderer.send(IPC.quickAnswerClose),
+  resizeQuickAnswer: (height) => ipcRenderer.send(IPC.quickAnswerResize, height),
+  quickAnswerShortcut: () => ipcRenderer.invoke(IPC.quickAnswerShortcutGet),
+  rebindQuickAnswer: (accelerator) => ipcRenderer.invoke(IPC.quickAnswerRebind, accelerator),
+  listAccounts: () => ipcRenderer.invoke(IPC.accountsList),
+  scanAccounts: () => ipcRenderer.invoke(IPC.accountsScan),
+  chooseAccountFolder: () => ipcRenderer.invoke(IPC.accountsChooseFolder),
+  previewConnect: (choices) => ipcRenderer.invoke(IPC.accountsPreview, choices),
+  connectAccounts: (choices) => ipcRenderer.invoke(IPC.accountsConnect, choices),
+  stopSession: (req) => ipcRenderer.invoke(IPC.sessionStop, req),
 };
 
 contextBridge.exposeInMainWorld('orca', bridge);
