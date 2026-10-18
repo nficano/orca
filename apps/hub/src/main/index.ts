@@ -25,6 +25,7 @@ import { createCursorLink } from './cursor/link';
 import { startApprovalNotifications } from './approval-notifications';
 import { fileDecisionsLog } from './decisions-log';
 import { electronNotifier } from './electron-notifier';
+import { defaultSummarizer } from './haiku-summarizer';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
@@ -82,6 +83,8 @@ const inbox = createInbox({
   confirmWithTouchId: touchIdConfirmer(systemPreferences, (up) => {
     touchIdSheetUp = up;
   }),
+  // Haiku summaries for Questions and long commands; off without credentials or with ORCA_SUMMARIES=off.
+  summarize: defaultSummarizer(process.env),
 });
 const sessions = createSessions();
 const cursor = createCursorLink({

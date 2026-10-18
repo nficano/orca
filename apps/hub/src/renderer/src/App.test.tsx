@@ -124,9 +124,11 @@ describe('Inbox', () => {
 
     hub.openPopover({ askId: 'red', view: 'detail' });
 
-    const red = screen.getAllByRole('article')[1]!;
-    expect(document.activeElement).toBe(red);
-    expect(within(red).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+    // Approval detail (design 2) for that Ask, focused so ↑ / ↓ and Esc work.
+    const detail = screen.getByRole('region', { name: 'Approval' });
+    expect(document.activeElement).toBe(detail);
+    expect(within(detail).getByText('2 of 2')).toBeTruthy();
+    expect(within(detail).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
   });
 
   it('falls back to the oldest card when the Ask a banner named has already resolved', async () => {

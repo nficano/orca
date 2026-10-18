@@ -53,3 +53,79 @@ export function touchesSecret(text: string): boolean {
 export function containsSecret(text: string): boolean {
   return INLINE_SECRETS.some((re) => re.test(text));
 }
+
+// ---------------------------------------------------------------------------
+// Masking (design 11 §03): every secret keeps only its last 4 characters,
+// before any summary, notification or snapshot sees the text.
+
+const MASK = '••••••';
+
+/** One kind of secret: `keep` groups stay as written, `value` is masked. */
+interface MaskRule {
+  re: RegExp;
+  /** Builds the replacement from the match groups and the masked value. */
+  replace: (groups: string[], masked: string) => string;
+  /** Index of the secret value among the groups. */
+  value: number;
+  /** Private keys are hidden entirely, never "last 4". */
+  whole?: boolean;
+}
+
+const MASK_RULES: MaskRule[] = [
+  {
+    re: /(-----BEGIN [A-Z ]*PRIVATE KEY-----)([\s\S]*?)(-----END [A-Z ]*PRIVATE KEY-----)/g,
+    value: 1,
+    whole: true,
+    replace: ([begin, , end], m) => `${begin}${m}${end}`,
+  },
+  // Provider key shapes keep their recognisable prefix: sk-ant-••••••3f9a.
+  {
+    re: /\b(sk-ant-|sk-|gh[pousr]_|github_pat_|xox[abprs]-)([A-Za-z0-9_-]{16,})/g,
+    value: 1,
+    replace: ([prefix], m) => `${prefix}${m}`,
+  },
+  { re: /\b(AKIA|ASIA)([0-9A-Z]{16})\b/g, value: 1, replace: ([prefix], m) => `${prefix}${m}` },
+  { re: /\b(AIza)([0-9A-Za-z_-]{35})\b/g, value: 1, replace: ([prefix], m) => `${prefix}${m}` },
+  { re: /()\b(eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]*)/g, value: 1, replace: (_, m) => m },
+  { re: /\b(Bearer\s+)([A-Za-z0-9._~+/=-]{20,})/gi, value: 1, replace: ([lead], m) => `${lead}${m}` },
+  {
+    re: /\b([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|APIKEY|PRIVATE_KEY|ACCESS_KEY)[A-Z0-9_]*=)(['"]?)([^\s'"$][^\s'"]*)/g,
+    value: 2,
+    replace: ([lead, quote], m) => `${lead}${quote}${m}`,
+  },
+  {
+    re: /((?:^|\s)--?(?:password|passwd|token|secret|api-key|apikey)[= ])(['"]?)([^\s'"$-][^\s'"]*)/gi,
+    value: 2,
+    replace: ([lead, quote], m) => `${lead}${quote}${m}`,
+  },
+  {
+    re: /\b((?:password|passwd|secret|api[_-]?key)\s*[:=]\s*)(['"]?)([^\s'"$]{6,})/gi,
+    value: 2,
+    replace: ([lead, quote], m) => `${lead}${quote}${m}`,
+  },
+  // https://user:password@host
+  { re: /(\b[a-z][\w+.-]*:\/\/[^\s:@/]+:)([^\s@/]+)(@)/gi, value: 1, replace: ([lead, , at], m) => `${lead}${m}${at}` },
+  // curl -u user:password
+  { re: /((?:^|\s)(?:-u|--user)\s+[^\s:]+:)([^\s'"]+)/g, value: 1, replace: ([lead], m) => `${lead}${m}` },
+];
+
+const maskValue = (value: string, whole = false) => (whole || value.length < 8 ? MASK : `${MASK}${value.slice(-4)}`);
+
+/**
+ * Masks every secret in free text to its last 4 characters ("sk-ant-••••••3f9a").
+ * `hidden` counts the secrets masked. Masking masked text changes nothing.
+ */
+export function maskSecrets(text: string): { text: string; hidden: number } {
+  let hidden = 0;
+  let out = text;
+  for (const rule of MASK_RULES) {
+    out = out.replace(rule.re, (match, ...rest) => {
+      const groups = rest.slice(0, rest.findIndex((x) => typeof x === 'number')) as string[];
+      const value = groups[rule.value] ?? '';
+      if (!value || value.includes('•')) return match;
+      hidden++;
+      return rule.replace(groups.map((g) => g ?? ''), maskValue(value, rule.whole));
+    });
+  }
+  return { text: out, hidden };
+}

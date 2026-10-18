@@ -91,7 +91,7 @@ export function QuestionCard({ ask, now, busy, onAnswer, profileColor }: Questio
           <QuestionIcon />
           Question
         </span>
-        <h2 className="title">{worktree || account}</h2>
+        <h2 className="title">{ask.title ?? (worktree || account)}</h2>
         <span className="meta wait">{waitLabel(ask.openedAt, now)}</span>
       </div>
       {worktree && account && (

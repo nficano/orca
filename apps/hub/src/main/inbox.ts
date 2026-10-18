@@ -17,8 +17,13 @@ import type {
 } from '@orca/protocol';
 import { randomUUID } from 'node:crypto';
 import { homedir } from 'node:os';
+import { posix } from 'node:path';
+import { commandSteps, withExplanations } from './command-steps';
 import type { DecisionsLog } from './decisions-log';
 import { riskTier, type ToolCall } from './risk-tier';
+import { maskSecrets } from './secrets';
+import { joinArgv } from './shell';
+import { isLongCommand, type Summarize, type Summary, type SummaryRequest } from './summaries';
 import { worktreeRoot } from './worktree';
 
 export const DEFAULT_DENY_MESSAGE = 'Denied in Orca';
@@ -55,6 +60,8 @@ interface OpenAsk {
 
 interface OpenQuestion {
   view: QuestionView;
+  /** The options as the agent sent them; the view's copy is masked. */
+  options: string[];
   reply: (answer: QuestionAnswer) => void;
 }
 
@@ -74,6 +81,11 @@ export interface InboxOptions {
    * from the hub (the editor prompt still can).
    */
   confirmWithTouchId?: (ask: ApprovalView) => Promise<boolean>;
+  /**
+   * Haiku summaries for Questions and long commands. Shown masked text only.
+   * Without one, every card shows its raw command.
+   */
+  summarize?: Summarize;
 }
 
 export function createInbox({
@@ -85,6 +97,7 @@ export function createInbox({
   worktreeOf = worktreeRoot,
   homeDir = homedir(),
   confirmWithTouchId = async () => false,
+  summarize,
 }: InboxOptions): Inbox {
   // Map keeps insertion order, which is arrival order: oldest first.
   const open = new Map<string, OpenAsk>();
@@ -111,6 +124,20 @@ export function createInbox({
     return worktree === undefined ? { risk, readsOutsideWorktree: true } : { risk };
   };
 
+  /**
+   * Asks for a summary without holding anything up: the card shows
+   * "Writing a summary…" and stays decidable. `apply` runs only if the Ask is
+   * still open when the summary arrives.
+   */
+  const requestSummary = (req: SummaryRequest, apply: (summary: Summary | null) => boolean) => {
+    if (!summarize) return;
+    void summarize(req)
+      .catch(() => null)
+      .then((summary) => {
+        if (apply(summary)) emit();
+      });
+  };
+
   return {
     open(msg, reply) {
       const id = newId();
@@ -120,7 +147,21 @@ export function createInbox({
       const view = approvalView(id, msg, risk, now());
       if (readsOutsideWorktree) view.readsOutsideWorktree = true;
       const name = msg.account ? accountName(msg.account) : undefined;
-      open.set(id, { view: name ? { ...view, accountName: name } : view, reply, call });
+      const wantsSummary = summarize !== undefined && isLongCommand(view.command);
+      open.set(id, { view: { ...view, ...(name ? { accountName: name } : {}), ...(wantsSummary ? { summaryPending: true } : {}) }, reply, call });
+      if (wantsSummary) {
+        const steps = view.steps?.map((s) => s.command) ?? [];
+        requestSummary(
+          { kind: 'approval', toolName: view.toolName, command: view.command, steps, ...(view.reason ? { reason: view.reason } : {}) },
+          (summary) => {
+            const ask = open.get(id);
+            if (!ask) return false;
+            const { summaryPending: _, ...rest } = ask.view;
+            ask.view = { ...rest, ...approvalSummary(rest, summary) };
+            return true;
+          },
+        );
+      }
       emit();
       return id;
     },
@@ -129,7 +170,22 @@ export function createInbox({
       const id = newId();
       const view = questionView(id, msg, now());
       const name = msg.account ? accountName(msg.account) : undefined;
-      questions.set(id, { view: name ? { ...view, accountName: name } : view, reply });
+      questions.set(id, {
+        view: { ...view, ...(name ? { accountName: name } : {}), ...(summarize ? { summaryPending: true } : {}) },
+        options: [...msg.options],
+        reply,
+      });
+      requestSummary(
+        { kind: 'question', question: view.question, options: view.options, ...(view.context ? { context: view.context } : {}) },
+        (summary) => {
+          const q = questions.get(id);
+          if (!q) return false;
+          const { summaryPending: _, ...rest } = q.view;
+          const title = summary?.title?.trim();
+          q.view = title ? { ...rest, title: maskSecrets(title).text } : rest;
+          return true;
+        },
+      );
       emit();
       return id;
     },
@@ -141,7 +197,7 @@ export function createInbox({
     async answer({ id, optionIndex, text }) {
       const q = questions.get(id);
       if (!q) return { ok: false, error: 'already-resolved' };
-      const answer = questionAnswer(q.view, optionIndex, text);
+      const answer = questionAnswer(q.options, optionIndex, text);
       if (!answer) return { ok: false, error: 'invalid-request' };
       questions.delete(id);
       q.reply(answer);
@@ -183,7 +239,7 @@ export function createInbox({
           toolName: view.toolName,
           command: view.command,
           risk: view.risk,
-          ...answer,
+          ...(answer.behavior === 'deny' ? { ...answer, message: maskSecrets(answer.message).text } : answer),
           via: via === 'panel' || via === 'notification' ? via : 'tray',
         })
         .catch(onLogError);
@@ -255,49 +311,91 @@ export function createInbox({
   };
 }
 
+/** Every agent-written string in the view is masked; `secretsHidden` counts what was hidden. */
 function questionView(id: string, msg: QuestionAskMessage, openedAt: number): QuestionView {
-  return {
+  let hidden = 0;
+  const mask = (text: string) => {
+    const m = maskSecrets(text);
+    hidden += m.hidden;
+    return m.text;
+  };
+  const view: QuestionView = {
     id,
     kind: 'question',
     account: msg.account,
     sessionId: msg.sessionId,
     ...(msg.cwd ? { cwd: msg.cwd } : {}),
-    question: msg.question,
-    options: [...msg.options],
-    ...(msg.default !== undefined && msg.default.trim() ? { default: msg.default } : {}),
-    ...(msg.context?.trim() ? { context: msg.context } : {}),
+    question: mask(msg.question),
+    options: msg.options.map(mask),
+    // The default repeats an option: mask it without counting it twice.
+    ...(msg.default !== undefined && msg.default.trim() ? { default: maskSecrets(msg.default).text } : {}),
+    ...(msg.context?.trim() ? { context: mask(msg.context) } : {}),
     urgency: msg.urgency,
     openedAt,
   };
+  return hidden ? { ...view, secretsHidden: hidden } : view;
 }
 
 /** Exactly one of a real option or non-blank text; null otherwise. */
-function questionAnswer(view: QuestionView, optionIndex?: number, text?: string): QuestionAnswer | null {
+function questionAnswer(options: readonly string[], optionIndex?: number, text?: string): QuestionAnswer | null {
   if (optionIndex !== undefined) {
     if (text !== undefined || !Number.isInteger(optionIndex)) return null;
-    const option = view.options[optionIndex];
+    const option = options[optionIndex];
     return option === undefined ? null : { text: option, optionIndex };
   }
   const typed = typeof text === 'string' ? text.trim() : '';
   return typed ? { text: typed } : null;
 }
 
+/** Command, steps and reason are masked; `secretsHidden` counts what was hidden. */
 function approvalView(id: string, { account, hook }: ApprovalAskMessage, risk: RiskTier, openedAt: number): ApprovalView {
   const input = hook.tool_input;
-  const reason = typeof input.description === 'string' && input.description.trim() ? input.description : undefined;
+  const description = typeof input.description === 'string' && input.description.trim() ? input.description : undefined;
+  const command = maskSecrets(describeToolCall(input));
+  const reason = description === undefined ? undefined : maskSecrets(description);
+  const script = SHELL_TOOLS.has(hook.tool_name) ? shellText(input.command ?? input.cmd) : undefined;
+  const steps = script === undefined ? undefined : commandSteps(maskSecrets(script).text);
+  const hidden = command.hidden + (reason?.hidden ?? 0);
   return {
     id,
     kind: 'approval',
     account,
     sessionId: hook.session_id,
     toolName: hook.tool_name,
-    command: describeToolCall(input),
-    ...(reason ? { reason } : {}),
+    command: command.text,
+    ...(reason ? { reason: reason.text } : {}),
     ...(typeof hook.cwd === 'string' ? { cwd: hook.cwd } : {}),
     risk,
     viaSubagent: typeof hook.agent_id === 'string' && hook.agent_id !== '',
     openedAt,
+    ...(steps?.length ? { steps } : {}),
+    ...(hidden ? { secretsHidden: hidden } : {}),
   };
+}
+
+/** The summary's fields for the view, masked. Nothing when there is no summary. */
+function approvalSummary(view: ApprovalView, summary: Summary | null): Partial<ApprovalView> {
+  if (!summary) return {};
+  const title = summary.title?.trim();
+  const text = summary.summary?.trim();
+  const steps = view.steps && summary.steps ? withExplanations(view.steps, summary.steps.map((l) => maskSecrets(l).text)) : view.steps;
+  return {
+    ...(title ? { title: maskSecrets(title).text } : {}),
+    ...(text ? { summary: maskSecrets(text).text } : {}),
+    ...(steps ? { steps } : {}),
+  };
+}
+
+const SHELL_TOOLS = new Set(['Bash', 'shell', 'local_shell', 'exec_command', 'container.exec']);
+const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh', 'fish']);
+
+/** The shell script a tool call runs; Codex may send argv, and `bash -lc "<script>"` unwraps to the script. */
+function shellText(command: unknown): string | undefined {
+  if (typeof command === 'string') return command;
+  if (!Array.isArray(command) || !command.every((a) => typeof a === 'string')) return undefined;
+  const argv = command as string[];
+  if (argv.length === 3 && SHELLS.has(posix.basename(argv[0]!)) && /^-\w*c$/.test(argv[1]!)) return argv[2];
+  return joinArgv(argv);
 }
 
 /** What the card's code block shows for a tool call. */

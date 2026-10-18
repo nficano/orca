@@ -72,7 +72,7 @@ function approvalBanner(a: ApprovalView): Banner {
     id: a.id,
     group: a.account || UNKNOWN_ACCOUNT_GROUP,
     ...titles(a),
-    body: `${RISK_LABEL[a.risk]} · ${a.reason ?? a.toolName}\n${bannerCommand(a.command)}`,
+    body: `${RISK_LABEL[a.risk]} · ${a.reason ?? a.toolName}\n${bannerCommand(a)}`,
     // High risk is the loud one; green and yellow arrive as silent banners.
     sound: red,
     // Red needs Touch ID, which only the popover can show: Review instead of Approve.
@@ -98,7 +98,8 @@ function baseName(path: string | undefined): string {
  * The raw command in plain text (banners have no monospace). Notification
  * Center keeps banners, so a command holding a secret value is never shown.
  */
-function bannerCommand(command: string): string {
-  if (containsSecret(command)) return 'Command hidden: it contains a secret. Review to see it.';
+function bannerCommand({ command, secretsHidden }: ApprovalView): string {
+  // The inbox has already masked the secret; the banner still leaves the command out.
+  if (secretsHidden || containsSecret(command)) return 'Command hidden: it contains a secret. Review to see it.';
   return command;
 }

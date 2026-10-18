@@ -590,6 +590,178 @@ button:focus-visible {
   margin: 0;
 }
 
+/* Card title opens Approval detail (design 11 §04: clicking the title opens the detail view). */
+.title-link {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: inherit;
+  text-align: left;
+}
+.title-link:hover {
+  text-decoration: underline;
+}
+
+/* Design 7 · Loading: "Writing a summary…" while Approve stays live. */
+.summary-loading {
+  margin: 0;
+  gap: var(--s-6);
+}
+
+/* Design 2 · Approval detail. Values from html/Approval.html. */
+.detail {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.detail:focus {
+  outline: none;
+}
+.detail[aria-busy='true'] .detail-body {
+  opacity: 0.6;
+}
+.detail-bar {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  padding: 0 var(--s-12) 0 var(--s-16);
+  border-bottom: 1px solid var(--border-2);
+}
+.back {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.spacer {
+  flex: 1;
+}
+.detail-body {
+  flex: 1;
+  min-height: 0;
+  padding: 18px var(--s-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  overflow-y: auto;
+}
+.detail-head,
+.detail-section.tight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.detail-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 650;
+  /* Long titles wrap to at most 2 lines here (design 11 §04). */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.label {
+  margin: 0;
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.summary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.step {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: var(--s-8);
+  row-gap: var(--s-4);
+  align-items: start;
+}
+.num {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-6);
+  background: var(--control);
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  margin-top: var(--s-6);
+}
+.step-note {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--text-3);
+}
+/* The detail view shows everything; nothing is clamped. */
+.code.wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+.code mark {
+  background: var(--risk-medium-bg);
+  color: var(--risk-medium);
+  border-radius: var(--r-3);
+  padding: 0 var(--s-2);
+}
+.agent-reason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.field.instead {
+  flex: none;
+}
+.detail-foot {
+  flex: none;
+  border-top: 1px solid var(--border-2);
+  padding: var(--s-12) var(--s-16);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--s-8);
+}
+.detail-foot .not-approved {
+  flex: 1;
+
 /* I3 · Settings rail item and its alert pip. tokens.css sizes the .pip circle. */
 .rail-item.settings {
   margin-top: auto;

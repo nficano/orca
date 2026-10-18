@@ -42,6 +42,29 @@ export interface ApprovalView {
   readsOutsideWorktree?: true;
   /** Epoch ms when the shim connected. */
   openedAt: number;
+  /**
+   * The command split on `&&`, `;` and `||` into numbered steps (Approval
+   * detail). Absent for tool calls that aren't shell commands.
+   */
+  steps?: ApprovalStep[];
+  /** A short title from the summary ("Seed staging fixtures"); absent until one arrives. */
+  title?: string;
+  /** One line from the summarizer; only long commands get one. */
+  summary?: string;
+  /** "Writing a summary…": a summary was asked for and hasn't arrived. Approve stays live. */
+  summaryPending?: boolean;
+  /** How many secrets were masked in `command` and `reason` ("1 secret hidden"). */
+  secretsHidden?: number;
+}
+
+/** One step of a compound command. Secrets in `command` are already masked. */
+export interface ApprovalStep {
+  /** The step exactly as written. */
+  command: string;
+  /** One line on what the step does. */
+  explanation: string;
+  /** Risky flags to highlight, as [start, end) offsets into `command`. */
+  risky: { start: number; end: number }[];
 }
 
 export interface QuestionView {
@@ -65,6 +88,12 @@ export interface QuestionView {
   urgency: Urgency;
   /** Epoch ms when the MCP server connected. */
   openedAt: number;
+  /** A short title from the summarizer; absent until one arrives. */
+  title?: string;
+  /** "Writing a summary…": a summary was asked for and hasn't arrived. */
+  summaryPending?: boolean;
+  /** How many secrets were masked in the question, options and context. */
+  secretsHidden?: number;
 }
 
 export type AskView = ApprovalView | QuestionView;
