@@ -1,4 +1,4 @@
-import { parseAnswerMessage, type QuestionAnswer, type QuestionAskMessage } from '@orca/protocol';
+import { parseAnswerMessage, type QuestionAnswer, type QuestionAskMessage, type ReportMessage } from '@orca/protocol';
 import { connect } from 'node:net';
 
 export type HubOutcome =
@@ -11,7 +11,12 @@ export type HubOutcome =
 /** How ask_user reaches the hub. One call is one Question Ask. */
 export interface HubLink {
   ask(msg: QuestionAskMessage, opts: { waitMs: number; signal?: AbortSignal }): Promise<HubOutcome>;
+  /** Sends one `report_status` or `handoff` line and closes. Resolves false when the hub isn't there. */
+  report(msg: ReportMessage): Promise<boolean>;
 }
+
+/** How long a report may take to reach the hub before the tool gives up on it. */
+const REPORT_WAIT_MS = 2_000;
 
 /** Answers are small; anything this large is not the hub. */
 const MAX_LINE_BYTES = 1024 * 1024;
@@ -55,6 +60,20 @@ export function socketHubLink(path: string): HubLink {
         });
         socket.on('error', () => finish({ kind: 'unavailable' }));
         socket.on('close', () => finish({ kind: 'unavailable' }));
+      });
+    },
+
+    report(msg) {
+      return new Promise<boolean>((resolve) => {
+        const socket = connect(path);
+        const finish = (ok: boolean) => {
+          clearTimeout(timer);
+          socket.destroy();
+          resolve(ok);
+        };
+        const timer = setTimeout(() => finish(false), REPORT_WAIT_MS);
+        socket.on('connect', () => socket.end(`${JSON.stringify(msg)}\n`, () => finish(true)));
+        socket.on('error', () => finish(false));
       });
     },
   };

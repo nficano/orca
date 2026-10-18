@@ -3,8 +3,10 @@ import {
   encodeDecision,
   encodeFocus,
   parseQuestionMessage,
+  parseReportMessage,
   parseShimMessage,
   parseWindowMessage,
+  type ReportMessage,
 } from '@orca/protocol';
 import { chmod, mkdir, rm } from 'node:fs/promises';
 import { connect, createServer, type Socket } from 'node:net';
@@ -14,6 +16,11 @@ import type { Inbox } from './inbox';
 
 /** Hook payloads are small; anything this large is not a shim. */
 const MAX_LINE_BYTES = 1024 * 1024;
+
+/** Where `report_status` and `handoff` lines go. They open no Ask and get no reply. */
+export interface ReportSink {
+  receive(msg: ReportMessage): void;
+}
 
 export interface HubSocket {
   close(): Promise<void>;
@@ -32,10 +39,12 @@ export async function listenForShims({
   path,
   inbox,
   windows,
+  reports,
 }: {
   path: string;
   inbox: Inbox;
   windows?: CursorWindows;
+  reports?: ReportSink;
 }): Promise<HubSocket> {
   await mkdir(dirname(path), { recursive: true });
   if (await isLive(path)) throw new Error(`Another Orca hub is already listening on ${path}`);
@@ -73,12 +82,20 @@ export async function listenForShims({
       }
       const msg = parseShimMessage(line);
       if (msg) {
-        askId = inbox.open(msg, (decision) => socket.end(encodeDecision(decision)));
+        askId = inbox.open(
+          msg,
+          (decision) => socket.end(encodeDecision(decision)),
+          // Tier wait ran out: close with no decision, so the shim exits and the editor asks.
+          () => socket.end(),
+        );
         return;
       }
       // The orca MCP server's ask_user uses the same socket, one Question per connection.
       const question = parseQuestionMessage(line);
       if (!question) {
+        // report_status and handoff: one line, no Ask, no reply.
+        const report = parseReportMessage(line);
+        if (report) reports?.receive(report);
         socket.destroy();
         return;
       }

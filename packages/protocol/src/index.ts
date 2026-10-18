@@ -4,6 +4,8 @@ export * from './ipc';
 export * from './accounts';
 export * from './question';
 export * from './sessions';
+export * from './report';
+export * from './done';
 export * from './profiles';
 export * from './cursor';
 export * from './setup';

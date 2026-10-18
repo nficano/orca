@@ -2,11 +2,13 @@ import type {
   AlwaysAllowRequest,
   ApprovalBatchResult,
   ApprovalView,
+  AskView,
   ConnectedAccount,
   InboxSnapshot,
   IpcResult,
   ProfileColor,
   ReinstallResult,
+  SessionStatus,
   SessionView,
 } from '@orca/protocol';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
@@ -14,8 +16,19 @@ import type { OrcaBridge, ProfilesBridge, RulesBridge } from '../../preload/api'
 import { ApprovalDetail, SecretsHidden } from './ApprovalDetail';
 import { CursorBanner, openKey, useAskMenu } from './Cursor';
 import { BatchReport, BatchRow, batchLines } from './BatchRow';
+import { DoneIcon, DoneView } from './Done';
 import { FirstRun } from './FirstRun';
-import { badgeText, baseName, plural, runningLabel, waitLabel } from './format';
+import {
+  badgeText,
+  baseName,
+  handedBackText,
+  plural,
+  runningLabel,
+  stopsAskingLabel,
+  stopsAskingSpoken,
+  waitGoneWidth,
+  waitLabel,
+} from './format';
 import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { focusLabel, nextTab, profileDot } from './profiles';
@@ -39,7 +52,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
   /** The rail section on show. */
-  const [section, setSection] = useState<'inbox' | 'settings'>('inbox');
+  const [section, setSection] = useState<'inbox' | 'done' | 'settings'>('inbox');
   /** The Settings tab on show. */
   const [settingsTab, setSettingsTab] = useState<'profiles' | 'rules'>('profiles');
   /** The open Profile tab: 'all' or a Profile id. */
@@ -140,9 +153,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const sendBack = useCallback(
+    (id: string, text: string) =>
+      void send(id, () => bridge.sendBack?.({ id, text }) ?? Promise.resolve<IpcResult>({ ok: false, error: 'invalid-request' })),
+    [bridge, send],
+  );
   const canOpenInCursor = typeof bridge.openInCursor === 'function';
   const openInCursor = useCallback((id: string) => void bridge.openInCursor?.({ id }), [bridge]);
-  const askMenu = useAskMenu(inbox.pending, openInCursor);
   const openSessionInCursor = useCallback((sessionKey: string) => void bridge.openInCursor?.({ sessionKey }), [bridge]);
   const approveBatch = useCallback(
     async (ids: string[]) => {
@@ -168,6 +185,9 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const inTab = (x: { profileId?: string }) => current === 'all' || x.profileId === current;
   const colorOf = (profileId: string | undefined) => profiles.find((p) => p.id === profileId)?.color;
   const pending = inbox.pending.filter(inTab);
+  /** Asking cards and handed-back ones ("Cursor is asking now"), oldest first. */
+  const cards: AskView[] = [...pending, ...(inbox.handedBack ?? []).filter(inTab)].sort((a, b) => a.openedAt - b.openedAt);
+  const askMenu = useAskMenu(cards, openInCursor);
   const running = (inbox.sessions ?? []).filter((s) => (s.state === 'running' || s.state === 'waiting') && inTab(s));
   const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled' && inTab(s));
   const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou && inTab(s));
@@ -228,6 +248,17 @@ export function App({ bridge, now = Date.now }: AppProps) {
           </span>
           <span aria-hidden="true">Inbox</span>
         </button>
+        <button
+          className={section === 'done' ? 'rail-item on' : 'rail-item'}
+          aria-current={section === 'done' ? 'page' : undefined}
+          aria-label="Done"
+          onClick={() => setSection('done')}
+        >
+          <span className="tile">
+            <DoneIcon />
+          </span>
+          <span aria-hidden="true">Done</span>
+        </button>
         {/* The pip (I3 §7) shows while any Account has a problem. */}
         <button
           className={section === 'settings' ? 'rail-item settings on' : 'rail-item settings'}
@@ -253,6 +284,23 @@ export function App({ bridge, now = Date.now }: AppProps) {
           <FirstRun bridge={bridge} onConnected={setAccounts} />
         </section>
       )}
+      <section className="main" aria-label="Done" hidden={!accounts?.length || section !== 'done'}>
+        <div className="tabs-row">
+          <div className="tabs" role="tablist" aria-label="Profile">
+            <button className="tab on" role="tab" aria-selected="true">
+              All
+            </button>
+          </div>
+        </div>
+        <DoneView
+          done={inbox.done}
+          now={clock}
+          busy={busy}
+          onSendBack={sendBack}
+          {...(canOpenInCursor ? { onOpenInCursor: openSessionInCursor } : {})}
+          onShowInbox={() => setSection('inbox')}
+        />
+      </section>
       {section === 'settings' && !!accounts?.length && (profilesBridge || rulesBridge) && (
         <section className="main" aria-label="Settings">
           <div className="tabs-row">
@@ -305,7 +353,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
               All
             </button>
             {profiles.map((p) => {
-              const n = inbox.pending.filter((a) => a.profileId === p.id).length;
+              const n = [...inbox.pending, ...(inbox.handedBack ?? [])].filter((a) => a.profileId === p.id).length;
               return (
                 <button
                   key={p.id}
@@ -339,13 +387,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
             <CursorBanner install={bridge.installCursorExtension} />
           )}
           {batch.length > 0 && <BatchRow lines={batch} sessions={inbox.sessions ?? []} onApprove={approveBatch} />}
-          {pending.length === 0 ? (
+          {cards.length === 0 ? (
             <div className={running.length + stalled.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>{currentName ? `Nothing needs you in ${currentName}` : 'Nothing needs you'}</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
           ) : (
-            pending.map((ask) =>
+            cards.map((ask) =>
               ask.kind === 'question' ? (
                 <QuestionCard
                   key={ask.id}
@@ -354,6 +402,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
                   busy={busy.has(ask.id)}
                   onAnswer={answer}
                   profileColor={colorOf(ask.profileId)}
+                />
+              ) : ask.handedBackAt !== undefined ? (
+                <HandedBackCard
+                  key={ask.id}
+                  ask={ask}
+                  handedBackAt={ask.handedBackAt}
+                  {...(canOpenInCursor ? { onOpenInCursor: openInCursor } : {})}
                 />
               ) : (
                 <ApprovalCard
@@ -414,7 +469,10 @@ function RunningList({
       </p>
       <ul aria-labelledby="running-cap">
         {sessions.map((s) => {
-          const meta = [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
+          // report_status's line wins; otherwise where the Session is working.
+          const meta = s.status
+            ? statusLine(s.status)
+            : [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
           return (
             <li key={s.key} className="row">
               <span className="dot" aria-hidden="true" style={profileDot(colorOf(s.profileId))} />
@@ -429,6 +487,12 @@ function RunningList({
       </ul>
     </section>
   );
+}
+
+/** "Running tests", or "Running tests · blocked: CI is slow". */
+function statusLine({ summary, phase, blockers }: SessionStatus): string {
+  const line = summary || phase;
+  return blockers.length ? `${line} · blocked: ${blockers.join(', ')}` : line;
 }
 
 interface CardProps {
@@ -463,12 +527,7 @@ function ApprovalCard({ ask, now, busy, onDecide, onOpen, profileColor }: CardPr
   const red = ask.risk === 'red';
   const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     const card = e.currentTarget;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const next = e.key === 'ArrowDown' ? card.nextElementSibling : card.previousElementSibling;
-      if (next instanceof HTMLElement) next.focus();
-      return;
-    }
+    if (moveCardFocus(e)) return;
     if (e.target !== card) return; // buttons handle their own keys
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -513,7 +572,13 @@ function ApprovalCard({ ask, now, busy, onDecide, onOpen, profileColor }: CardPr
       <div className="code">{ask.command}</div>
       {ask.reason && <p className="reason">{ask.reason}</p>}
       {ask.secretsHidden ? <SecretsHidden count={ask.secretsHidden} /> : null}
+      {ask.waitEndsAt !== undefined && (
+        <div className="wait-bar" role="img" aria-label={stopsAskingSpoken(ask.waitEndsAt, now)}>
+          <div className={`wait-bar-fill wait-bar-${ask.risk}`} style={{ width: waitGoneWidth(ask.openedAt, ask.waitEndsAt, now) }} />
+        </div>
+      )}
       <div className="actions">
+        {ask.waitEndsAt !== undefined && <span className="meta countdown">{stopsAskingLabel(ask.waitEndsAt, now)}</span>}
         <button className="btn" disabled={busy} aria-label="Deny" onClick={() => act('deny')}>
           {busy && pressed === 'deny' ? <Spinner /> : 'Deny'}
         </button>
@@ -537,6 +602,56 @@ function ApprovalCard({ ask, now, busy, onDecide, onOpen, profileColor }: CardPr
         <p className="not-approved" role="status">
           Not approved
         </p>
+      )}
+    </article>
+  );
+}
+
+/** ↑ ↓ move between cards (I6 §2). True when the key was handled. */
+function moveCardFocus(e: KeyboardEvent<HTMLElement>): boolean {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return false;
+  e.preventDefault();
+  const card = e.currentTarget;
+  const next = e.key === 'ArrowDown' ? card.nextElementSibling : card.previousElementSibling;
+  if (next instanceof HTMLElement) next.focus();
+  return true;
+}
+
+/**
+ * The tier wait ran out and the hub handed the Approval back to the editor
+ * with no decision (Storyboard F6; Errors · "inbox stopped asking"). It can't
+ * be decided here any more; the Session stays Blocked until the editor answers.
+ */
+function HandedBackCard({
+  ask,
+  handedBackAt,
+  onOpenInCursor,
+}: {
+  ask: ApprovalView;
+  handedBackAt: number;
+  onOpenInCursor?: (id: string) => void;
+}) {
+  return (
+    <article
+      className="card"
+      data-ask-id={ask.id}
+      tabIndex={-1}
+      aria-label={`${ask.toolName}: ${ask.command}, Cursor is asking now`}
+      onKeyDown={(e) => void moveCardFocus(e)}
+    >
+      <div className="card-head">
+        <ArrowUpRightIcon />
+        <h2 className="title">{ask.toolName}</h2>
+        <span className="meta">{ask.accountName ?? baseName(ask.account)}</span>
+      </div>
+      <div className="code">{ask.command}</div>
+      <p className="handed-back">{handedBackText(ask.openedAt, handedBackAt)}</p>
+      {onOpenInCursor && (
+        <div className="actions">
+          <button className="btn primary" onClick={() => onOpenInCursor(ask.id)}>
+            Open in Cursor
+          </button>
+        </div>
       )}
     </article>
   );
@@ -576,6 +691,14 @@ function profilesOf(bridge: OrcaBridge): (ProfilesBridge & Pick<OrcaBridge, 'lis
   const { getProfiles, createProfile, updateProfile, deleteProfile, assignAccount, setFocusFilter } = bridge;
   if (!getProfiles || !createProfile || !updateProfile || !deleteProfile || !assignAccount || !setFocusFilter) return null;
   return { getProfiles, createProfile, updateProfile, deleteProfile, assignAccount, setFocusFilter, listAccounts: bridge.listAccounts };
+}
+
+function ArrowUpRightIcon() {
+  return (
+    <svg className="fa handed-back-icon" viewBox="0 0 512 512" aria-hidden="true">
+      <path d="M288 24c0 13.3 10.7 24 24 24l118.1 0-231 231c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l231-231 0 118.1c0 13.3 10.7 24 24 24s24-10.7 24-24l0-176c0-13.3-10.7-24-24-24L312 0c-13.3 0-24 10.7-24 24zM80 96C35.8 96 0 131.8 0 176L0 432c0 44.2 35.8 80 80 80l256 0c44.2 0 80-35.8 80-80l0-88c0-13.3-10.7-24-24-24s-24 10.7-24 24l0 88c0 17.7-14.3 32-32 32L80 464c-17.7 0-32-14.3-32-32l0-256c0-17.7 14.3-32 32-32l88 0c13.3 0 24-10.7 24-24s-10.7-24-24-24L80 96z" />
+    </svg>
+  );
 }
 
 function InboxIcon() {

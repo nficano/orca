@@ -28,6 +28,8 @@ export const IPC = {
   accountsPreview: 'accounts:preview',
   /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
   accountsConnect: 'accounts:connect',
+  /** renderer → main (invoke, SendBackRequest): resume a Done card's Session headlessly. Returns IpcResult. */
+  doneSendBack: 'done:send-back',
   /** renderer → main (invoke): Profiles, Focus filters and what the hub sees of Focus (ProfilesView). */
   profilesGet: 'profiles:get',
   /** renderer → main (invoke, ProfileCreateRequest): ProfilesResult. */
@@ -103,6 +105,12 @@ export interface QuestionAnswerRequest {
   text?: string;
 }
 
+/** Send back to fix: `text` is the instruction; blank sends the card's suggestion. */
+export interface SendBackRequest {
+  id: string;
+  text?: string;
+}
+
 /** Stop… on a Session, keyed by SessionView.key. */
 export interface SessionStopRequest {
   key: string;
@@ -110,8 +118,15 @@ export interface SessionStopRequest {
 
 /** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending.
  *  `shortcut-unavailable`: another app holds that shortcut; the old one stays.
- *  `session-not-found`: no single live agent process could be matched to the Session. */
-export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved' | 'shortcut-unavailable' | 'session-not-found';
+ *  `session-not-found`: no single live agent process could be matched to the Session.
+ *  `resume-failed`: Send back to fix couldn't resume the Session; the Done card stays, with the reason. */
+export type IpcError =
+  | 'already-resolved'
+  | 'invalid-request'
+  | 'not-approved'
+  | 'shortcut-unavailable'
+  | 'session-not-found'
+  | 'resume-failed';
 
 export type IpcResult = { ok: true } | { ok: false; error: IpcError };
 
