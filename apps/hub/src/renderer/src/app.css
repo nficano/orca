@@ -1,0 +1,341 @@
+/* Popover shell and Approval card. Values from design I1, I2, I3, I5 and
+ * artboards 1 (Main) and L (LightMode). Colors and radii come from tokens.css. */
+
+:root {
+  --shadow-card: none;
+}
+:root[data-theme='light'] {
+  /* LightMode artboard: cards lift by shadow, not fill. Not yet in tokens.css. */
+  --shadow-card: 0 1px 2px oklch(30% 0.01 70 / 0.06);
+}
+
+html,
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+body {
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-1);
+  user-select: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.fa {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  flex: none;
+}
+
+/* I1 §2 · popover shell, inset by the window's transparent shadow margin. */
+.pop {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 24px;
+  bottom: 40px;
+  display: flex;
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-20);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* I1 §3 · rail */
+.rail {
+  width: 88px;
+  flex: none;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border-1);
+  padding: var(--s-20) var(--s-8);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-20);
+}
+.rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-6);
+  width: 72px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.rail-item.on {
+  color: var(--text-1);
+}
+.tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-14);
+}
+.rail-item:hover .tile {
+  background: var(--control);
+}
+.rail-item.on .tile {
+  background: var(--surface-3);
+}
+.rail-item:focus-visible {
+  outline: none;
+}
+.rail-item:focus-visible .tile {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-14);
+}
+
+/* I3 · rail badge */
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: var(--r-9);
+  background: var(--badge);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+
+.main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* I1 §4 · tabs */
+.tabs {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-20);
+  padding: 0 var(--s-20);
+  border-bottom: 1px solid var(--border-2);
+}
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  padding: 0 var(--s-4);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.tab.on {
+  color: var(--text-1);
+}
+.tab.on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--text-1);
+}
+
+/* I1 §5 · card list */
+.list {
+  flex: 1;
+  min-height: 0;
+  padding: var(--s-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  overflow-y: auto;
+}
+.card {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-card);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-14);
+  box-shadow: var(--shadow-card);
+  padding: var(--s-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.card:focus {
+  outline: none;
+}
+.card:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.card[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+/* I1 §6 · header row */
+.card-head {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.wait {
+  flex: none;
+}
+.meta-part {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tag {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px var(--s-8);
+  border-radius: var(--r-6);
+  background: var(--control);
+  color: var(--text-3);
+}
+.code {
+  font: 12.5px/1.45 var(--font-mono);
+  background: var(--surface-inset);
+  border-radius: var(--r-8);
+  padding: var(--s-8) var(--s-10);
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+.reason {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* I1 §7 · action row; Approve is always rightmost. */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-8);
+}
+.btn {
+  height: 32px;
+  padding: 0 var(--s-14);
+  border-radius: var(--r-9);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-6);
+  min-width: 64px;
+  background: var(--control);
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+.btn.primary {
+  background: var(--primary-bg);
+  color: var(--primary-fg);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--primary-bg);
+  opacity: 0.9;
+}
+.btn:disabled {
+  cursor: default;
+}
+.card:not([aria-busy='true']) .btn:disabled {
+  opacity: 0.45;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty {
+  margin: auto;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 13px;
+}
+.empty h2 {
+  margin: 0 0 var(--s-6);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.empty p {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
