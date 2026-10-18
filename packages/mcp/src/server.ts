@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
   ASK_USER_INSTRUCTION,
+  QUESTION_WAIT_MS,
   URGENCIES,
   WIRE_VERSION,
   type QuestionAskMessage,
@@ -10,12 +11,8 @@ import {
 import { z } from 'zod';
 import type { HubLink } from './hub-link';
 
-/**
- * The Question wait: how long ask_user blocks before giving up. Kept under the
- * transport limits (Claude's stdio MCP aborts after 30m idle; install raises
- * Codex's tool_timeout_sec above this).
- */
-export const QUESTION_WAIT_MS = 25 * 60_000;
+/** The Question wait (25m); defined with the protocol so Codex install can read it. */
+export { QUESTION_WAIT_MS };
 
 export type AskUserResult =
   | { answered: true; answer: string }

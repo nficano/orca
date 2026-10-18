@@ -21,7 +21,7 @@ export interface SetupOptions {
 
 /**
  * Setup health (Storyboard F9): watches every connected Account's settings
- * file for its Orca hook, and reports what the shim spooled while the hub was
+ * file (Codex: hooks.json) for its Orca hook, and reports what the shim spooled while the hub was
  * down. The renderer shows `view()` as banners and the Settings pip.
  */
 export interface Setup {
@@ -83,7 +83,7 @@ export function createSetup(opts: SetupOptions): Setup {
         watched.set(
           account.dir,
           watch(account.dir, (file) => {
-            if (file === null || file === 'settings.json') void check(account);
+            if (file === null || file === hookFile(account)) void check(account);
           }),
         );
       }
@@ -133,13 +133,16 @@ export function createSetup(opts: SetupOptions): Setup {
   };
 }
 
-function settingsPath(account: ConnectedAccount): string {
-  return join(account.dir, 'settings.json');
+/** The file an Account's hook lives in: Claude's settings.json, Codex's hooks.json (same JSON shape). */
+function hookFile(account: ConnectedAccount): string {
+  return account.kind === 'codex' ? 'hooks.json' : 'settings.json';
 }
 
-/** Codex Accounts are not checked yet (#7); only a Claude settings file can lose its hook here. */
+function settingsPath(account: ConnectedAccount): string {
+  return join(account.dir, hookFile(account));
+}
+
 async function hookInstalled(account: ConnectedAccount): Promise<boolean> {
-  if (account.kind !== 'claude') return true;
   const text = await readFile(settingsPath(account), 'utf8').catch(() => undefined);
   return hasOrcaHook(text);
 }

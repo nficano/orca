@@ -13,6 +13,15 @@ import type {
   SessionStopRequest,
 } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
+import type {
+  FocusFilterRequest,
+  ProfileAssignRequest,
+  ProfileCreateRequest,
+  ProfileDeleteRequest,
+  ProfilesResult,
+  ProfilesView,
+  ProfileUpdateRequest,
+} from '@orca/protocol';
 import type { ReinstallResult } from '@orca/protocol';
 
 /** Setup-error banners (Storyboard F9). Optional so renderer test fakes that aren't about setup can leave them out. */
@@ -41,8 +50,19 @@ export interface DoneBridge {
   sendBack?(req: SendBackRequest): Promise<IpcResult>;
 }
 
+/** Settings › Profiles. Each change answers with the whole ProfilesView. */
+export interface ProfilesBridge {
+  getProfiles(): Promise<ProfilesView>;
+  createProfile(req: ProfileCreateRequest): Promise<ProfilesResult>;
+  updateProfile(req: ProfileUpdateRequest): Promise<ProfilesResult>;
+  deleteProfile(req: ProfileDeleteRequest): Promise<ProfilesResult>;
+  assignAccount(req: ProfileAssignRequest): Promise<ProfilesResult>;
+  setFocusFilter(req: FocusFilterRequest): Promise<ProfilesResult>;
+}
+
 /** What the preload exposes to the renderer as `window.orca`. */
-export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge {
+/** Profiles methods are optional so renderer tests that aren't about Profiles can leave them out. */
+export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge, Partial<ProfilesBridge> {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   /** `target` is set when a notification opened the popover for one Ask. */

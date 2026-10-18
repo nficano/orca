@@ -29,8 +29,10 @@ import {
   systemPreferences,
   Tray,
 } from 'electron';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
+import { codexHookTimeout, TIMEOUT_MARGIN_S } from './accounts/codex-timeouts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { createCursorLink } from './cursor/link';
 import { startApprovalNotifications } from './approval-notifications';
@@ -53,6 +55,11 @@ import { createSessions } from './sessions/sessions';
 import { createStallThresholds, fileStallConfig } from './sessions/stall-threshold';
 import { processSignals, stopSession } from './sessions/stop';
 import { startSessionTracking, type SessionTracking } from './sessions/track';
+import { createFocusWatcher } from './profiles/focus';
+import { profilesIpcHandlers } from './profiles/ipc';
+import { createProfiles } from './profiles/profiles';
+import { focusedInbox } from './profiles/focused-inbox';
+import { focusFilter, withProfiles } from './profiles/snapshot';
 import { touchIdConfirmer } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
@@ -67,15 +74,22 @@ app.setPath('userData', dataDir);
 const socketPath = join(dataDir, 'hub.sock');
 /** Where Accounts are looked for. ORCA_ACCOUNTS_HOME points at a scratch home during development. */
 const accountsHome = process.env.ORCA_ACCOUNTS_HOME ?? app.getPath('home');
+// Packaged: Orca.app/Contents/Resources/bin. Development: `pnpm --filter @orca/hub build:shim build:mcp`.
+const binDir = join(app.isPackaged ? process.resourcesPath : resources, 'bin');
+/** The orca MCP server Codex Accounts register; Orca's own binary runs it as Node. */
+const mcpScript = process.env.ORCA_MCP ?? join(binDir, 'orca-mcp.mjs');
 const accounts = createAccounts({
   home: accountsHome,
   env: process.env,
   storePath: join(dataDir, 'accounts.json'),
-  // Packaged: Orca.app/Contents/Resources/bin. Development: `pnpm --filter @orca/hub build:shim`.
-  shimPath: process.env.ORCA_SHIM ?? join(app.isPackaged ? process.resourcesPath : resources, 'bin', 'agentd-hook'),
+  shimPath: process.env.ORCA_SHIM ?? join(binDir, 'agentd-hook'),
   // The shim's default socket is the real app-support dir; say so only when ORCA_HOME moved it.
   ...(process.env.ORCA_HOME ? { socketPath } : {}),
   hookTimeoutS: DEFAULT_HOOK_TIMEOUT_S,
+  codexHookTimeoutS: codexHookTimeout(DEFAULT_HOOK_TIMEOUT_S - TIMEOUT_MARGIN_S).timeoutS,
+  ...(existsSync(mcpScript)
+    ? { mcpServer: { command: process.execPath, args: [mcpScript], env: { ELECTRON_RUN_AS_NODE: '1' } } }
+    : {}),
 });
 /** The popover stays up behind the Touch ID sheet instead of hiding on blur (I6 §3). */
 let touchIdSheetUp = false;
@@ -107,14 +121,32 @@ const cursor = createCursorLink({
 });
 /** Hooks missing and the restart banner (Storyboard F9). The shim spools next to the socket. */
 const setup = createSetup({ accounts, home: accountsHome, spoolPath: join(dataDir, 'spool.jsonl') });
-/** What the renderer sees: open Asks, the Sessions from transcripts, setup errors and the Cursor extension. */
+const profiles = createProfiles({ storePath: join(dataDir, 'profiles.json') });
+/** macOS Focus, from the Do Not Disturb database. ORCA_FOCUS_DB points at a scratch copy during development. */
+const focus = createFocusWatcher({ dbDir: process.env.ORCA_FOCUS_DB ?? join(app.getPath('home'), 'Library', 'DoNotDisturb', 'DB') });
+/**
+ * What the renderer sees: open Asks and the Sessions from transcripts, tagged by Profile, less what the Focus filter
+ * hides; setup errors and the Cursor extension.
+ */
 const baseSnapshot = () => ({
-  ...withSessions(inbox.snapshot(), sessions.list()),
+  ...withProfiles(withSessions(inbox.snapshot(), sessions.list()), profiles.config(), focus.current()),
   setup: setup.view(),
   cursor: { extension: cursor.extension.status() },
 });
 /** ...plus status lines, Done cards and the recap. */
 const hubSnapshot = () => done.decorate(baseSnapshot());
+/** The inbox less what the Focus filter hides, for the surfaces that read it directly: notifications and the quick-answer panel. */
+const shownInbox = focusedInbox(inbox, {
+  shows: () => focusFilter(profiles.config(), focus.current()),
+  onChange(listener) {
+    const offProfiles = profiles.subscribe(listener);
+    const offFocus = focus.subscribe(() => listener());
+    return () => {
+      offProfiles();
+      offFocus();
+    };
+  },
+});
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -159,6 +191,10 @@ app.whenReady().then(async () => {
   for (const [channel, handle] of Object.entries(setupIpcHandlers(setup))) {
     ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
   }
+  await profiles.load();
+  for (const [channel, handle] of Object.entries(profilesIpcHandlers(profiles, focus.current))) {
+    ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
+  }
   // Load connected Accounts before any Ask arrives, so every Ask gets its Account's name.
   const firstRun = (await accounts.list()).length === 0;
 
@@ -191,6 +227,9 @@ app.whenReady().then(async () => {
   inbox.subscribe(publish);
   done.subscribe(publish);
   watchPower({ power: powerMonitor, idle, onChange: publish });
+  profiles.subscribe(publish);
+  focus.subscribe(publish);
+  focus.start();
 
   // Banners, removed once the Ask resolves anywhere. Questions: answered from Options / Reply.
   // Approvals (Storyboard F3): green and yellow from Approve / Deny; red gets Review / Deny.
@@ -202,9 +241,9 @@ app.whenReady().then(async () => {
       void cursor.openInCursor.openAsk(askId).then((r) => {
         if (!r.ok) openCard(askId);
       });
-    startQuestionNotifications({ inbox, notifier, onOpen: openInCursor });
+    startQuestionNotifications({ inbox: shownInbox, notifier, onOpen: openInCursor });
     startApprovalNotifications({
-      inbox,
+      inbox: shownInbox,
       notifier,
       onOpen: openInCursor,
       onReview: (askId) => showPopover({ askId, view: 'detail' }),
@@ -212,7 +251,7 @@ app.whenReady().then(async () => {
   }
 
   quickAnswer = startQuickAnswer({
-    inbox,
+    inbox: shownInbox,
     preload: join(here, '../preload/index.cjs'),
     load: loadRenderer,
     isPopoverVisible: () => popover?.isVisible() ?? false,
@@ -244,6 +283,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   sessionTracking?.stop();
+  focus.stop();
   setup.stop();
   void hubSocket?.close();
 });
@@ -294,7 +334,7 @@ async function pickAccountFolder(): Promise<string | null> {
   holdPopover = true;
   try {
     const { canceled, filePaths } = await dialog.showOpenDialog(popover, {
-      title: 'Choose a Claude Code folder',
+      title: 'Choose a Claude Code or Codex folder',
       buttonLabel: 'Choose',
       defaultPath: accountsHome,
       properties: ['openDirectory', 'showHiddenFiles'],

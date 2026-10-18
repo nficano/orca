@@ -1,0 +1,157 @@
+/* Settings › Profiles. Values from artboard 10 (Settings: account group, Name/Color rows,
+ * setting rows and pickers); colors and radii from tokens.css. */
+
+.profiles-settings {
+  gap: var(--s-8);
+  padding: var(--s-12) var(--s-12) var(--s-16);
+}
+.settings-lede {
+  margin: 0;
+  padding: 0 var(--s-4) var(--s-4);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.profile-group {
+  flex: none;
+  border-radius: var(--r-12);
+  background: var(--surface-card);
+  border: 1px solid var(--border-2);
+  padding: var(--s-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+}
+.pg-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  font-size: 13px;
+}
+.pg-label {
+  width: 56px;
+  flex: none;
+  color: var(--text-3);
+}
+.pg-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 var(--s-10);
+  box-sizing: border-box;
+  border-radius: var(--r-7);
+  border: 1px solid var(--border-1);
+  background: var(--surface-inset);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  user-select: text;
+}
+.pg-input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.profile-group .swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--surface-card),
+    0 0 0 4px var(--text-1);
+}
+.pg-accounts {
+  align-items: flex-start;
+}
+.pg-accounts > .pg-label {
+  line-height: 22px;
+}
+.pg-accounts ul {
+  flex: 1;
+  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+.pg-check {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  min-height: 22px;
+  cursor: pointer;
+}
+.pg-check input {
+  margin: 0;
+  flex: none;
+  accent-color: var(--success);
+}
+.pg-check .mono {
+  font-family: var(--font-mono);
+}
+.pg-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.btn.danger {
+  background: none;
+  color: var(--risk-high);
+}
+.pg-new {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  padding: var(--s-4) var(--s-4) 0;
+}
+.pg-new .btn {
+  gap: var(--s-6);
+}
+.settings-error {
+  margin: 0;
+  padding: 0 var(--s-4);
+  font-size: 12px;
+  color: var(--risk-high);
+}
+
+.settings-cap {
+  padding: var(--s-14) var(--s-4) var(--s-4);
+}
+.settings-note {
+  white-space: normal;
+  line-height: 1.4;
+  padding: 0 var(--s-4);
+}
+.srow {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  min-height: 44px;
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--border-2);
+}
+.srow .l {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  font-size: 13px;
+}
+.srow .s {
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.pick {
+  height: 28px;
+  padding: 0 var(--s-10);
+  border-radius: var(--r-7);
+  background: var(--control);
+  border: 1px solid var(--border-1);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 12.5px;
+}
+.pick:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

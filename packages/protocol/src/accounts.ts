@@ -36,16 +36,31 @@ export interface ConnectedAccount {
 /** One line of a settings-file diff; `gap` stands for unchanged lines left out. */
 export type DiffLine = { op: ' ' | '+' | '-'; text: string } | { op: 'gap'; count: number };
 
+/** One more file Connect writes for an Account, with its diff. */
+export interface FileChange {
+  path: string;
+  displayPath: string;
+  /** False when the file already says what Orca would write. */
+  changed: boolean;
+  diff: DiffLine[];
+}
+
 /** What connecting one Account will write, shown before anything is written. */
 export interface HookChange {
   dir: string;
   name: string;
-  /** The settings file the hook goes into. */
+  /** The file the hook goes into: Claude's `settings.json`, Codex's `hooks.json`. */
   settingsPath: string;
   displayPath: string;
   /** False when the hook is already installed exactly as Orca would write it. */
   changed: boolean;
   diff: DiffLine[];
+  /**
+   * Files Connect writes besides the hook file, shown after it. A Codex
+   * Account's `config.toml`, where the orca MCP server gets its
+   * `tool_timeout_sec`. `changed` above is true when any file changes.
+   */
+  extraFiles?: FileChange[];
   /** Why this Account can't be connected; nothing is written for it. */
   error?: string;
 }

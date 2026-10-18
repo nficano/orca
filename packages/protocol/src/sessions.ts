@@ -37,6 +37,8 @@ export interface SessionView {
   tokens?: number;
   /** The status line from the Session's latest `report_status`. */
   status?: SessionStatus;
+  /** The Profile the Account belongs to; absent when it is in none. */
+  profileId?: string;
   /** What the agent last said it was doing, or the last tool it called. */
   lastStep?: string;
   /** Set while the Session is Stalled. */

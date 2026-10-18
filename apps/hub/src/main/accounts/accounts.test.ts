@@ -132,14 +132,14 @@ describe('inspect (Choose another folder…)', () => {
     });
   });
 
-  it('explains why a folder is not a Claude Account', async () => {
+  it('explains why a folder is not an Account', async () => {
     const dir = join(home, 'Documents');
     await mkdir(dir);
 
     expect(await accounts.inspect(dir)).toEqual({
       kind: 'not-an-account',
       displayDir: '~/Documents',
-      message: 'No Claude account here. Pick the folder that holds settings.json and projects.',
+      message: 'No Claude or Codex account here. Pick the folder that holds settings.json and projects, or config.toml and sessions.',
     });
   });
 });
@@ -215,7 +215,7 @@ describe('preview (before Connect writes anything)', () => {
 
     const [change] = await accounts.preview([{ dir, name: 'Docs' }]);
 
-    expect(change?.error).toBe('No Claude account here. Pick the folder that holds settings.json and projects.');
+    expect(change?.error).toBe('No Claude or Codex account here. Pick the folder that holds settings.json and projects, or config.toml and sessions.');
   });
 
   it("refuses when Orca's hook program is missing, so no hook points at nothing", async () => {

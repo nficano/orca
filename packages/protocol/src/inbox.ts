@@ -1,4 +1,5 @@
 import type { DoneSnapshot } from './done';
+import type { FocusFilterView, ProfileTab } from './profiles';
 import type { SessionView } from './sessions';
 import type { SetupView } from './setup';
 
@@ -29,6 +30,8 @@ export interface ApprovalView {
   /** "Agent's reason": `tool_input.description` when the payload has one. */
   reason?: string;
   cwd?: string;
+  /** The Profile the Account belongs to; absent when it is in none. */
+  profileId?: string;
   /** Red-tier Approvals need Touch ID to approve. */
   risk: RiskTier;
   /** The Approval was raised by a subagent of this Session. */
@@ -48,6 +51,8 @@ export interface QuestionView {
   account: string;
   /** The Account's name from first run ("Work"); absent for an Account Orca hasn't connected. */
   accountName?: string;
+  /** The Profile the Account belongs to; absent when it is in none. */
+  profileId?: string;
   /** Empty when the MCP server can't tell. */
   sessionId: string;
   cwd?: string;
@@ -69,7 +74,7 @@ export interface InboxSnapshot {
   /** Open Asks, oldest first. */
   pending: AskView[];
   counts: {
-    /** Open Asks across every Account: the tray title and the Inbox badge. */
+    /** Open Asks shown (every Account, less any the Focus filter hides): the tray title and the Inbox badge. */
     pending: number;
   };
   /**
@@ -79,6 +84,10 @@ export interface InboxSnapshot {
   sessions?: SessionView[];
   /** Done cards and the recap bar. Absent until the hub has a Done board. */
   done?: DoneSnapshot;
+  /** Profile tabs after All, in the user's order. Absent until Profiles load. */
+  profiles?: ProfileTab[];
+  /** Present while a macOS Focus with a Focus filter is on. */
+  focus?: FocusFilterView;
   /** Setup errors: Hooks missing banners, the Settings pip and the restart banner. Absent until checked. */
   setup?: SetupView;
   /** Orca's Cursor extension; `missing` shows the banner with Install. Absent until the hub checks. */
