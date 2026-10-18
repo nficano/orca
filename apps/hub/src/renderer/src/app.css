@@ -1,0 +1,994 @@
+/* Popover shell and Approval card. Values from design I1, I2, I3, I5 and
+ * artboards 1 (Main) and L (LightMode). Colors and radii come from tokens.css. */
+
+:root {
+  --shadow-card: none;
+}
+:root[data-theme='light'] {
+  /* LightMode artboard: cards lift by shadow, not fill. Not yet in tokens.css. */
+  --shadow-card: 0 1px 2px oklch(30% 0.01 70 / 0.06);
+}
+
+html,
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+}
+body {
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-1);
+  user-select: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.fa {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  flex: none;
+}
+
+/* I1 §2 · popover shell, inset by the window's transparent shadow margin. */
+.pop {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 24px;
+  bottom: 40px;
+  display: flex;
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-20);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* I1 §3 · rail */
+.rail {
+  width: 88px;
+  flex: none;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border-1);
+  padding: var(--s-20) var(--s-8);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-20);
+}
+.rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-6);
+  width: 72px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.rail-item.on {
+  color: var(--text-1);
+}
+.tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-14);
+}
+.rail-item:hover .tile {
+  background: var(--control);
+}
+.rail-item.on .tile {
+  background: var(--surface-3);
+}
+.rail-item:focus-visible {
+  outline: none;
+}
+.rail-item:focus-visible .tile {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-14);
+}
+
+/* I3 · rail badge */
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: var(--r-9);
+  background: var(--badge);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+
+.main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* I1 §4 · tabs. The row holds the Profile tabs and, on the right, the Focus note. */
+.tabs-row {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-12);
+  padding: 0 var(--s-20);
+  border-bottom: 1px solid var(--border-2);
+}
+.tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-20);
+}
+.tab .count {
+  font-weight: 500;
+  color: var(--text-2);
+}
+.focus-note {
+  flex: none;
+  align-self: center;
+}
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  padding: 0 var(--s-4);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.tab.on {
+  color: var(--text-1);
+}
+.tab.on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--text-1);
+}
+
+/* I1 §5 · card list */
+.list {
+  flex: 1;
+  min-height: 0;
+  padding: var(--s-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  overflow-y: auto;
+}
+.card {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-card);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-14);
+  box-shadow: var(--shadow-card);
+  padding: var(--s-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.card:focus {
+  outline: none;
+}
+.card:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.card[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+/* I1 §6 · header row */
+.card-head {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.wait {
+  flex: none;
+}
+.meta-part {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tag {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px var(--s-8);
+  border-radius: var(--r-6);
+  background: var(--control);
+  color: var(--text-3);
+}
+.code {
+  font: 12.5px/1.45 var(--font-mono);
+  background: var(--surface-inset);
+  border-radius: var(--r-8);
+  padding: var(--s-8) var(--s-10);
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+}
+.reason {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+/* I1 §6, I5 · risk chip: r6, padding 2 8; never truncated. */
+.risk {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px var(--s-8);
+  border-radius: var(--r-6);
+  white-space: nowrap;
+}
+.risk-green {
+  background: var(--risk-low-bg);
+  color: var(--risk-low);
+}
+.risk-yellow {
+  background: var(--risk-medium-bg);
+  color: var(--risk-medium);
+}
+.risk-red {
+  background: var(--risk-high-bg);
+  color: var(--risk-high);
+}
+
+/* I6 §1 · Touch ID failed or cancelled: inline under the buttons for 3s. */
+.not-approved {
+  margin: 0;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--risk-high);
+}
+
+/* I1 §8 · countdown bar: width = time gone ÷ tier wait, one shared 1Hz timer.
+ * No radius of its own; the card's overflow clips it to the corner. */
+.wait-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--border-2);
+}
+.wait-bar-fill {
+  height: 100%;
+}
+.wait-bar-green {
+  background: var(--risk-low);
+}
+.wait-bar-yellow {
+  background: var(--risk-medium);
+}
+.wait-bar-red {
+  background: var(--risk-high);
+}
+/* I1 §7 · status text on the left of the action row. */
+.countdown {
+  flex: 1;
+}
+
+/* Errors · "inbox stopped asking": the tier wait ran out, Cursor is asking now. */
+.handed-back {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.handed-back-icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--risk-medium);
+}
+
+/* I1 §7 · action row; Approve is always rightmost. */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-8);
+}
+.btn {
+  height: 32px;
+  padding: 0 var(--s-14);
+  border-radius: var(--r-9);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-6);
+  min-width: 64px;
+  background: var(--control);
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+.btn.primary {
+  background: var(--primary-bg);
+  color: var(--primary-fg);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--primary-bg);
+  opacity: 0.9;
+}
+.btn:disabled {
+  cursor: default;
+}
+.card:not([aria-busy='true']) .btn:disabled {
+  opacity: 0.45;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty {
+  margin: auto;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 13px;
+}
+.empty h2 {
+  margin: 0 0 var(--s-6);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.empty p {
+  margin: 0;
+}
+
+/* Design 6 · States: empty inbox with the running list. */
+.empty.above-running {
+  margin: 0;
+  padding: 40px var(--s-24) var(--s-20);
+}
+.running {
+  flex: none;
+}
+.running ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.cap {
+  margin: 0;
+  padding: 0 var(--s-10) var(--s-6);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-10);
+  height: 46px;
+  padding: 0 var(--s-10);
+  border-radius: var(--r-10);
+  font-size: 13px;
+}
+.row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+}
+.row > .meta {
+  flex: none;
+}
+/* tokens.css sizes the .dot circle. Gray unless a Profile color is set inline. */
+.row > .dot {
+  background: var(--acct-gray);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* Question card · artboards 1 (Main, card 2), 7 (Loading), 11 (EdgeCases §06–08), I5 buttons. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px var(--s-8);
+  border-radius: var(--r-6);
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+.question {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  user-select: text;
+}
+.clamp-3,
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.clamp-3 {
+  -webkit-line-clamp: 3;
+}
+.clamp-2 {
+  -webkit-line-clamp: 2;
+}
+.answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-8);
+}
+/* I5 · selected default: inset 1.5px ring = ask_user default. */
+.btn[data-default='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--text-1);
+}
+/* I5 · ghost (free text): 1px dashed, turns into a field on click. */
+.btn.ghost {
+  background: none;
+  border: 1px dashed var(--border-1);
+  color: var(--text-3);
+}
+.btn.ghost:hover:not(:disabled) {
+  background: var(--control);
+}
+.opts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.opt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-10);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--s-8) var(--s-10);
+  border-radius: var(--r-9);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+.opt:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.opt[data-default='true'] {
+  background: var(--border-2);
+}
+.opt.ghost {
+  color: var(--text-3);
+}
+.opt-label {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.opt .meta {
+  flex: none;
+}
+.key {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: var(--r-5);
+  background: var(--control);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.key.ghost {
+  box-sizing: border-box;
+  background: none;
+  border: 1px dashed var(--border-1);
+}
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  height: 38px;
+  padding: 0 var(--s-6) 0 var(--s-12);
+  border-radius: var(--r-10);
+  background: var(--surface-inset);
+  border: 1px solid var(--control);
+}
+.field:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  user-select: text;
+}
+.field input::placeholder {
+  color: var(--text-2);
+}
+/* I4 · icon button: 28×28, r8, never a circle. */
+.ib {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--r-8);
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+}
+.ib:hover:not(:disabled) {
+  background: var(--control);
+}
+.ib:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.sending {
+  margin: 0;
+}
+
+/* Card title opens Approval detail (design 11 §04: clicking the title opens the detail view). */
+.title-link {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: inherit;
+  text-align: left;
+}
+.title-link:hover {
+  text-decoration: underline;
+}
+
+/* Design 7 · Loading: "Writing a summary…" while Approve stays live. */
+.summary-loading {
+  margin: 0;
+  gap: var(--s-6);
+}
+
+/* Design 2 · Approval detail. Values from html/Approval.html. */
+.detail {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.detail:focus {
+  outline: none;
+}
+.detail[aria-busy='true'] .detail-body {
+  opacity: 0.6;
+}
+.detail-bar {
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  padding: 0 var(--s-12) 0 var(--s-16);
+  border-bottom: 1px solid var(--border-2);
+}
+.back {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.spacer {
+  flex: 1;
+}
+.detail-body {
+  flex: 1;
+  min-height: 0;
+  padding: 18px var(--s-20);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  overflow-y: auto;
+}
+.detail-head,
+.detail-section.tight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.detail-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 650;
+  /* Long titles wrap to at most 2 lines here (design 11 §04). */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.label {
+  margin: 0;
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.summary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.step {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: var(--s-8);
+  row-gap: var(--s-4);
+  align-items: start;
+}
+.num {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-6);
+  background: var(--control);
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  margin-top: var(--s-6);
+}
+.step-note {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--text-3);
+}
+/* The detail view shows everything; nothing is clamped. */
+.code.wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
+.code mark {
+  background: var(--risk-medium-bg);
+  color: var(--risk-medium);
+  border-radius: var(--r-3);
+  padding: 0 var(--s-2);
+}
+.agent-reason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.field.instead {
+  flex: none;
+}
+.detail-foot {
+  flex: none;
+  border-top: 1px solid var(--border-2);
+  padding: var(--s-12) var(--s-16);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--s-8);
+}
+.detail-foot .not-approved {
+  flex: 1;
+
+/* I3 · Settings rail item and its alert pip. tokens.css sizes the .pip circle. */
+.rail-item.settings {
+  margin-top: auto;
+}
+.tile > .pip {
+  position: absolute;
+  bottom: -2px;
+  right: -4px;
+  background: var(--pip);
+  color: var(--pip-fg);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+
+/* 9 · Errors: setup banners above the inbox. */
+.notices {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+.banner {
+  display: flex;
+  gap: var(--s-10);
+  align-items: flex-start;
+  padding: var(--s-10) var(--s-12);
+  border-radius: var(--r-12);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.banner.red {
+  background: color-mix(in oklch, var(--badge) 14%, transparent);
+  border: 1px solid color-mix(in oklch, var(--badge) 40%, transparent);
+}
+.banner.ok {
+  background: color-mix(in oklch, var(--success) 14%, transparent);
+  border: 1px solid color-mix(in oklch, var(--success) 40%, transparent);
+}
+.banner .banner-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+}
+.banner.red .banner-icon {
+  color: var(--risk-high);
+}
+.banner.ok .banner-icon {
+  color: var(--risk-low);
+}
+.banner-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.banner b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+.banner .btn {
+  flex: none;
+}
+.more summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-10);
+  min-height: 40px;
+  padding: 0 var(--s-12);
+  border-radius: var(--r-12);
+  background: var(--surface-card);
+  border: 1px solid var(--border-1);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.more summary::-webkit-details-marker {
+  display: none;
+}
+.more summary > .dot {
+  background: var(--pip);
+}
+.more summary > .ellipsis {
+  flex: 1;
+}
+.more .chevron {
+  width: 10px;
+  height: 10px;
+  color: var(--text-2);
+}
+.more[open] .chevron {
+  transform: rotate(180deg);
+}
+.more .banner {
+  margin-top: var(--s-8);
+}
+.restart-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.restart-head strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+.restart-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--link);
+}
+/* I4 · card header close X: last in its row, glyph aligned to the padding edge. */
+.restart-head .close {
+  margin: -3px -6px -3px 0;
+}
+.restart-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.restart-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.restart-rows .row {
+  padding: 0 var(--s-2);
+  border-top: 1px solid var(--border-2);
+  border-radius: 0;
+}
+.restart-more {
+  margin: 0;
+/* Needs a look · design 6 (States, stalled), I6 stalled sessions. */
+.needs-look {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+}
+.needs-look .cap {
+  padding-bottom: 0;
+}
+.stall-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--risk-medium);
+}
+.stall-icon.loop {
+  color: var(--risk-high);
+}
+.needs-look .card {
+  overflow: visible;
+}
+.needs-look .reason {
+  font-size: 12.5px;
+}
+.stop-failed {
+  color: var(--risk-high);
+}
+.stop-anchor {
+  position: relative;
+}
+/* I6: Stop… confirm popover, 280 wide, anchored under the button. */
+.confirm {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + var(--s-6));
+  right: 0;
+  width: 280px;
+  padding: var(--s-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-10);
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-10);
+  box-shadow: var(--shadow-menu);
+}
+.confirm p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-3);
+}

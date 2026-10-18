@@ -1,0 +1,161 @@
+/* Quick-answer panel · artboard 4 (QuickAnswer), I6 §3–4. Colors and radii from tokens.css. */
+
+:root {
+  /* Artboard 4: 0 24px 80px black at .5. Not yet in tokens.css. */
+  --shadow-panel: 0 24px 80px oklch(0% 0 0 / 0.5);
+}
+:root[data-theme='light'] {
+  --shadow-panel: 0 24px 80px oklch(30% 0.01 70 / 0.22);
+}
+
+/* Inset by the window's transparent shadow margin (quick-answer-window.ts). */
+.qa-shell {
+  padding: 24px 32px 64px;
+}
+.qa {
+  width: 640px;
+  max-height: 480px;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: var(--surface-card);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-18);
+  box-shadow: var(--shadow-panel);
+  padding: var(--s-16);
+}
+.qa:focus {
+  outline: none;
+}
+.qa-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  /* I6 §3: the next Ask cross-fades in over 120ms. */
+  animation: qa-fade-in 120ms ease-out;
+}
+@keyframes qa-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.qa[aria-busy='true'] .qa-ask {
+  opacity: 0.6;
+}
+.qa-meta {
+  gap: var(--s-8);
+}
+.qa-place {
+  margin-left: auto;
+  flex: none;
+  padding-left: var(--s-8);
+}
+.qa-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  user-select: text;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+.qa-context {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.qa-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.qa .choice {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  height: 40px;
+  padding: 0 var(--s-12);
+  border-radius: var(--r-10);
+  font-size: 14px;
+  text-align: left;
+}
+/* Artboard 4: default row 32%, hover 30%, key 34%: the key stays visible on the default row. */
+.qa .choice[data-default='true'],
+.qa .choice:hover:not(:disabled) {
+  background: var(--border-2);
+}
+.qa .choice:disabled {
+  cursor: default;
+}
+.choice-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qa .key {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-6);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.qa-field {
+  display: flex;
+  align-items: center;
+  gap: var(--s-10);
+  height: 40px;
+  padding: 0 var(--s-12);
+  border-radius: var(--r-10);
+  background: var(--surface-inset);
+  border: 1px solid var(--control);
+}
+.qa-field:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.qa-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  user-select: text;
+}
+.qa-field input::placeholder {
+  color: var(--text-2);
+}
+.qa-hints {
+  gap: 14px;
+}
+.qa kbd {
+  font: inherit;
+  padding: 1px var(--s-6);
+  border-radius: var(--r-6);
+  background: var(--control);
+  color: var(--text-3);
+}
+.qa-status {
+  margin: 0;
+  padding: var(--s-6) 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qa-ask {
+    animation: none;
+  }
+}

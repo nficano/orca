@@ -1,0 +1,376 @@
+// @vitest-environment jsdom
+import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, PopoverTarget, SessionView } from '@orca/protocol';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { OrcaBridge } from '../../preload/api';
+import { App } from './App';
+
+const NOW = Date.parse('2026-10-18T10:10:00Z');
+
+function approval(over: Partial<ApprovalView>): ApprovalView {
+  return {
+    id: 'a1',
+    kind: 'approval',
+    account: '/Users/me/.claude-work',
+    sessionId: 's-1',
+    toolName: 'Bash',
+    command: 'pnpm test',
+    cwd: '/Users/me/code/orca',
+    risk: 'green',
+    viaSubagent: false,
+    openedAt: NOW - 6 * 60_000,
+    ...over,
+  };
+}
+
+const snapshotOf = (...pending: ApprovalView[]): InboxSnapshot => ({ pending, counts: { pending: pending.length } });
+
+const WORK: ConnectedAccount = { kind: 'claude', dir: '/Users/me/.claude-work', name: 'Work' };
+
+/** A stand-in for the main process: pushes snapshots, records decisions. */
+function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: ConnectedAccount[] } = {}) {
+  const inboxListeners = new Set<(s: InboxSnapshot) => void>();
+  const openedListeners = new Set<(target?: PopoverTarget) => void>();
+  const decisions: ApprovalDecideRequest[] = [];
+  let answer: (r: IpcResult) => void = () => {};
+  const bridge: OrcaBridge = {
+    getInbox: async () => initial,
+    onInbox: (l) => (inboxListeners.add(l), () => inboxListeners.delete(l)),
+    onPopoverOpened: (l) => (openedListeners.add(l), () => openedListeners.delete(l)),
+    decideApproval: (req) => {
+      decisions.push(req);
+      return new Promise((resolve) => (answer = resolve));
+    },
+    answerQuestion: async () => ({ ok: true }),
+    openInCursor: async () => ({ ok: true }),
+    installCursorExtension: async () => ({ ok: true }),
+    listAccounts: async () => accounts,
+    scanAccounts: async () => [
+      { kind: 'claude', dir: WORK.dir, displayDir: '~/.claude-work', sessionCount: 6, suggestedName: 'Work', connected: false },
+    ],
+    chooseAccountFolder: async () => ({ kind: 'cancelled' }),
+    previewConnect: async (choices) =>
+      choices.map((c) => ({ ...c, settingsPath: `${c.dir}/settings.json`, displayPath: '~/.claude-work/settings.json', changed: true, diff: [] })),
+    connectAccounts: async (choices) => ({ connected: choices.map((c) => ({ kind: 'claude' as const, ...c })), failed: [] }),
+  };
+  return {
+    bridge,
+    decisions,
+    push: (s: InboxSnapshot) => act(() => inboxListeners.forEach((l) => l(s))),
+    openPopover: (target?: PopoverTarget) => act(() => openedListeners.forEach((l) => l(target))),
+    answer: (r: IpcResult) => act(async () => answer(r)),
+  };
+}
+
+async function renderApp(hub: ReturnType<typeof fakeHub>) {
+  render(<App bridge={hub.bridge} now={() => NOW} />);
+  await act(async () => {});
+}
+
+beforeEach(() => {
+  window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener() {}, removeEventListener() {} });
+});
+afterEach(cleanup);
+
+describe('Inbox', () => {
+  it('shows one Approval card per open Ask, oldest first', async () => {
+    const hub = fakeHub(
+      snapshotOf(
+        approval({ id: 'old', command: 'pnpm lint', reason: 'Lint before commit', openedAt: NOW - 6 * 60_000 }),
+        approval({ id: 'new', command: 'pnpm build', openedAt: NOW - 60_000 }),
+      ),
+    );
+    await renderApp(hub);
+
+    const cards = screen.getAllByRole('article');
+    expect(cards).toHaveLength(2);
+    expect(within(cards[0]!).getByText('pnpm lint')).toBeTruthy();
+    expect(within(cards[0]!).getByText('Lint before commit')).toBeTruthy();
+    expect(within(cards[0]!).getByText('waiting 6m')).toBeTruthy();
+    expect(within(cards[1]!).getByText('pnpm build')).toBeTruthy();
+    expect(within(cards[1]!).getByText('waiting 1m')).toBeTruthy();
+  });
+
+  it('badges the Inbox tile with the open Ask count, and drops the badge at 0', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'a' }), approval({ id: 'b' })));
+    await renderApp(hub);
+    expect(screen.getByRole('button', { name: 'Inbox, 2 waiting' })).toBeTruthy();
+
+    hub.push(snapshotOf());
+
+    expect(screen.getByRole('button', { name: 'Inbox' })).toBeTruthy();
+    expect(screen.queryByTestId('inbox-badge')).toBeNull();
+    expect(screen.getByText('Nothing needs you')).toBeTruthy();
+  });
+
+  it('shows 99+ on the badge past 99 open Asks', async () => {
+    const many = Array.from({ length: 120 }, (_, i) => approval({ id: `a${i}` }));
+    await renderApp(fakeHub({ pending: many, counts: { pending: 120 } }));
+    expect(screen.getByTestId('inbox-badge').textContent).toBe('99+');
+  });
+
+  it('focuses the oldest card when the popover opens', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' }), approval({ id: 'new' })));
+    await renderApp(hub);
+
+    hub.openPopover();
+
+    expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
+  });
+
+  it('opens on the Approval a red banner’s Review asked for, ready to approve with Touch ID', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' }), approval({ id: 'red', risk: 'red', command: 'git push --force' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'red', view: 'detail' });
+
+    // Approval detail (design 2) for that Ask, focused so ↑ / ↓ and Esc work.
+    const detail = screen.getByRole('region', { name: 'Approval' });
+    expect(document.activeElement).toBe(detail);
+    expect(within(detail).getByText('2 of 2')).toBeTruthy();
+    expect(within(detail).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+
+  it('falls back to the oldest card when the Ask a banner named has already resolved', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'gone', view: 'card' });
+
+    expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
+  });
+
+  it("tags each card with its Account's name", async () => {
+    await renderApp(fakeHub(snapshotOf(approval({ account: '/Users/me/.claude-work', accountName: 'Work' }))));
+    expect(within(screen.getByRole('article')).getByText('Work')).toBeTruthy();
+  });
+
+  it('tags Approvals from a subagent', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({ viaSubagent: true }))));
+    expect(screen.getByText('via subagent')).toBeTruthy();
+  });
+});
+
+describe('deciding from a card', () => {
+  it('Approve sends allow and locks the card until the hub answers', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'a1' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+
+    expect(hub.decisions).toEqual([{ id: 'a1', decision: 'allow' }]);
+    expect((screen.getByRole('button', { name: 'Approve' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Deny' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('article').getAttribute('aria-busy')).toBe('true');
+
+    await hub.answer({ ok: true });
+    hub.push(snapshotOf());
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+
+  it('Deny sends deny', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'a1' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deny' }));
+
+    expect(hub.decisions).toEqual([{ id: 'a1', decision: 'deny' }]);
+  });
+
+  it('a second click while a decision is in flight sends nothing', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'a1' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Deny' }));
+
+    expect(hub.decisions).toHaveLength(1);
+  });
+
+  it('re-enables the buttons when the hub refuses the decision', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'a1' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    await hub.answer({ ok: false, error: 'invalid-request' });
+
+    expect((screen.getByRole('button', { name: 'Approve' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('Return approves and ⌘⌫ denies the focused card; ↑ ↓ move between cards', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' }), approval({ id: 'new' })));
+    await renderApp(hub);
+    hub.openPopover();
+    const [first, second] = screen.getAllByRole('article');
+
+    fireEvent.keyDown(first!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(second);
+    fireEvent.keyDown(second!, { key: 'Backspace', metaKey: true });
+    fireEvent.keyDown(first!, { key: 'Enter' });
+
+    expect(hub.decisions).toEqual([
+      { id: 'new', decision: 'deny' },
+      { id: 'old', decision: 'allow' },
+    ]);
+  });
+});
+
+describe('first run', () => {
+  it('with no connected Accounts, shows first run instead of the inbox', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({})), { accounts: [] }));
+
+    expect(screen.getByRole('heading', { name: 'Connect your agent accounts' })).toBeTruthy();
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+
+  it('after connecting, shows the inbox', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({})), { accounts: [] }));
+
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Connect 1 account' })));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Add 1 hook' })));
+
+    expect(screen.queryByRole('heading', { name: 'Connect your agent accounts' })).toBeNull();
+    expect(screen.getByRole('article')).toBeTruthy();
+  });
+});
+
+describe('Risk tiers', () => {
+  it('shows a risk chip on every Approval card', async () => {
+    await renderApp(
+      fakeHub(
+        snapshotOf(
+          approval({ id: 'g', risk: 'green' }),
+          approval({ id: 'y', risk: 'yellow' }),
+          approval({ id: 'r', risk: 'red' }),
+        ),
+      ),
+    );
+    const [green, yellow, red] = screen.getAllByRole('article');
+    expect(within(green!).getByText('Low risk')).toBeTruthy();
+    expect(within(yellow!).getByText('Medium risk')).toBeTruthy();
+    expect(within(red!).getByText('High risk')).toBeTruthy();
+  });
+
+  it('red Approve says it needs Touch ID; green and yellow do not', async () => {
+    await renderApp(fakeHub(snapshotOf(approval({ id: 'g', risk: 'green' }), approval({ id: 'r', risk: 'red' }))));
+    const [green, red] = screen.getAllByRole('article');
+    expect(within(green!).getByRole('button', { name: 'Approve' })).toBeTruthy();
+    expect(within(red!).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+});
+
+describe('Touch ID on a red Approval', () => {
+  it('locks the card while the Touch ID sheet is up', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+
+    expect(hub.decisions).toEqual([{ id: 'r', decision: 'allow' }]);
+    expect(screen.getByRole('article').getAttribute('aria-busy')).toBe('true');
+    expect((screen.getByRole('button', { name: 'Deny' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('failure or cancel returns the card to pending with "Not approved" under the buttons for 3s', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+      await renderApp(hub);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+      await hub.answer({ ok: false, error: 'not-approved' });
+
+      const card = screen.getByRole('article');
+      expect(card.getAttribute('aria-busy')).toBe('false');
+      expect((within(card).getByRole('button', { name: 'Approve with Touch ID' }) as HTMLButtonElement).disabled).toBe(false);
+      expect(within(card).getByRole('status').textContent).toBe('Not approved');
+
+      act(() => vi.advanceTimersByTime(3000));
+      expect(within(card).queryByText('Not approved')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Return on a focused red card goes through Touch ID too', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+    hub.openPopover();
+
+    fireEvent.keyDown(screen.getByRole('article'), { key: 'Enter' });
+    await hub.answer({ ok: false, error: 'not-approved' });
+
+    expect(hub.decisions).toEqual([{ id: 'r', decision: 'allow' }]);
+    expect(screen.getByRole('status').textContent).toBe('Not approved');
+  });
+
+  it('a refusal other than Touch ID shows no "Not approved"', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'r', risk: 'red' })));
+    await renderApp(hub);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve with Touch ID' }));
+    await hub.answer({ ok: false, error: 'invalid-request' });
+
+    expect(screen.queryByText('Not approved')).toBeNull();
+  });
+});
+
+function session(over: Partial<SessionView>): SessionView {
+  return {
+    key: `/Users/me/.claude-work\u0000${over.sessionId ?? 's-1'}`,
+    account: '/Users/me/.claude-work',
+    agent: 'claude',
+    sessionId: 's-1',
+    state: 'running',
+    since: NOW - 12 * 60_000,
+    lastActivityAt: NOW,
+    title: 'Ledger backfill migration',
+    cwd: '/Users/me/code/ledger',
+    branch: 'backfill',
+    ...over,
+  };
+}
+
+describe('Running list', () => {
+  it('lists Running and Waiting Sessions; Waiting ones need a reply in Cursor', async () => {
+    const sessions = [
+      session({ sessionId: 'r', title: 'Ledger backfill migration' }),
+      session({ sessionId: 'w', state: 'waiting', title: 'Shim socket retry', cwd: '/Users/me/code/shim', branch: 'socket-retry' }),
+      session({ sessionId: 'b', state: 'blocked', title: 'Seed staging fixtures' }),
+      session({ sessionId: 'd', state: 'done', title: 'Skills repo README' }),
+    ];
+    await renderApp(fakeHub({ ...snapshotOf(), sessions }));
+
+    const list = screen.getByRole('list', { name: 'Running · 2' });
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).getByText('Ledger backfill migration')).toBeTruthy();
+    expect(within(rows[0]!).getByText('ledger · backfill')).toBeTruthy();
+    expect(within(rows[0]!).getByText('running 12m')).toBeTruthy();
+    expect(within(rows[1]!).getByText('Shim socket retry')).toBeTruthy();
+    expect(within(rows[1]!).getByText('Reply in Cursor')).toBeTruthy();
+    expect(screen.queryByText('Seed staging fixtures')).toBeNull();
+    expect(screen.queryByText('Skills repo README')).toBeNull();
+  });
+
+  it('shows below open Asks too, and names untitled Sessions by their Worktree', async () => {
+    await renderApp(fakeHub({ ...snapshotOf(approval({ id: 'a' })), sessions: [session({ title: undefined, branch: undefined })] }));
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    const row = within(screen.getByRole('list', { name: 'Running · 1' })).getByRole('listitem');
+    expect(within(row).getByText('ledger')).toBeTruthy();
+  });
+
+  it('is absent when nothing is running', async () => {
+    await renderApp(fakeHub({ ...snapshotOf(), sessions: [session({ state: 'done' })] }));
+    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.getByText('Nothing needs you')).toBeTruthy();
+  });
+});
+
+describe('theme', () => {
+  it('follows the system appearance', async () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true, addEventListener() {}, removeEventListener() {} });
+    await renderApp(fakeHub(snapshotOf()));
+    expect(document.documentElement.dataset.theme).toBe('light');
+  });
+});

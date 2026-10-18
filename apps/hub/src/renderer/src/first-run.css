@@ -1,0 +1,200 @@
+/* First run (design 8 · Empty, left artboard). Colors and radii from tokens.css. */
+
+.first-run {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 40px var(--s-20) var(--s-20);
+  gap: var(--s-24);
+}
+.first-run .hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-8);
+  text-align: center;
+}
+.first-run .mark {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-16);
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+}
+.first-run h1 {
+  margin: var(--s-4) 0 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+.first-run .hero p {
+  margin: 0;
+  max-width: 330px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+.first-run .cap {
+  margin: 0;
+  padding: 0 var(--s-12) var(--s-6);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+.found {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.acc {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+.chk {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  min-height: 52px;
+  padding: 0 var(--s-12);
+  border-radius: var(--r-10);
+  cursor: pointer;
+}
+.chk:hover {
+  background: var(--surface-card);
+}
+.chk input {
+  margin: 0;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  accent-color: var(--text-1);
+}
+.chk-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.chk-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 400;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+.nm {
+  width: 96px;
+  height: 28px;
+  flex: none;
+  box-sizing: border-box;
+  margin-right: var(--s-8);
+  padding: 0 var(--s-8);
+  border-radius: var(--r-7);
+  border: 1px solid var(--border-1);
+  background: var(--surface-inset);
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  user-select: text;
+}
+.nm:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.chk input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.first-run-note {
+  justify-content: center;
+  margin: 0;
+}
+.first-run-error {
+  margin: 0;
+  padding: 0 var(--s-12);
+  font-size: 12px;
+  color: var(--risk-high);
+  user-select: text;
+}
+.first-run-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+.btn.tall {
+  height: 36px;
+}
+.first-run .btn:disabled {
+  opacity: 0.45;
+}
+.first-run-footer {
+  justify-content: center;
+  margin: var(--s-4) 0 0;
+}
+
+/* Review step: each settings file and its diff. */
+.changes {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+}
+.change {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+.change-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: 0 var(--s-2);
+}
+.change .first-run-error {
+  padding: 0 var(--s-2);
+}
+.diff {
+  margin: 0;
+  padding: var(--s-8) var(--s-10);
+  border-radius: var(--r-8);
+  background: var(--surface-inset);
+  font: 11.5px/1.5 var(--font-mono);
+  white-space: pre;
+  overflow-x: auto;
+  user-select: text;
+}
+.diff-ctx {
+  color: var(--text-3);
+}
+.diff-add {
+  color: var(--risk-low);
+  background: var(--risk-low-bg);
+}
+.diff-del {
+  color: var(--risk-high);
+  background: var(--risk-high-bg);
+}
+.diff-gap {
+  color: var(--text-2);
+  font-family: var(--font-ui);
+}
+.main[hidden] {
+  display: none;
+}
+
+.change .change-note {
+  padding: 0 var(--s-2);
+}

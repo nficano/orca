@@ -19,9 +19,9 @@ An Electron tray app on the Mac is the single source of truth; everything else r
 ```
 Claude Code ──┬─> agentd-hook (blocking shim) ─┐            ┌─> Tray menu (Session list)
 (Cursor ext,  │                                │            │
- desktop app) └─> agent-inbox MCP ─────────────┼─> Hub  ────┼─> Notifications (approve / deny)
+ desktop app) └─> orca MCP ────────────────────┼─> Hub  ────┼─> Notifications (approve / deny)
 Codex ────────┬─> agentd-hook (blocking shim) ─┤ (Electron  │
-(Cursor ext)  └─> agent-inbox MCP ─────────────┤   main)    └─> Hotkey panel (oldest Ask first)
+(Cursor ext)  └─> orca MCP ────────────────────┤   main)    └─> Hotkey panel (oldest Ask first)
 Cursor extension ── registers roots ───────────┘
 ```
 
@@ -34,7 +34,7 @@ Agents talk only to the shim and the MCP server; both block on the hub, which su
 | Transcript tailers | Inside hub | Watch `~/.claude*/projects/**/*.jsonl` and `$CODEX_HOME/sessions/**/rollout-*.jsonl[.zst]` for live state between hook events |
 | Summarizer | Haiku call from hub | Summarizes Questions and long commands only; short commands show raw. Never assigns a Risk tier |
 | Cursor extension | Thin TS extension | Registers each window's workspace folders and Worktree; exposes `focus(windowId)` |
-| `agent-inbox` MCP | Global MCP server | Structured question, status and handoff tools (next section) |
+| `orca` MCP | Global MCP server | Structured question, status and handoff tools (next section) |
 
 ### Approval path
 
@@ -102,7 +102,7 @@ Stall threshold: 10m global, per-Repo override in hub config. Loop detection (sa
 
 Each Account is a `CLAUDE_CONFIG_DIR` (Claude) or `CODEX_HOME` (Codex). First run scans for both kinds (a Claude dir has `settings.json` + `projects/`; a Codex dir has `config.toml` + `sessions/`). The hub installs the hook into every Account, Claude and Codex alike, and tags each Session with its Account. Accounts group into user-named Profiles (Work, Personal); a Profile owns the color chip, the tab and the Focus filter.
 
-## agent-inbox MCP server
+## orca MCP server
 
 Questions go through a schema'd tool call that blocks until answered in the hub. The schema guarantees buttons; formatting rules in AGENTS.md do not.
 
@@ -205,7 +205,7 @@ Phase 1 is a go/no-go. **Go requires one check:** hooks block inside the Claude 
 - [ ] Tray Session list, sorted by blocked-on-you; Session states
 - [ ] Cursor extension: workspace registration + `focus(windowId)`
 - [ ] Stall detection, quick-answer panel, Focus integration by Profile
-- [ ] `agent-inbox` MCP server with `ask_user`; Codex `tool_timeout_sec` raised at install
+- [ ] `orca` MCP server with `ask_user`; Codex `tool_timeout_sec` raised at install
 - [ ] One-line instruction in global `CLAUDE.md` and `~/.codex/AGENTS.md`
 - [ ] Question notifications with Options + Reply
 

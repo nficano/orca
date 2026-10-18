@@ -1,0 +1,3 @@
+{"timestamp":"2026-10-18T10:07:00.000Z","type":"turn_context","payload":{"cwd":"/Users/me/code/shim","approval_policy":"on-request","sandbox_policy":{"type":"workspace-write","network_access":false},"model":"gpt-5.5-codex","effort":"medium","summary":"auto"}}
+{"timestamp":"2026-10-18T10:07:00.010Z","type":"event_msg","payload":{"type":"task_started","turn_id":"2","model_context_window":272000}}
+{"timestamp":"2026-10-18T10:07:00.020Z","type":"event_msg","payload":{"type":"user_message","message":"Also log the spool path","images":[]}}

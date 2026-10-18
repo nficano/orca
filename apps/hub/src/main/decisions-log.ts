@@ -1,0 +1,47 @@
+import type { DecisionSurface, RiskTier } from '@orca/protocol';
+import { appendFile, mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
+
+/** One line of `decisions.jsonl`. */
+export interface DecisionRecord {
+  /** ISO time of the decision. */
+  at: string;
+  askId: string;
+  account: string;
+  sessionId: string;
+  toolName: string;
+  command: string;
+  risk: RiskTier;
+  behavior: 'allow' | 'deny';
+  message?: string;
+  /** The surface the decision came from, or `rule` when a Learned rule allowed it without asking. */
+  via: DecisionSurface | 'rule';
+  /** Allowed by "Approve N" in the batch row. */
+  batch?: true;
+  /** The Learned rules that allowed it (`via: 'rule'`). */
+  ruleIds?: string[];
+  /** The command's steps (secrets masked), for "Would have covered N earlier Approvals". */
+  steps?: string[];
+  /** The Repo (shared git dir) the Approval ran in. */
+  repo?: string;
+}
+
+export interface DecisionsLog {
+  append(record: DecisionRecord): Promise<void>;
+}
+
+/** Appends one JSON line per decision, creating the file and its folder on first write. */
+export function fileDecisionsLog(path: string): DecisionsLog {
+  let tail: Promise<void> = Promise.resolve();
+  return {
+    append(record) {
+      // Chain writes so lines land in decision order.
+      const write = tail.then(async () => {
+        await mkdir(dirname(path), { recursive: true });
+        await appendFile(path, `${JSON.stringify(record)}\n`, 'utf8');
+      });
+      tail = write.catch(() => {});
+      return write;
+    },
+  };
+}

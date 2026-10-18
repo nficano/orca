@@ -1,0 +1,24 @@
+/*
+ * Errors · request-level failures: resolved-elsewhere and orphaned cards.
+ * The artboard's muted card fill sits between the popover and a live card.
+ */
+.card.resolved {
+  background: color-mix(in oklch, var(--surface-1), var(--surface-card));
+}
+.resolved-head {
+  color: var(--text-3);
+}
+/* I4 · card header X: last child, aligned to the first text line. */
+.resolved-head .close {
+  margin: -3px -6px -3px 0;
+}
+.resolved-icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+.resolved-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+}
