@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
+import { defaultSummarizer } from './haiku-summarizer';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
@@ -47,6 +48,8 @@ const inbox = createInbox({
   confirmWithTouchId: touchIdConfirmer(systemPreferences, (up) => {
     touchIdSheetUp = up;
   }),
+  // Haiku summaries for Questions and long commands; off without credentials or with ORCA_SUMMARIES=off.
+  summarize: defaultSummarizer(process.env),
 });
 const sessions = createSessions();
 /** What the renderer sees: open Asks plus the Sessions from transcripts. */

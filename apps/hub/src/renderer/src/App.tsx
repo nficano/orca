@@ -1,9 +1,11 @@
-import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, RiskTier, SessionView } from '@orca/protocol';
+import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
+import { ApprovalDetail, SecretsHidden } from './ApprovalDetail';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, runningLabel, waitLabel } from './format';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
+import { FingerprintIcon, RiskChip } from './RiskChip';
 import { Spinner } from './Spinner';
 
 const EMPTY: InboxSnapshot = { pending: [], counts: { pending: 0 } };
@@ -18,6 +20,10 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
+  /** The Approval open in Approval detail, or null for the inbox list. */
+  const [detailId, setDetailId] = useState<string | null>(null);
+  /** Where the open Approval sat, so the next one opens when it resolves. */
+  const detailIndex = useRef(0);
   const inFlight = useRef(new Set<string>());
   const listRef = useRef<HTMLDivElement>(null);
   const clock = useClock(now);
@@ -65,7 +71,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
     return result;
   }, []);
   const decide = useCallback(
-    (id: string, decision: 'allow' | 'deny') => send(id, () => bridge.decideApproval({ id, decision })),
+    (id: string, decision: 'allow' | 'deny', reason?: string) =>
+      send(id, () => bridge.decideApproval(reason === undefined ? { id, decision } : { id, decision, reason })),
     [bridge, send],
   );
   const answer = useCallback(
@@ -76,6 +83,21 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
+
+  const approvals = inbox.pending.filter((a): a is ApprovalView => a.kind === 'approval');
+  const found = detailId === null ? -1 : approvals.findIndex((a) => a.id === detailId);
+  if (found >= 0) detailIndex.current = found;
+  // The open Approval resolved: show the one that took its place, or go back after the last.
+  const detail = detailId === null ? undefined : (approvals[found] ?? approvals[Math.min(detailIndex.current, approvals.length - 1)]);
+  useEffect(() => {
+    if (detailId !== null && detail?.id !== detailId) setDetailId(detail?.id ?? null);
+  }, [detailId, detail]);
+  const openDetail = useCallback((id: string) => setDetailId(id), []);
+  const closeDetail = useCallback(() => setDetailId(null), []);
+  const moveDetail = (delta: -1 | 1) => {
+    const next = approvals[(detail ? approvals.indexOf(detail) : 0) + delta];
+    if (next) setDetailId(next.id);
+  };
 
   return (
     <div className="pop">
@@ -97,7 +119,21 @@ export function App({ bridge, now = Date.now }: AppProps) {
           <FirstRun bridge={bridge} onConnected={setAccounts} />
         </section>
       )}
-      <section className="main" aria-label="Inbox" hidden={!accounts?.length}>
+      {detail && accounts?.length ? (
+        <section className="main">
+          <ApprovalDetail
+            ask={detail}
+            position={approvals.indexOf(detail) + 1}
+            total={approvals.length}
+            now={clock}
+            busy={busy.has(detail.id)}
+            onBack={closeDetail}
+            onMove={moveDetail}
+            onDecide={decide}
+          />
+        </section>
+      ) : null}
+      <section className="main" aria-label="Inbox" hidden={!accounts?.length || detail !== undefined}>
         <div className="tabs" role="tablist" aria-label="Profile">
           <button className="tab on" role="tab" aria-selected="true">
             All
@@ -114,7 +150,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
               ask.kind === 'question' ? (
                 <QuestionCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onAnswer={answer} />
               ) : (
-                <ApprovalCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onDecide={decide} />
+                <ApprovalCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onDecide={decide} onOpen={openDetail} />
               ),
             )
           )}
@@ -156,12 +192,14 @@ interface CardProps {
   now: number;
   busy: boolean;
   onDecide: (id: string, decision: 'allow' | 'deny') => Promise<IpcResult | undefined>;
+  /** Opens Approval detail. */
+  onOpen: (id: string) => void;
 }
 
 /** How long "Not approved" stays under the buttons after Touch ID fails (I6 §1). */
 const NOT_APPROVED_MS = 3000;
 
-function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
+function ApprovalCard({ ask, now, busy, onDecide, onOpen }: CardProps) {
   const [pressed, setPressed] = useState<'allow' | 'deny' | null>(null);
   const [notApproved, setNotApproved] = useState(false);
   useEffect(() => {
@@ -196,12 +234,17 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
     }
   };
   const meta = [ask.accountName ?? baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
+  const title = ask.title ?? ask.toolName;
 
   return (
     <article className="card" tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
       <div className="card-head">
         <RiskChip risk={ask.risk} />
-        <h2 className="title">{ask.toolName}</h2>
+        <h2 className="title">
+          <button className="title-link" aria-label={`Open ${title}`} title={title} onClick={() => onOpen(ask.id)}>
+            {title}
+          </button>
+        </h2>
         <span className="meta wait">{waitLabel(ask.openedAt, now)}</span>
       </div>
       {(meta.length > 0 || ask.viaSubagent) && (
@@ -215,8 +258,15 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
           {ask.viaSubagent && <span className="tag">via subagent</span>}
         </div>
       )}
+      {ask.summaryPending && (
+        <p className="meta summary-loading">
+          <Spinner />
+          Writing a summary…
+        </p>
+      )}
       <div className="code">{ask.command}</div>
       {ask.reason && <p className="reason">{ask.reason}</p>}
+      {ask.secretsHidden ? <SecretsHidden count={ask.secretsHidden} /> : null}
       <div className="actions">
         <button className="btn" disabled={busy} aria-label="Deny" onClick={() => act('deny')}>
           {busy && pressed === 'deny' ? <Spinner /> : 'Deny'}
@@ -267,43 +317,6 @@ function useSystemTheme() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
-}
-
-const RISK_LABEL: Record<RiskTier, string> = { green: 'Low risk', yellow: 'Medium risk', red: 'High risk' };
-
-/** Risk chip (I1 §6, I5): r6, padding 2 8, never truncated. */
-function RiskChip({ risk }: { risk: RiskTier }) {
-  return (
-    <span className={`risk risk-${risk}`}>
-      {risk === 'red' && <TriangleIcon />}
-      {risk === 'yellow' && <CircleExclamationIcon />}
-      {RISK_LABEL[risk]}
-    </span>
-  );
-}
-
-function TriangleIcon() {
-  return (
-    <svg className="fa" viewBox="0 0 512 512" aria-hidden="true" style={{ width: 12, height: 12 }}>
-      <path d="M256.5 0c14.7 0 28.2 8.1 35.2 21l216 400c6.7 12.4 6.4 27.4-.8 39.5S486.6 480 472.5 480l-432 0c-14.1 0-27.1-7.4-34.3-19.5s-7.5-27.1-.8-39.5l216-400c7-12.9 20.5-21 35.2-21zM53.9 432L459.1 432 256.5 56.8 53.9 432zm202.6-40a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm0-208c18.6 0 33 16.1 31 34.6l-7.1 64.1C279 294.8 268.7 304 256.5 304s-22.5-9.2-23.8-21.3l-7.1-64.1c-2-18.5 12.4-34.6 31-34.6z" />
-    </svg>
-  );
-}
-
-function CircleExclamationIcon() {
-  return (
-    <svg className="fa" viewBox="0 0 512 512" aria-hidden="true" style={{ width: 12, height: 12 }}>
-      <path d="M256 512a256 256 0 1 1 0-512 256 256 0 1 1 0 512zm0-464a208 208 0 1 0 0 416 208 208 0 1 0 0-416zm0 336a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm0-256c18.2 0 32.7 15.5 31.4 33.7l-7.4 104c-.9 12.6-11.4 22.3-23.9 22.3-12.6 0-23-9.7-23.9-22.3l-7.4-104C223.3 143.5 237.8 128 256 128z" />
-    </svg>
-  );
-}
-
-function FingerprintIcon() {
-  return (
-    <svg className="fa" viewBox="0 0 512 512" aria-hidden="true">
-      <path d="M48 256c0-114.9 93.1-208 208-208 63.1 0 119.6 28.1 157.8 72.5 8.6 10.1 23.8 11.2 33.8 2.6s11.2-23.8 2.6-33.8C403.3 34.6 333.7 0 256 0 114.6 0 0 114.6 0 256l0 40c0 13.3 10.7 24 24 24s24-10.7 24-24l0-40zm458.5-52.9c-2.7-13-15.5-21.3-28.4-18.5s-21.3 15.5-18.5 28.4c2.9 13.9 4.5 28.3 4.5 43.1l0 40c0 13.3 10.7 24 24 24s24-10.7 24-24l0-40c0-18.1-1.9-35.8-5.5-52.9zM256 80c-19 0-37.4 3-54.5 8.6-15.2 5-18.7 23.7-8.3 35.9 7.1 8.3 18.8 10.8 29.4 7.9 10.6-2.9 21.8-4.4 33.4-4.4 70.7 0 128 57.3 128 128l0 24.9c0 25.2-1.5 50.3-4.4 75.3-1.7 14.6 9.4 27.8 24.2 27.8 11.8 0 21.9-8.6 23.3-20.3 3.3-27.4 5-55 5-82.7l0-24.9c0-97.2-78.8-176-176-176zM150.7 148.7c-9.1-10.6-25.3-11.4-33.9-.4-23.1 29.8-36.8 67.1-36.8 107.7l0 24.9c0 24.2-2.6 48.4-7.8 71.9-3.4 15.6 7.9 31.1 23.9 31.1 10.5 0 19.9-7 22.2-17.3 6.4-28.1 9.7-56.8 9.7-85.8l0-24.9c0-27.2 8.5-52.4 22.9-73.1 7.2-10.4 8-24.6-.2-34.2zM352 256c0-53-43-96-96-96s-96 43-96 96l0 24.9c0 35.9-4.6 71.5-13.8 106.1-3.8 14.3 6.7 29 21.5 29 9.5 0 17.9-6.2 20.4-15.4 10.5-39 15.9-79.2 15.9-119.7l0-24.9c0-28.7 23.3-52 52-52s52 23.3 52 52l0 24.9c0 36.3-3.5 72.4-10.4 107.9-2.7 13.9 7.7 27.2 21.8 27.2 10.2 0 19-7 21-17 7.7-38.8 11.6-78.3 11.6-118.1l0-24.9zm-96-24c-13.3 0-24 10.7-24 24l0 24.9c0 59.9-11 119.3-32.5 175.2l-5.9 15.3c-4.8 12.4 1.4 26.3 13.8 31s26.3-1.4 31-13.8l5.9-15.3C267.9 411.9 280 346.7 280 280.9l0-24.9c0-13.3-10.7-24-24-24z" />
-    </svg>
-  );
 }
 
 function InboxIcon() {
