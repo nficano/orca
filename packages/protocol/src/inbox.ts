@@ -2,6 +2,7 @@
  * Inbox snapshot: the main process sends a full snapshot to every renderer on
  * every change (never diffs). Renderers key rows by Ask id.
  */
+import type { Urgency } from './question';
 
 export interface ApprovalView {
   id: string;
@@ -21,7 +22,26 @@ export interface ApprovalView {
   openedAt: number;
 }
 
-export type AskView = ApprovalView;
+export interface QuestionView {
+  id: string;
+  kind: 'question';
+  account: string;
+  /** Empty when the MCP server can't tell. */
+  sessionId: string;
+  cwd?: string;
+  question: string;
+  /** Empty means the card shows a free-text field. */
+  options: string[];
+  /** The agent's suggested answer, ringed on the card. */
+  default?: string;
+  context?: string;
+  /** Notification loudness only; never changes the sort. */
+  urgency: Urgency;
+  /** Epoch ms when the MCP server connected. */
+  openedAt: number;
+}
+
+export type AskView = ApprovalView | QuestionView;
 
 export interface InboxSnapshot {
   /** Open Asks, oldest first. */

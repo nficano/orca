@@ -1,4 +1,4 @@
-import { encodeDecision, parseShimMessage } from '@orca/protocol';
+import { encodeAnswer, encodeDecision, parseQuestionMessage, parseShimMessage } from '@orca/protocol';
 import { chmod, mkdir, rm } from 'node:fs/promises';
 import { connect, createServer, type Socket } from 'node:net';
 import { dirname } from 'node:path';
@@ -13,7 +13,7 @@ export interface HubSocket {
 
 /**
  * Listens on the hub's Unix socket. Each connection carries one Ask: the
- * shim's first line opens it, the decision goes back down the same
+ * first line from the shim (an Approval) or the orca MCP server (a Question) opens it, the decision goes back down the same
  * connection, and the connection closing ends the Ask.
  */
 export async function listenForShims({ path, inbox }: { path: string; inbox: Inbox }): Promise<HubSocket> {
@@ -36,12 +36,19 @@ export async function listenForShims({ path, inbox }: { path: string; inbox: Inb
         if (buf.length > MAX_LINE_BYTES) socket.destroy();
         return;
       }
-      const msg = parseShimMessage(buf.slice(0, nl));
-      if (!msg) {
+      const line = buf.slice(0, nl);
+      const msg = parseShimMessage(line);
+      if (msg) {
+        askId = inbox.open(msg, (decision) => socket.end(encodeDecision(decision)));
+        return;
+      }
+      // The orca MCP server's ask_user uses the same socket, one Question per connection.
+      const question = parseQuestionMessage(line);
+      if (!question) {
         socket.destroy();
         return;
       }
-      askId = inbox.open(msg, (decision) => socket.end(encodeDecision(decision)));
+      askId = inbox.openQuestion(question, (answer) => socket.end(encodeAnswer(answer)));
     });
     socket.on('error', () => {});
     socket.on('close', () => {

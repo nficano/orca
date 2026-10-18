@@ -339,3 +339,155 @@ button:focus-visible {
     animation: none;
   }
 }
+
+/* Question card · artboards 1 (Main, card 2), 7 (Loading), 11 (EdgeCases §06–08), I5 buttons. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px var(--s-8);
+  border-radius: var(--r-6);
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+.question {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  user-select: text;
+}
+.clamp-3,
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.clamp-3 {
+  -webkit-line-clamp: 3;
+}
+.clamp-2 {
+  -webkit-line-clamp: 2;
+}
+.answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-8);
+}
+/* I5 · selected default: inset 1.5px ring = ask_user default. */
+.btn[data-default='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--text-1);
+}
+/* I5 · ghost (free text): 1px dashed, turns into a field on click. */
+.btn.ghost {
+  background: none;
+  border: 1px dashed var(--border-1);
+  color: var(--text-3);
+}
+.btn.ghost:hover:not(:disabled) {
+  background: var(--control);
+}
+.opts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.opt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-10);
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--s-8) var(--s-10);
+  border-radius: var(--r-9);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+}
+.opt:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.opt[data-default='true'] {
+  background: var(--border-2);
+}
+.opt.ghost {
+  color: var(--text-3);
+}
+.opt-label {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.opt .meta {
+  flex: none;
+}
+.key {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: var(--r-5);
+  background: var(--control);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.key.ghost {
+  box-sizing: border-box;
+  background: none;
+  border: 1px dashed var(--border-1);
+}
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  height: 38px;
+  padding: 0 var(--s-6) 0 var(--s-12);
+  border-radius: var(--r-10);
+  background: var(--surface-inset);
+  border: 1px solid var(--control);
+}
+.field:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  user-select: text;
+}
+.field input::placeholder {
+  color: var(--text-2);
+}
+/* I4 · icon button: 28×28, r8, never a circle. */
+.ib {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--r-8);
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+}
+.ib:hover:not(:disabled) {
+  background: var(--control);
+}
+.ib:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.sending {
+  margin: 0;
+}
