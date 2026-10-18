@@ -1,6 +1,15 @@
-import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, RiskTier, SessionView } from '@orca/protocol';
+import type {
+  ApprovalView,
+  ConnectedAccount,
+  InboxSnapshot,
+  IpcResult,
+  RiskTier,
+  SessionStatus,
+  SessionView,
+} from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
+import { DoneIcon, DoneView } from './Done';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, runningLabel, waitLabel } from './format';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
@@ -20,6 +29,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
   const inFlight = useRef(new Set<string>());
   const listRef = useRef<HTMLDivElement>(null);
+  /** Which rail section shows. */
+  const [view, setView] = useState<'inbox' | 'done'>('inbox');
   const clock = useClock(now);
   useSystemTheme();
 
@@ -73,6 +84,11 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const sendBack = useCallback(
+    (id: string, text: string) => void send(id, () => bridge.sendBack({ id, text })),
+    [bridge, send],
+  );
+
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
@@ -80,7 +96,12 @@ export function App({ bridge, now = Date.now }: AppProps) {
   return (
     <div className="pop">
       <nav className="rail" aria-label="Sections">
-        <button className="rail-item on" aria-current="page" aria-label={count ? `Inbox, ${count} waiting` : 'Inbox'}>
+        <button
+          className={view === 'inbox' ? 'rail-item on' : 'rail-item'}
+          aria-current={view === 'inbox' ? 'page' : undefined}
+          aria-label={count ? `Inbox, ${count} waiting` : 'Inbox'}
+          onClick={() => setView('inbox')}
+        >
           <span className="tile">
             <InboxIcon />
             {badge && (
@@ -91,13 +112,32 @@ export function App({ bridge, now = Date.now }: AppProps) {
           </span>
           <span aria-hidden="true">Inbox</span>
         </button>
+        <button
+          className={view === 'done' ? 'rail-item on' : 'rail-item'}
+          aria-current={view === 'done' ? 'page' : undefined}
+          aria-label="Done"
+          onClick={() => setView('done')}
+        >
+          <span className="tile">
+            <DoneIcon />
+          </span>
+          <span aria-hidden="true">Done</span>
+        </button>
       </nav>
       {accounts?.length === 0 && (
         <section className="main">
           <FirstRun bridge={bridge} onConnected={setAccounts} />
         </section>
       )}
-      <section className="main" aria-label="Inbox" hidden={!accounts?.length}>
+      <section className="main" aria-label="Done" hidden={!accounts?.length || view !== 'done'}>
+        <div className="tabs" role="tablist" aria-label="Profile">
+          <button className="tab on" role="tab" aria-selected="true">
+            All
+          </button>
+        </div>
+        <DoneView done={inbox.done} now={clock} busy={busy} onSendBack={sendBack} onShowInbox={() => setView('inbox')} />
+      </section>
+      <section className="main" aria-label="Inbox" hidden={!accounts?.length || view !== 'inbox'}>
         <div className="tabs" role="tablist" aria-label="Profile">
           <button className="tab on" role="tab" aria-selected="true">
             All
@@ -134,7 +174,10 @@ function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }
       </p>
       <ul aria-labelledby="running-cap">
         {sessions.map((s) => {
-          const meta = [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
+          // report_status's line wins; otherwise where the Session is working.
+          const meta = s.status
+            ? statusLine(s.status)
+            : [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
           return (
             <li key={s.key} className="row">
               <span className="dot" aria-hidden="true" />
@@ -149,6 +192,12 @@ function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }
       </ul>
     </section>
   );
+}
+
+/** "Running tests", or "Running tests · blocked: CI is slow". */
+function statusLine({ summary, phase, blockers }: SessionStatus): string {
+  const line = summary || phase;
+  return blockers.length ? `${line} · blocked: ${blockers.join(', ')}` : line;
 }
 
 interface CardProps {
