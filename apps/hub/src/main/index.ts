@@ -9,18 +9,24 @@ import {
   type ApprovalDecideRequest,
   type IpcResult,
   type QuestionAnswerRequest,
+  type SessionStopRequest,
 } from '@orca/protocol';
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, systemPreferences, Tray } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, systemPreferences, Tray } from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
+import { electronNotifier } from './electron-notifier';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
+import { startQuickAnswer } from './quick-answer-electron';
+import { startQuestionNotifications } from './question-notifications';
 import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
 import { createSessions } from './sessions/sessions';
+import { createStallThresholds, fileStallConfig } from './sessions/stall-threshold';
+import { processSignals, stopSession } from './sessions/stop';
 import { startSessionTracking, type SessionTracking } from './sessions/track';
 import { touchIdConfirmer } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
@@ -61,6 +67,7 @@ const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
+let quickAnswer: { stop(): void } | undefined;
 let sessionTracking: SessionTracking | undefined;
 /** True while a sheet (the folder picker) is up: the popover must not hide on blur. */
 let holdPopover = false;
@@ -73,7 +80,7 @@ app.whenReady().then(async () => {
   ipcMain.handle(IPC.inboxGet, () => hubSnapshot());
   ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
-    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason });
+    return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
   });
   ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => inbox.approveBatch(req));
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
@@ -85,6 +92,11 @@ app.whenReady().then(async () => {
   }
   // Load connected Accounts before any Ask arrives, so every Ask gets its Account's name.
   const firstRun = (await accounts.list()).length === 0;
+
+  ipcMain.handle(IPC.sessionStop, (_e, req: SessionStopRequest): Promise<IpcResult> => {
+    if (!req || typeof req.key !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
+    return stopSession({ key: req.key, sessions, probe: () => probeAgentProcesses(), signals: processSignals });
+  });
 
   tray = new Tray(trayIcon(false));
   tray.setToolTip('Orca');
@@ -109,6 +121,19 @@ app.whenReady().then(async () => {
   };
   inbox.subscribe(publish);
 
+  // Question banners: answered from Options / Reply, removed once the Ask resolves anywhere.
+  if (Notification.isSupported()) {
+    startQuestionNotifications({ inbox, notifier: electronNotifier(), onOpen: showPopover });
+  }
+
+  quickAnswer = startQuickAnswer({
+    inbox,
+    preload: join(here, '../preload/index.cjs'),
+    load: loadRenderer,
+    isPopoverVisible: () => popover?.isVisible() ?? false,
+    holdOnBlur: () => touchIdSheetUp,
+  });
+
   hubSocket = await listenForShims({ path: socketPath, inbox });
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
   if (firstRun) {
@@ -120,6 +145,8 @@ app.whenReady().then(async () => {
     accounts: await findTailedAccounts({ home: accountsHome, env: process.env }),
     sessions,
     probe: () => probeAgentProcesses(),
+    // Stall threshold: 10m, or `stallThresholdMinutes` (global and per Repo) in Orca's config.json.
+    stallThresholdFor: createStallThresholds({ readConfig: fileStallConfig(join(dataDir, 'config.json')) }),
   });
   sessions.subscribe(publish);
   publish();
@@ -129,6 +156,7 @@ app.on('before-quit', () => {
   sessionTracking?.stop();
   void hubSocket?.close();
 });
+app.on('will-quit', () => quickAnswer?.stop());
 app.on('window-all-closed', () => {
   // A tray app keeps running with no windows.
 });
@@ -195,4 +223,10 @@ function trayIcon(hasOpenAsks: boolean) {
   const img = nativeImage.createFromPath(join(resources, hasOpenAsks ? 'trayActiveTemplate.png' : 'trayTemplate.png'));
   img.setTemplateImage(true);
   return img;
+}
+
+/** Loads the renderer bundle; `hash` picks the view (`quick-answer`), none is the popover. */
+function loadRenderer(win: BrowserWindow, hash?: string) {
+  if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(`${process.env.ELECTRON_RENDERER_URL}${hash ? `#${hash}` : ''}`);
+  else void win.loadFile(join(here, '../renderer/index.html'), hash ? { hash } : undefined);
 }
