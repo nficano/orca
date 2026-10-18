@@ -28,7 +28,7 @@ import type {
   ProfilesView,
   ProfileUpdateRequest,
 } from '@orca/protocol';
-import type { ReinstallResult } from '@orca/protocol';
+import type { ReinstallResult, SettingsResult, SettingsUpdate, SettingsView } from '@orca/protocol';
 
 /** Setup-error banners (Storyboard F9). Optional so renderer test fakes that aren't about setup can leave them out. */
 export interface SetupBridge {
@@ -66,6 +66,12 @@ export interface ProfilesBridge {
   setFocusFilter(req: FocusFilterRequest): Promise<ProfilesResult>;
 }
 
+/** Settings › General. Every change is saved at once; the answer carries the settings as they now are. */
+export interface SettingsBridge {
+  getSettings?(): Promise<SettingsView>;
+  updateSettings?(update: SettingsUpdate): Promise<SettingsResult>;
+}
+
 /** Settings › Rules. */
 export interface RulesBridge {
   listRules(): Promise<LearnedRuleView[]>;
@@ -76,7 +82,7 @@ export interface RulesBridge {
 
 /** What the preload exposes to the renderer as `window.orca`. */
 /** Profiles methods are optional so renderer tests that aren't about Profiles can leave them out. */
-export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge, Partial<ProfilesBridge>, Partial<RulesBridge> {
+export interface OrcaBridge extends AccountsBridge, SetupBridge, DoneBridge, SettingsBridge, Partial<ProfilesBridge>, Partial<RulesBridge> {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   /** `target` is set when a notification opened the popover for one Ask. */

@@ -65,10 +65,14 @@ import { profilesIpcHandlers } from './profiles/ipc';
 import { createProfiles } from './profiles/profiles';
 import { focusedInbox } from './profiles/focused-inbox';
 import { focusFilter, withProfiles } from './profiles/snapshot';
+import { createSettings, highRiskConfirmer } from './settings/settings';
+import { gatedBatch, settingsIpcHandlers } from './settings/ipc';
+import { notifyingInbox } from './settings/notify';
+import { hookTimeoutsFor, rewriteHookTimeouts } from './accounts/hook-timeouts';
 import { createApprovalHistory, readApprovalHistory } from './rules/history';
 import { rulesIpcHandlers } from './rules/ipc';
 import { createLearnedRules } from './rules/learned-rules';
-import { touchIdConfirmer } from './touch-id';
+import { touchIdConfirmer, touchIdPrompter } from './touch-id';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -101,6 +105,21 @@ const accounts = createAccounts({
 });
 /** The popover stays up behind the Touch ID sheet instead of hiding on blur (I6 §3). */
 let touchIdSheetUp = false;
+const onTouchIdSheet = (up: boolean) => {
+  touchIdSheetUp = up;
+};
+/**
+ * Settings › General (Storyboard F10), kept in config.json with the per-Repo stall overrides.
+ * Saved on every change; a changed wait rewrites every Account's hook timeout.
+ */
+const settings = createSettings({
+  path: join(dataDir, 'config.json'),
+  confirmWithTouchId: touchIdPrompter(systemPreferences, onTouchIdSheet),
+  onTierWaitsChanged: async (waits) => {
+    await rewriteHookTimeouts(await accounts.list(), hookTimeoutsFor(waits));
+  },
+  shortcut: () => quickAnswer?.shortcut,
+});
 const decisionsPath = join(dataDir, 'decisions.jsonl');
 /** Learned rules, owned by the hub and applied to every Account's Approvals (spec › Decisions). */
 const rules = createLearnedRules({ storePath: join(dataDir, 'rules.json') });
@@ -111,9 +130,9 @@ const inbox = createInbox({
   rules,
   history: approvalHistory,
   accountName: accounts.nameOf,
-  confirmWithTouchId: touchIdConfirmer(systemPreferences, (up) => {
-    touchIdSheetUp = up;
-  }),
+  // Touch ID before a red Approve, unless Settings turned it off.
+  confirmWithTouchId: highRiskConfirmer(settings, touchIdConfirmer(systemPreferences, onTouchIdSheet)),
+  tierWaits: settings.tierWaits,
   // Haiku summaries for Questions and long commands; off without credentials or with ORCA_SUMMARIES=off.
   summarize: defaultSummarizer(process.env),
 });
@@ -169,7 +188,7 @@ const shownInbox = focusedInbox(inbox, {
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
-let quickAnswer: { stop(): void } | undefined;
+let quickAnswer: ReturnType<typeof startQuickAnswer> | undefined;
 let sessionTracking: SessionTracking | undefined;
 /** True while a sheet (the folder picker) is up: the popover must not hide on blur. */
 let holdPopover = false;
@@ -194,7 +213,11 @@ app.whenReady().then(async () => {
   // Rules load before any shim can connect, so the first matching Approval is already covered.
   await rules.load();
   for (const entry of await readApprovalHistory(decisionsPath)) approvalHistory.add(entry);
-  ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => inbox.approveBatch(req));
+  const approveBatch = gatedBatch(settings, (req) => inbox.approveBatch(req));
+  ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => approveBatch(req));
+  for (const [channel, handle] of Object.entries(settingsIpcHandlers(settings))) {
+    ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
+  }
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
@@ -270,9 +293,14 @@ app.whenReady().then(async () => {
       void cursor.openInCursor.openAsk(askId).then((r) => {
         if (!r.ok) openCard(askId);
       });
-    startQuestionNotifications({ inbox: shownInbox, notifier, onOpen: openInCursor });
+    // Notify me for (Settings › General): banners for the Asks it names; the tray shows every Ask.
+    const bannerInbox = notifyingInbox(shownInbox, {
+      notifyFor: () => settings.view().notifyFor,
+      onChange: (listener) => settings.subscribe(() => listener()),
+    });
+    startQuestionNotifications({ inbox: bannerInbox, notifier, onOpen: openInCursor });
     startApprovalNotifications({
-      inbox: shownInbox,
+      inbox: bannerInbox,
       notifier,
       onOpen: openInCursor,
       onReview: (askId) => showPopover({ askId, view: 'detail' }),
@@ -285,6 +313,7 @@ app.whenReady().then(async () => {
     load: loadRenderer,
     isPopoverVisible: () => popover?.isVisible() ?? false,
     holdOnBlur: () => touchIdSheetUp,
+    accelerator: settings.view().quickAnswerShortcut,
   });
 
   hubSocket = await listenForShims({ path: socketPath, inbox, windows: cursor.windows, reports: done });

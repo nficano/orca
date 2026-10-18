@@ -1,4 +1,4 @@
-import { CURSOR_IPC, IPC, RULES_IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
+import { CURSOR_IPC, IPC, RULES_IPC, SETTINGS_IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { OrcaBridge, QuickAnswerBridge, ShortcutBridge } from './api';
 
@@ -46,6 +46,8 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   reinstallHooks: (dir) => ipcRenderer.invoke(IPC.setupReinstall, dir),
   dismissRestart: () => ipcRenderer.invoke(IPC.setupDismissRestart),
   stopSession: (req) => ipcRenderer.invoke(IPC.sessionStop, req),
+  getSettings: () => ipcRenderer.invoke(SETTINGS_IPC.get),
+  updateSettings: (update) => ipcRenderer.invoke(SETTINGS_IPC.update, update),
   dismissAsk: (req) => ipcRenderer.invoke(IPC.askDismiss, req),
 };
 

@@ -10,6 +10,7 @@ import type {
   ReinstallResult,
   SessionStatus,
   SessionView,
+  SettingsView,
 } from '@orca/protocol';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge, ProfilesBridge, RulesBridge } from '../../preload/api';
@@ -33,7 +34,8 @@ import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { isResolved, ResolvedCard } from './ResolvedCard';
 import { focusLabel, nextTab, profileDot } from './profiles';
-import { ProfilesSettings } from './ProfilesSettings';
+import { AccountsSettings } from './AccountsSettings';
+import { SettingsPane } from './SettingsPane';
 import { RulesSettings } from './RulesSettings';
 import { FingerprintIcon, RiskChip } from './RiskChip';
 import { SetupBanners } from './SetupBanners';
@@ -55,7 +57,6 @@ export function App({ bridge, now = Date.now }: AppProps) {
   /** The rail section on show. */
   const [section, setSection] = useState<'inbox' | 'done' | 'settings'>('inbox');
   /** The Settings tab on show. */
-  const [settingsTab, setSettingsTab] = useState<'profiles' | 'rules'>('profiles');
   /** The open Profile tab: 'all' or a Profile id. */
   const [tab, setTab] = useState('all');
   /** The Approval open in Approval detail, or null for the inbox list. */
@@ -81,6 +82,16 @@ export function App({ bridge, now = Date.now }: AppProps) {
     return () => {
       live = false;
       off();
+    };
+  }, [bridge]);
+
+  /** Settings › General; null until loaded, or when the bridge has none. */
+  const [settings, setSettings] = useState<SettingsView | null>(null);
+  useEffect(() => {
+    let live = true;
+    void bridge.getSettings?.().then((s) => live && setSettings(s));
+    return () => {
+      live = false;
     };
   }, [bridge]);
 
@@ -176,7 +187,6 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   const profilesBridge = useMemo(() => profilesOf(bridge), [bridge]);
   const rulesBridge = useMemo(() => rulesOf(bridge), [bridge]);
-  const shownSettingsTab = settingsTab === 'rules' && rulesBridge ? 'rules' : profilesBridge ? 'profiles' : 'rules';
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const profiles = inbox.profiles ?? [];
@@ -196,7 +206,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled' && inTab(s));
   const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou && inTab(s));
   const currentName = profiles.find((p) => p.id === current)?.name;
-  const batch = typeof bridge.approveBatch === 'function' ? batchLines(pending) : [];
+  // Settings › Approve low risk in one batch turns the batch row off.
+  const batch = typeof bridge.approveBatch === 'function' && settings?.batchApprove !== false ? batchLines(pending) : [];
 
   // ⌃Tab = next Profile tab, ⌃⇧Tab = previous (spec › Design changes needed).
   const tabIdsKey = tabIds.join('\u0000');
@@ -269,7 +280,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           aria-current={section === 'settings' ? 'page' : undefined}
           aria-label={problems ? `Settings, ${plural(problems, 'problem')}` : 'Settings'}
           onClick={() => {
-            if ((profilesBridge || rulesBridge) && accounts?.length) setSection('settings');
+            if (accounts?.length) setSection('settings');
           }}
         >
           <span className="tile">
@@ -305,35 +316,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
           onShowInbox={() => setSection('inbox')}
         />
       </section>
-      {section === 'settings' && !!accounts?.length && (profilesBridge || rulesBridge) && (
-        <section className="main" aria-label="Settings">
-          <div className="tabs-row">
-            <div className="tabs" role="tablist" aria-label="Settings">
-              {profilesBridge && (
-                <button
-                  className={shownSettingsTab === 'profiles' ? 'tab on' : 'tab'}
-                  role="tab"
-                  aria-selected={shownSettingsTab === 'profiles'}
-                  onClick={() => setSettingsTab('profiles')}
-                >
-                  Profiles
-                </button>
-              )}
-              {rulesBridge && (
-                <button
-                  className={shownSettingsTab === 'rules' ? 'tab on' : 'tab'}
-                  role="tab"
-                  aria-selected={shownSettingsTab === 'rules'}
-                  onClick={() => setSettingsTab('rules')}
-                >
-                  Rules
-                </button>
-              )}
-            </div>
-          </div>
-          {shownSettingsTab === 'profiles' && profilesBridge && <ProfilesSettings bridge={profilesBridge} />}
-          {shownSettingsTab === 'rules' && rulesBridge && <RulesSettings bridge={rulesBridge} now={now} />}
-        </section>
+      {section === 'settings' && !!accounts?.length && (
+        <SettingsPane
+          settings={settings}
+          {...(bridge.updateSettings ? { updateSettings: bridge.updateSettings } : {})}
+          onSettings={setSettings}
+          accounts={<AccountsSettings accounts={accounts} problems={inbox.setup?.problems ?? []} reinstall={reinstall} />}
+          profilesBridge={profilesBridge}
+          rules={rulesBridge && <RulesSettings bridge={rulesBridge} now={now} />}
+        />
       )}
       {detail && section === 'inbox' && accounts?.length ? (
         <section className="main">

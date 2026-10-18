@@ -140,8 +140,11 @@ export interface InboxOptions {
   history?: ApprovalHistory;
   /** The Repo (shared git dir) that holds an Ask's cwd. */
   repoOf?: (cwd: string | undefined) => string | undefined;
-  /** How long the inbox asks, per Risk tier, before it hands an Approval back to the editor. */
-  tierWaits?: TierWaits;
+  /**
+   * How long the inbox asks, per Risk tier, before it hands an Approval back
+   * to the editor. A function is read as each Approval opens (Settings › General).
+   */
+  tierWaits?: TierWaits | (() => TierWaits);
 }
 
 export function createInbox({
@@ -281,7 +284,7 @@ export function createInbox({
       const call: ToolCall = { toolName: msg.hook.tool_name, toolInput: msg.hook.tool_input, cwd };
       const { risk, readsOutsideWorktree } = assess(call);
       const openedAt = now();
-      const wait = tierWaits[risk];
+      const wait = (typeof tierWaits === 'function' ? tierWaits() : tierWaits)[risk];
       const view: ApprovalView = { ...approvalView(id, msg, risk, openedAt), waitEndsAt: openedAt + wait };
       const repo = rules ? repoOf(cwd) : undefined;
       if (allowedByRule(view, repo, reply)) return id;
