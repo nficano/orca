@@ -1,4 +1,15 @@
-import { count, isHandoffTool, isObject, parseLine, stepText, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
+import {
+  count,
+  isHandoffTool,
+  isObject,
+  parseLine,
+  stepText,
+  str,
+  timeOf,
+  wasRejected,
+  type TranscriptReader,
+  type TranscriptUpdate,
+} from './transcript';
 
 const INTERRUPTED = '[Request interrupted by user';
 /** Assistant stop reasons that end the turn; `tool_use` and null (still streaming) don't. */
@@ -25,8 +36,8 @@ export function createClaudeReader(fallbackSessionId: string): TranscriptReader 
     if (id) counted.set(id, Math.max(before, total));
     return Math.max(0, total - before);
   };
-  /** tool_use id → tool name, so a tool_result knows which tool failed. */
-  const toolNames = new Map<string, string>();
+  /** tool_use id → tool name and input, so a tool_result knows which call it answers. */
+  const toolNames = new Map<string, ToolCall>();
 
   return (line) => {
     const e = parseLine(line);
@@ -48,7 +59,7 @@ export function createClaudeReader(fallbackSessionId: string): TranscriptReader 
       }
       case 'user': {
         const results = toolResults(e, toolNames);
-        if (results.length > 0) return results.map((toolResult) => ({ ...base, turn: 'working' as const, toolResult }));
+        if (results.length > 0) return results.map((r) => ({ ...base, turn: 'working' as const, ...r }));
         return [{ ...base, ...userTurn(e) }];
       }
       case 'assistant': {
@@ -64,22 +75,35 @@ export function createClaudeReader(fallbackSessionId: string): TranscriptReader 
   };
 }
 
-function rememberToolNames(e: Record<string, unknown>, names: Map<string, string>) {
+interface ToolCall {
+  name: string;
+  input: unknown;
+}
+
+function rememberToolNames(e: Record<string, unknown>, names: Map<string, ToolCall>) {
   if (!isObject(e.message) || !Array.isArray(e.message.content)) return;
   for (const b of e.message.content) {
-    if (isObject(b) && b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') names.set(b.id, b.name);
+    if (isObject(b) && b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
+      names.set(b.id, { name: b.name, input: b.input });
+    }
   }
 }
 
 /** Each tool_result in a user entry; parallel tool calls put several in one entry. */
-function toolResults(e: Record<string, unknown>, names: Map<string, string>): NonNullable<TranscriptUpdate['toolResult']>[] {
+function toolResults(e: Record<string, unknown>, names: Map<string, ToolCall>): Pick<TranscriptUpdate, 'toolResult' | 'toolAnswer'>[] {
   if (!isObject(e.message) || !Array.isArray(e.message.content)) return [];
   return e.message.content
     .filter((b): b is Record<string, unknown> => isObject(b) && b.type === 'tool_result')
     .map((b) => {
-      const tool = (typeof b.tool_use_id === 'string' && names.get(b.tool_use_id)) || 'unknown';
-      if (b.is_error !== true) return { tool };
-      return { tool, error: resultText(b.content) };
+      const call = typeof b.tool_use_id === 'string' ? names.get(b.tool_use_id) : undefined;
+      const tool = call?.name || 'unknown';
+      const error = b.is_error === true ? resultText(b.content) : undefined;
+      const toolAnswer = call && {
+        tool,
+        input: call.input,
+        outcome: error !== undefined && wasRejected('claude', error) ? ('rejected' as const) : ('ran' as const),
+      };
+      return { toolResult: error === undefined ? { tool } : { tool, error }, ...(toolAnswer ? { toolAnswer } : {}) };
     });
 }
 

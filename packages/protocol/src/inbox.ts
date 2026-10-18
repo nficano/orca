@@ -64,6 +64,19 @@ export interface ApprovalView {
    * can no longer be decided here; the Session is still Blocked.
    */
   handedBackAt?: number;
+  /**
+   * The shim's connection closed before Orca answered: the editor answered it
+   * first (I6 §1 "resolved elsewhere"). `at` is when it closed; `approved` is
+   * set once the transcript shows the tool call ran. The card reads "Approved
+   * in Cursor at 10:10", else "Handled in Cursor", and can be dismissed.
+   */
+  resolvedElsewhere?: { at: number; approved?: true };
+  /**
+   * Epoch ms the Approval's Session ended before anyone answered it (I6 §1
+   * "orphaned"). The card reads "The session ended before you answered.
+   * Nothing was run." and can be dismissed.
+   */
+  orphanedAt?: number;
 }
 
 /** One step of a compound command. Secrets in `command` are already masked. */
@@ -117,6 +130,13 @@ export interface InboxSnapshot {
    * in Orca may decide them. Absent when there are none.
    */
   handedBack?: ApprovalView[];
+  /**
+   * Approvals that ended without an answer from Orca, oldest first: resolved
+   * elsewhere (`resolvedElsewhere`) or orphaned (`orphanedAt`). Not open Asks:
+   * never counted, never Blocking. Each stays until dismissed (`ask:dismiss`).
+   * Absent when there are none.
+   */
+  resolved?: ApprovalView[];
   counts: {
     /**
      * Open Asks shown (every Account, less any the Focus filter hides),

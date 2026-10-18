@@ -55,6 +55,10 @@ export function withProfiles(snapshot: InboxSnapshot, config: ProfilesConfig, fo
   };
   if (handedBack.length > 0) next.handedBack = handedBack;
   else delete next.handedBack;
+  // Resolved-elsewhere and orphaned cards aren't open Asks: shown in their tab, never counted.
+  const resolved = (snapshot.resolved ?? []).map(tag).filter((a) => shows(a.profileId));
+  if (resolved.length > 0) next.resolved = resolved;
+  else delete next.resolved;
   if (snapshot.sessions) next.sessions = snapshot.sessions.map(tag).filter((s) => shows(s.profileId));
   if (focus.current && hidden.size > 0) {
     next.focus = { name: focus.current.name, hiddenProfiles: [...hidden], hiddenAsks: tagged.length + taggedBack.length - pending.length - handedBack.length };

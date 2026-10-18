@@ -1,4 +1,15 @@
-import { count, isHandoffTool, isObject, parseLine, stepText, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
+import {
+  count,
+  isHandoffTool,
+  isObject,
+  parseLine,
+  stepText,
+  str,
+  timeOf,
+  wasRejected,
+  type TranscriptReader,
+  type TranscriptUpdate,
+} from './transcript';
 
 const STARTED = new Set(['task_started', 'turn_started']);
 const ENDED = new Set(['task_complete', 'turn_complete', 'turn_aborted']);
@@ -15,8 +26,8 @@ export function createCodexReader(): TranscriptReader {
   let subagent = false;
   /** The running total already counted; token_count events carry the Session's total so far. */
   let countedTokens = 0;
-  /** call_id → tool name, so an output knows which tool failed. */
-  const toolNames = new Map<string, string>();
+  /** call_id → tool name and input, so an output knows which call it answers. */
+  const toolNames = new Map<string, { name: string; input: unknown }>();
 
   return (line) => {
     const e = parseLine(line);
@@ -78,21 +89,46 @@ export function createCodexReader(): TranscriptReader {
       if (p.type === 'function_call' || p.type === 'custom_tool_call') {
         const name = str(p.name) ?? 'unknown';
         const callId = str(p.call_id);
-        if (callId) toolNames.set(callId, name);
+        if (callId) toolNames.set(callId, { name, input: callInput(p.arguments ?? p.input) });
         if (isHandoffTool(p.name)) return [{ ...base, turn: 'handoff' }];
         const step = callStep(name, p.arguments ?? p.input);
         return [{ ...base, turn: 'working', ...(step ? { step } : {}) }];
       }
       if (p.type === 'function_call_output' || p.type === 'custom_tool_call_output') {
         const callId = str(p.call_id);
-        const tool = (callId && toolNames.get(callId)) || 'unknown';
+        const call = callId ? toolNames.get(callId) : undefined;
+        const tool = call?.name ?? 'unknown';
         const error = failure(p.output);
-        return [{ ...base, turn: 'working', toolResult: error === undefined ? { tool } : { tool, error } }];
+        const text = outputText(p.output);
+        const toolAnswer = call && {
+          tool,
+          input: call.input,
+          outcome: text !== undefined && wasRejected('codex', text) ? ('rejected' as const) : ('ran' as const),
+        };
+        return [{ ...base, turn: 'working', toolResult: error === undefined ? { tool } : { tool, error }, ...(toolAnswer ? { toolAnswer } : {}) }];
       }
       return [base];
     }
     return [];
   };
+}
+
+/** A call's arguments as the agent sent them: parsed when they are JSON, else the raw text. */
+function callInput(args: unknown): unknown {
+  if (typeof args !== 'string') return args;
+  try {
+    return JSON.parse(args);
+  } catch {
+    return args;
+  }
+}
+
+/** A tool output's text, unwrapped from the JSON newer logs use. */
+function outputText(output: unknown): string | undefined {
+  if (isObject(output)) return typeof output.content === 'string' ? output.content : undefined;
+  if (typeof output !== 'string') return undefined;
+  const v = callInput(output);
+  return isObject(v) && typeof v.output === 'string' ? v.output : output;
 }
 
 /** The command a shell call runs, else the tool's name. */

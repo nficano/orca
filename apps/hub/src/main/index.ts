@@ -8,6 +8,7 @@ import {
   type ApprovalBatchRequest,
   type ApprovalBatchResult,
   type ApprovalDecideRequest,
+  type AskDismissRequest,
   type IpcResult,
   type OpenInCursorRequest,
   type OpenInCursorResult,
@@ -43,6 +44,7 @@ import { createIdleWatch, watchPower } from './done/idle';
 import { headlessResumer } from './done/resume';
 import { electronNotifier } from './electron-notifier';
 import { defaultSummarizer } from './haiku-summarizer';
+import { followSessions } from './follow-sessions';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { openAsk, withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
@@ -104,6 +106,8 @@ const inbox = createInbox({
   summarize: defaultSummarizer(process.env),
 });
 const sessions = createSessions();
+/** Answers in the editor and Sessions ending settle Approvals Orca no longer asks about (I6 §1). */
+const stopFollowingSessions = followSessions({ inbox, sessions });
 /** Where the morning recap starts: the last time the user was away. */
 const idle = createIdleWatch();
 /** Status lines, Done cards and the recap, from report_status and handoff. */
@@ -167,6 +171,10 @@ app.whenReady().then(async () => {
   ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason, via: req.via });
+  });
+  ipcMain.handle(IPC.askDismiss, (_e, req: AskDismissRequest): IpcResult => {
+    if (!req || typeof req.id !== 'string') return { ok: false, error: 'invalid-request' };
+    return inbox.dismiss(req.id);
   });
   ipcMain.handle(IPC.approvalBatch, (_e, req: ApprovalBatchRequest): Promise<ApprovalBatchResult> => inbox.approveBatch(req));
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
@@ -286,6 +294,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   sessionTracking?.stop();
+  stopFollowingSessions();
   focus.stop();
   setup.stop();
   void hubSocket?.close();
