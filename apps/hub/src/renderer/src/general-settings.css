@@ -1,0 +1,153 @@
+/* Settings › General and Accounts. Values from artboard 10 (Settings: setting rows, switch,
+ * pickers, kbd, account rows); colors and radii from tokens.css. Shares .srow, .pick,
+ * .settings-cap, .settings-note and .settings-error with profiles-settings.css. */
+.general-settings {
+  padding: 0 var(--s-16) var(--s-16);
+}
+.general-settings .settings-note {
+  margin: 0;
+  padding: 0 var(--s-4) var(--s-4);
+}
+.srow.last {
+  border-bottom: 0;
+}
+.srow .s.warn {
+  color: var(--risk-medium);
+}
+
+/* Switch: track 36×22, half-height radius in px (README rule 3); knob from the circle allowlist. */
+.sw {
+  position: relative;
+  width: 36px;
+  height: 22px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-11);
+  background: var(--border-1);
+  cursor: default;
+}
+.sw .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background: var(--text-1);
+  transition: left 0.15s ease;
+}
+:root[data-theme='light'] .sw .knob {
+  background: var(--surface-card);
+}
+/* Waiting on main (and Touch ID): the track dims to .6 (I5). */
+.sw[aria-busy='true'] {
+  opacity: 0.6;
+}
+.sw[aria-checked='true'] {
+  background: var(--success);
+}
+.sw[aria-checked='true'] .knob {
+  left: 16px;
+}
+.sw:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sw .knob {
+    transition: none;
+  }
+}
+
+.general-settings kbd {
+  font: 600 12px var(--font-ui);
+  padding: 3px 7px;
+  border-radius: var(--r-6);
+  background: var(--control);
+  border: 1px solid var(--border-1);
+  white-space: nowrap;
+}
+.general-settings kbd.unheld {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.btn.listening {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Settings › Accounts: one row per connected Account, its hook health and Reinstall. */
+.accounts-settings {
+  gap: var(--s-4);
+  padding: var(--s-12) var(--s-12) var(--s-16);
+}
+.acct-group {
+  flex: none;
+  border-radius: var(--r-12);
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+}
+.acct-group.problem {
+  background: var(--surface-card);
+  border-color: var(--border-2);
+}
+.acct {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  min-height: 56px;
+  padding: 0 var(--s-10);
+  border-radius: var(--r-10);
+}
+.acct-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.acct-name > b {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.acct-health.ok {
+  color: var(--risk-low);
+}
+.acct-health.missing {
+  color: var(--risk-high);
+}
+.acct-detail {
+  padding: var(--s-4) var(--s-14) var(--s-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+}
+.acct-detail .meta {
+  white-space: normal;
+  line-height: 1.4;
+}
+.acct-actions {
+  display: flex;
+  gap: var(--s-8);
+}
+button.acct {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.acct:hover {
+  background: var(--surface-card);
+}
+.acct-group.problem button.acct:hover {
+  background: var(--control);
+}
+button.acct:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.acct-chevron {
+  flex: none;
+  color: var(--text-2);
+}

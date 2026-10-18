@@ -36,6 +36,7 @@ async function openProfiles(config: Partial<ProfilesConfig> = {}, focus: FocusSt
   const { rerender } = render(<App bridge={bridge} />);
   await act(async () => {});
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Settings' })));
+  await act(async () => fireEvent.click(screen.getByRole('tab', { name: 'Profiles' })));
   return { ...profiles, getProfiles, rerender: () => act(async () => rerender(<App bridge={bridge} />)) };
 }
 

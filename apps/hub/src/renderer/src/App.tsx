@@ -9,6 +9,7 @@ import type {
   ReinstallResult,
   SessionStatus,
   SessionView,
+  SettingsView,
 } from '@orca/protocol';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge, ProfilesBridge } from '../../preload/api';
@@ -31,7 +32,8 @@ import {
 import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { focusLabel, nextTab, profileDot } from './profiles';
-import { ProfilesSettings } from './ProfilesSettings';
+import { AccountsSettings } from './AccountsSettings';
+import { SettingsPane } from './SettingsPane';
 import { FingerprintIcon, RiskChip } from './RiskChip';
 import { SetupBanners } from './SetupBanners';
 import { Spinner } from './Spinner';
@@ -73,6 +75,16 @@ export function App({ bridge, now = Date.now }: AppProps) {
     return () => {
       live = false;
       off();
+    };
+  }, [bridge]);
+
+  /** Settings › General; null until loaded, or when the bridge has none. */
+  const [settings, setSettings] = useState<SettingsView | null>(null);
+  useEffect(() => {
+    let live = true;
+    void bridge.getSettings?.().then((s) => live && setSettings(s));
+    return () => {
+      live = false;
     };
   }, [bridge]);
 
@@ -167,7 +179,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled' && inTab(s));
   const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou && inTab(s));
   const currentName = profiles.find((p) => p.id === current)?.name;
-  const batch = typeof bridge.approveBatch === 'function' ? batchLines(pending) : [];
+  // Settings › Approve low risk in one batch turns the batch row off.
+  const batch = typeof bridge.approveBatch === 'function' && settings?.batchApprove !== false ? batchLines(pending) : [];
 
   // ⌃Tab = next Profile tab, ⌃⇧Tab = previous (spec › Design changes needed).
   const tabIdsKey = tabIds.join('\u0000');
@@ -240,7 +253,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           aria-current={section === 'settings' ? 'page' : undefined}
           aria-label={problems ? `Settings, ${plural(problems, 'problem')}` : 'Settings'}
           onClick={() => {
-            if (profilesBridge && accounts?.length) setSection('settings');
+            if (accounts?.length) setSection('settings');
           }}
         >
           <span className="tile">
@@ -276,17 +289,14 @@ export function App({ bridge, now = Date.now }: AppProps) {
           onShowInbox={() => setSection('inbox')}
         />
       </section>
-      {section === 'settings' && !!accounts?.length && profilesBridge && (
-        <section className="main" aria-label="Settings">
-          <div className="tabs-row">
-            <div className="tabs" role="tablist" aria-label="Settings">
-              <button className="tab on" role="tab" aria-selected="true">
-                Profiles
-              </button>
-            </div>
-          </div>
-          <ProfilesSettings bridge={profilesBridge} />
-        </section>
+      {section === 'settings' && !!accounts?.length && (
+        <SettingsPane
+          settings={settings}
+          {...(bridge.updateSettings ? { updateSettings: bridge.updateSettings } : {})}
+          onSettings={setSettings}
+          accounts={<AccountsSettings accounts={accounts} problems={inbox.setup?.problems ?? []} reinstall={reinstall} />}
+          profilesBridge={profilesBridge}
+        />
       )}
       {detail && section === 'inbox' && accounts?.length ? (
         <section className="main">
