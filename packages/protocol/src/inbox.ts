@@ -8,6 +8,8 @@ export interface ApprovalView {
   kind: 'approval';
   /** The Account's config dir; with sessionId it identifies the Session. */
   account: string;
+  /** The Account's name from first run ("Work"); absent for an Account Orca hasn't connected. */
+  accountName?: string;
   sessionId: string;
   toolName: string;
   /** What the tool call will do, shown raw in the card's code block. */

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "build:shim": "go build -o resources/bin/agentd-hook ../../cmd/agentd-hook",
     "start": "electron-vite preview",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json"

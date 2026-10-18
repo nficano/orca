@@ -1,6 +1,7 @@
-import type { ApprovalView, InboxSnapshot } from '@orca/protocol';
+import type { ApprovalView, ConnectedAccount, InboxSnapshot } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
+import { FirstRun } from './FirstRun';
 import { badgeText, baseName, waitLabel } from './format';
 
 const EMPTY: InboxSnapshot = { pending: [], counts: { pending: 0 } };
@@ -13,6 +14,8 @@ export interface AppProps {
 export function App({ bridge, now = Date.now }: AppProps) {
   const [inbox, setInbox] = useState<InboxSnapshot>(EMPTY);
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+  /** Connected Accounts; null until loaded, empty means first run. */
+  const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
   const inFlight = useRef(new Set<string>());
   const listRef = useRef<HTMLDivElement>(null);
   const clock = useClock(now);
@@ -25,6 +28,14 @@ export function App({ bridge, now = Date.now }: AppProps) {
     return () => {
       live = false;
       off();
+    };
+  }, [bridge]);
+
+  useEffect(() => {
+    let live = true;
+    void bridge.listAccounts().then((a) => live && setAccounts(a));
+    return () => {
+      live = false;
     };
   }, [bridge]);
 
@@ -69,7 +80,12 @@ export function App({ bridge, now = Date.now }: AppProps) {
           <span aria-hidden="true">Inbox</span>
         </button>
       </nav>
-      <section className="main" aria-label="Inbox">
+      {accounts?.length === 0 && (
+        <section className="main">
+          <FirstRun bridge={bridge} onConnected={setAccounts} />
+        </section>
+      )}
+      <section className="main" aria-label="Inbox" hidden={!accounts?.length}>
         <div className="tabs" role="tablist" aria-label="Profile">
           <button className="tab on" role="tab" aria-selected="true">
             All
@@ -123,7 +139,7 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
       act('deny');
     }
   };
-  const meta = [baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
+  const meta = [ask.accountName ?? baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
 
   return (
     <article className="card" tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>

@@ -35,6 +35,8 @@ export interface InboxOptions {
   now?: () => number;
   newId?: () => string;
   onLogError?: (err: unknown) => void;
+  /** The name of a connected Account, by config dir, to tag each Ask with. */
+  accountName?: (dir: string) => string | undefined;
 }
 
 export function createInbox({
@@ -42,6 +44,7 @@ export function createInbox({
   now = Date.now,
   newId = randomUUID,
   onLogError = (err) => console.error('orca: could not append to the decisions log', err),
+  accountName = () => undefined,
 }: InboxOptions): Inbox {
   // Map keeps insertion order, which is arrival order: oldest first.
   const open = new Map<string, OpenAsk>();
@@ -59,7 +62,9 @@ export function createInbox({
   return {
     open(msg, reply) {
       const id = newId();
-      open.set(id, { view: approvalView(id, msg, now()), reply });
+      const view = approvalView(id, msg, now());
+      const name = msg.account ? accountName(msg.account) : undefined;
+      open.set(id, { view: name ? { ...view, accountName: name } : view, reply });
       emit();
       return id;
     },

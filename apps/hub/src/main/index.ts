@@ -3,8 +3,11 @@
  * tray popover only renders snapshots and sends intents.
  */
 import { IPC, type ApprovalDecideRequest, type IpcResult } from '@orca/protocol';
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
+import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { createInbox } from './inbox';
@@ -18,10 +21,23 @@ app.setName('Orca');
 // Chromium's own profile lives with the hub's data, never in a dir named after the package.
 app.setPath('userData', dataDir);
 
-const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')) });
+const socketPath = join(dataDir, 'hub.sock');
+const accounts = createAccounts({
+  home: homedir(),
+  env: process.env,
+  storePath: join(dataDir, 'accounts.json'),
+  // Packaged: Orca.app/Contents/Resources/bin. Development: `pnpm --filter @orca/hub build:shim`.
+  shimPath: process.env.ORCA_SHIM ?? join(app.isPackaged ? process.resourcesPath : resources, 'bin', 'agentd-hook'),
+  // The shim's default socket is the real app-support dir; say so only when ORCA_HOME moved it.
+  ...(process.env.ORCA_HOME ? { socketPath } : {}),
+  hookTimeoutS: DEFAULT_HOOK_TIMEOUT_S,
+});
+const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')), accountName: accounts.nameOf });
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
+/** True while a sheet (the folder picker) is up: the popover must not hide on blur. */
+let holdPopover = false;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -33,6 +49,11 @@ app.whenReady().then(async () => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason });
   });
+  for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
+    ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
+  }
+  // Load connected Accounts before any Ask arrives, so every Ask gets its Account's name.
+  const firstRun = (await accounts.list()).length === 0;
 
   tray = new Tray(trayIcon(false));
   tray.setToolTip('Orca');
@@ -55,7 +76,12 @@ app.whenReady().then(async () => {
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
   });
 
-  hubSocket = await listenForShims({ path: join(dataDir, 'hub.sock'), inbox });
+  hubSocket = await listenForShims({ path: socketPath, inbox });
+  // First run (Storyboard F1): open the popover so the user can connect Accounts.
+  if (firstRun) {
+    if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', showPopover);
+    else showPopover();
+  }
 });
 
 app.on('before-quit', () => void hubSocket?.close());
@@ -79,7 +105,9 @@ function createPopover(): BrowserWindow {
     webPreferences: { contextIsolation: true, sandbox: true, preload: join(here, '../preload/index.cjs') },
   });
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.on('blur', () => win.hide());
+  win.on('blur', () => {
+    if (!holdPopover) win.hide();
+  });
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(join(here, '../renderer/index.html'));
   return win;
@@ -93,6 +121,24 @@ function showPopover() {
   popover.show();
   popover.focus();
   popover.webContents.send(IPC.popoverOpened);
+}
+
+/** "Choose another folder…": a sheet on the popover, starting in the home folder. */
+async function pickAccountFolder(): Promise<string | null> {
+  if (!popover) return null;
+  holdPopover = true;
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog(popover, {
+      title: 'Choose a Claude Code folder',
+      buttonLabel: 'Choose',
+      defaultPath: homedir(),
+      properties: ['openDirectory', 'showHiddenFiles'],
+    });
+    return canceled ? null : (filePaths[0] ?? null);
+  } finally {
+    holdPopover = false;
+    popover.focus();
+  }
 }
 
 function togglePopover() {

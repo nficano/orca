@@ -9,6 +9,16 @@ export const IPC = {
   inboxSnapshot: 'inbox:snapshot',
   /** main → renderer (send): the popover was just shown. */
   popoverOpened: 'popover:opened',
+  /** renderer → main (invoke): connected Accounts (ConnectedAccount[]); empty means first run. */
+  accountsList: 'accounts:list',
+  /** renderer → main (invoke): Accounts found on this Mac (FoundAccount[]). */
+  accountsScan: 'accounts:scan',
+  /** renderer → main (invoke): "Choose another folder…" picker (ChooseFolderResult). */
+  accountsChooseFolder: 'accounts:choose-folder',
+  /** renderer → main (invoke, AccountChoice[]): each settings file and diff (HookChange[]). Writes nothing. */
+  accountsPreview: 'accounts:preview',
+  /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
+  accountsConnect: 'accounts:connect',
 } as const;
 
 export interface ApprovalDecideRequest {

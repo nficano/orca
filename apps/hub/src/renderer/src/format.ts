@@ -18,3 +18,8 @@ export function baseName(path: string | undefined): string {
   const parts = path.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? path;
 }
+
+/** "1 account", "3 accounts". */
+export function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
