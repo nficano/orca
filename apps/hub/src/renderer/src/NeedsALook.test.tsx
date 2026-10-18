@@ -4,7 +4,7 @@
  * "Needs a look" with their last step or the repeated error; Stop… confirms,
  * then the Session shows in Done as "Stopped by you".
  */
-import type { InboxSnapshot, IpcResult, SessionStopRequest, SessionView } from '@orca/protocol';
+import type { ConnectedAccount, InboxSnapshot, IpcResult, SessionStopRequest, SessionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -46,6 +46,8 @@ const shimLooping = session({
   stall: { kind: 'loop', error: 'connect ECONNREFUSED 127.0.0.1:5432', count: 3 },
 });
 
+const WORK: ConnectedAccount = { kind: 'claude', dir: '/Users/me/.claude-work', name: 'Work' };
+
 const snapshot = (sessions: SessionView[]): InboxSnapshot => ({ pending: [], counts: { pending: 0 }, sessions });
 
 function fakeHub(initial: InboxSnapshot, { withStop = true } = {}) {
@@ -58,6 +60,11 @@ function fakeHub(initial: InboxSnapshot, { withStop = true } = {}) {
     onPopoverOpened: () => () => {},
     decideApproval: async () => ({ ok: true }),
     answerQuestion: async () => ({ ok: true }),
+    listAccounts: async () => [WORK],
+    scanAccounts: async () => [],
+    chooseAccountFolder: async () => ({ kind: 'cancelled' }),
+    previewConnect: async () => [],
+    connectAccounts: async () => ({ connected: [], failed: [] }),
     ...(withStop
       ? {
           stopSession: (req: SessionStopRequest) => {
@@ -94,7 +101,8 @@ describe('Needs a look', () => {
     expect(screen.getByText('Needs a look · 1')).toBeTruthy();
     const card = within(needsALook()).getByRole('article', { name: 'Rent-roll PDF layout' });
     expect(within(card).getByText('No new output for 14 minutes. Last step: rendering page 3 of the sample PDF.')).toBeTruthy();
-    expect(within(card).getByText('.claude-work')).toBeTruthy();
+    // The connected Account's name; its folder name when it has none.
+    expect(within(card).getByText('Work')).toBeTruthy();
     // Stalled Sessions leave the Running list.
     const running = screen.getByRole('list', { name: 'Running · 1' });
     expect(within(running).queryByText('Rent-roll PDF layout')).toBeNull();
@@ -103,6 +111,7 @@ describe('Needs a look', () => {
   it('shows a looping Session with the repeated error', async () => {
     await renderApp(fakeHub(snapshot([shimLooping])));
     const card = within(needsALook()).getByRole('article', { name: 'Shim socket retry' });
+    expect(within(card).getByText('.codex')).toBeTruthy();
     expect(within(card).getByText('Hit the same error 3 times in a row:')).toBeTruthy();
     expect(within(card).getByText('connect ECONNREFUSED 127.0.0.1:5432')).toBeTruthy();
   });

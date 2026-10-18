@@ -10,7 +10,15 @@ export type StopIntent = (key: string) => Promise<IpcResult>;
  * Session has been quiet and its last step, or the error it keeps hitting.
  * Stop… confirms in a popover first. Open in Cursor comes with #13.
  */
-export function NeedsALook({ sessions, now, onStop }: { sessions: SessionView[]; now: number; onStop?: StopIntent }) {
+export interface NeedsALookProps {
+  sessions: SessionView[];
+  now: number;
+  /** The Account's name for its config dir. */
+  accountName: (dir: string) => string;
+  onStop?: StopIntent;
+}
+
+export function NeedsALook({ sessions, now, accountName, onStop }: NeedsALookProps) {
   const label = `Needs a look · ${sessions.length}`;
   return (
     <section className="needs-look" aria-label={label}>
@@ -18,13 +26,20 @@ export function NeedsALook({ sessions, now, onStop }: { sessions: SessionView[];
         {label}
       </p>
       {sessions.map((s) => (
-        <StalledCard key={s.key} session={s} now={now} onStop={onStop} />
+        <StalledCard key={s.key} session={s} now={now} account={accountName(s.account)} onStop={onStop} />
       ))}
     </section>
   );
 }
 
-function StalledCard({ session: s, now, onStop }: { session: SessionView; now: number; onStop?: StopIntent }) {
+interface StalledCardProps {
+  session: SessionView;
+  now: number;
+  account: string;
+  onStop?: StopIntent;
+}
+
+function StalledCard({ session: s, now, account, onStop }: StalledCardProps) {
   const title = s.title ?? (baseName(s.cwd) || 'Session');
   const [confirming, setConfirming] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -54,7 +69,7 @@ function StalledCard({ session: s, now, onStop }: { session: SessionView; now: n
       <div className="card-head">
         {loop ? <LoopIcon /> : <ClockIcon />}
         <h2 className="title">{title}</h2>
-        <span className="meta ellipsis">{baseName(s.account)}</span>
+        <span className="meta ellipsis">{account}</span>
       </div>
       {loop ? (
         <>

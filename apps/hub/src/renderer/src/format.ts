@@ -27,6 +27,11 @@ export function runningLabel(since: number, now: number): string {
   return `running ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
+/** "1 account", "3 accounts". */
+export function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
 /** "14 minutes" since the transcript last grew; "1h 5m" past an hour. */
 export function quietLabel(lastActivityAt: number, now: number): string {
   const minutes = Math.max(1, Math.floor((now - lastActivityAt) / 60_000));

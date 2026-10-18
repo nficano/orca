@@ -13,6 +13,26 @@ export const IPC = {
   inboxSnapshot: 'inbox:snapshot',
   /** main → renderer (send): the popover was just shown. */
   popoverOpened: 'popover:opened',
+  /** renderer → main (invoke): connected Accounts (ConnectedAccount[]); empty means first run. */
+  accountsList: 'accounts:list',
+  /** renderer → main (invoke): Accounts found on this Mac (FoundAccount[]). */
+  accountsScan: 'accounts:scan',
+  /** renderer → main (invoke): "Choose another folder…" picker (ChooseFolderResult). */
+  accountsChooseFolder: 'accounts:choose-folder',
+  /** renderer → main (invoke, AccountChoice[]): each settings file and diff (HookChange[]). Writes nothing. */
+  accountsPreview: 'accounts:preview',
+  /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
+  accountsConnect: 'accounts:connect',
+  /** main → quick-answer panel (send): the global shortcut just showed the panel. */
+  quickAnswerOpened: 'quick-answer:opened',
+  /** quick-answer panel → main (send): hide the panel. */
+  quickAnswerClose: 'quick-answer:close',
+  /** quick-answer panel → main (send): its content height in px. */
+  quickAnswerResize: 'quick-answer:resize',
+  /** renderer → main (invoke): rebind the quick-answer shortcut. Returns IpcResult; a refusal keeps the old one. */
+  quickAnswerRebind: 'quick-answer:rebind',
+  /** renderer → main (invoke): the quick-answer shortcut's accelerator, or null when none is held. */
+  quickAnswerShortcutGet: 'quick-answer:shortcut',
 } as const;
 
 export interface ApprovalDecideRequest {
@@ -20,7 +40,12 @@ export interface ApprovalDecideRequest {
   decision: 'allow' | 'deny';
   /** Deny message; defaults to "Denied in Orca". */
   reason?: string;
+  /** The surface the decision came from, for decisions.jsonl; defaults to the tray. */
+  via?: DecisionSurface;
 }
+
+/** Where the user answered an Ask. */
+export type DecisionSurface = 'tray' | 'panel';
 
 /** Exactly one of `optionIndex` (a picked option) or `text` (a typed answer). */
 export interface QuestionAnswerRequest {
@@ -34,7 +59,9 @@ export interface SessionStopRequest {
   key: string;
 }
 
-/** session-not-found: no single live agent process could be matched to the Session. */
-export type IpcError = 'already-resolved' | 'invalid-request' | 'session-not-found';
+/** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending.
+ *  `shortcut-unavailable`: another app holds that shortcut; the old one stays.
+ *  `session-not-found`: no single live agent process could be matched to the Session. */
+export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved' | 'shortcut-unavailable' | 'session-not-found';
 
 export type IpcResult = { ok: true } | { ok: false; error: IpcError };
