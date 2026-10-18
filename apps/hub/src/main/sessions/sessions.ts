@@ -38,6 +38,11 @@ export interface Sessions {
    * agent can own: none holds its log open or runs in a directory it used.
    */
   reconcile(processes: AgentProcess[]): void;
+  /**
+   * The hub resumed the Session (Send back to fix): it is Running from `at`
+   * until its transcript says otherwise. False when the key is unknown.
+   */
+  resume(key: string, at: number): boolean;
   /** Every Session seen, Ended ones included. */
   list(): SessionView[];
   subscribe(listener: () => void): () => void;
@@ -153,6 +158,16 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
     },
     forget(path) {
       readers.delete(path);
+    },
+    resume(key, at) {
+      const s = byKey.get(key);
+      if (!s) return false;
+      s.handedOff = false;
+      s.view.state = 'running';
+      s.view.since = at;
+      s.view.lastActivityAt = Math.max(s.view.lastActivityAt, at);
+      emit();
+      return true;
     },
     list: () => [...byKey.values()].map((s) => ({ ...s.view })),
     subscribe(listener) {

@@ -2,12 +2,34 @@
  * Orca hub: Electron main process. Owns the hub socket and every Ask; the
  * tray popover only renders snapshots and sends intents.
  */
-import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, systemPreferences, Tray } from 'electron';
+import {
+  IPC,
+  type ApprovalDecideRequest,
+  type IpcResult,
+  type QuestionAnswerRequest,
+  type SendBackRequest,
+} from '@orca/protocol';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  nativeImage,
+  Notification,
+  powerMonitor,
+  screen,
+  systemPreferences,
+  Tray,
+} from 'electron';
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
 import { fileDecisionsLog } from './decisions-log';
+import { gitDiffStats } from './done/diff-stats';
+import { createDoneBoard } from './done/done-board';
+import { createIdleWatch, watchPower } from './done/idle';
+import { headlessResumer } from './done/resume';
 import { electronNotifier } from './electron-notifier';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { withSessions } from './hub-snapshot';
@@ -51,8 +73,20 @@ const inbox = createInbox({
   }),
 });
 const sessions = createSessions();
-/** What the renderer sees: open Asks plus the Sessions from transcripts. */
-const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
+/** Where the morning recap starts: the last time the user was away. */
+const idle = createIdleWatch();
+/** Status lines, Done cards and the recap, from report_status and handoff. */
+const done = createDoneBoard({
+  sessions: () => sessions.list(),
+  idleSince: () => idle.since(),
+  // The agents run with the user's real home, not ORCA_ACCOUNTS_HOME.
+  resume: headlessResumer({ home: app.getPath('home'), logDir: join(dataDir, 'resume') }),
+  onResumed: (key, at) => void sessions.resume(key, at),
+  diffStats: gitDiffStats,
+  accountName: accounts.nameOf,
+});
+/** What the renderer sees: open Asks, the Sessions from transcripts, and the Done tab. */
+const hubSnapshot = () => done.decorate(withSessions(inbox.snapshot(), sessions.list()));
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -73,6 +107,10 @@ app.whenReady().then(async () => {
   ipcMain.handle(IPC.questionAnswer, (_e, req: QuestionAnswerRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
+  });
+  ipcMain.handle(IPC.doneSendBack, (_e, req: SendBackRequest): Promise<IpcResult> => {
+    if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
+    return done.sendBack({ id: req.id, ...(typeof req.text === 'string' ? { text: req.text } : {}) });
   });
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
     ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
@@ -102,13 +140,15 @@ app.whenReady().then(async () => {
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
   };
   inbox.subscribe(publish);
+  done.subscribe(publish);
+  watchPower({ power: powerMonitor, idle, onChange: publish });
 
   // Question banners: answered from Options / Reply, removed once the Ask resolves anywhere.
   if (Notification.isSupported()) {
     startQuestionNotifications({ inbox, notifier: electronNotifier(), onOpen: showPopover });
   }
 
-  hubSocket = await listenForShims({ path: socketPath, inbox });
+  hubSocket = await listenForShims({ path: socketPath, inbox, reports: done });
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
   if (firstRun) {
     if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', showPopover);

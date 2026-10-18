@@ -1,3 +1,4 @@
+import type { DoneSnapshot } from './done';
 import type { SessionView } from './sessions';
 
 /**
@@ -70,4 +71,6 @@ export interface InboxSnapshot {
    * with an open Ask is Blocked. Absent until the transcript tailers run.
    */
   sessions?: SessionView[];
+  /** Done cards and the recap bar. Absent until the hub has a Done board. */
+  done?: DoneSnapshot;
 }

@@ -21,6 +21,8 @@ export const IPC = {
   accountsPreview: 'accounts:preview',
   /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
   accountsConnect: 'accounts:connect',
+  /** renderer → main (invoke, SendBackRequest): resume a Done card's Session headlessly. Returns IpcResult. */
+  doneSendBack: 'done:send-back',
 } as const;
 
 export interface ApprovalDecideRequest {
@@ -37,7 +39,16 @@ export interface QuestionAnswerRequest {
   text?: string;
 }
 
-/** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending. */
-export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved';
+/** Send back to fix: `text` is the instruction; blank sends the card's suggestion. */
+export interface SendBackRequest {
+  id: string;
+  text?: string;
+}
+
+/**
+ * `not-approved`: Touch ID failed or was cancelled; the Approval is still pending.
+ * `resume-failed`: the Session couldn't be resumed; the Done card stays, with the reason.
+ */
+export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved' | 'resume-failed';
 
 export type IpcResult = { ok: true } | { ok: false; error: IpcError };

@@ -1,4 +1,4 @@
-import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest } from '@orca/protocol';
+import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest, SendBackRequest } from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
 
 /** First run and hook install (Storyboard F1). */
@@ -13,8 +13,14 @@ export interface AccountsBridge {
   connectAccounts(choices: AccountChoice[]): Promise<ConnectResult>;
 }
 
+/** The Done tab (Storyboard F7). */
+export interface DoneBridge {
+  /** Send back to fix: resume the card's Session headlessly in its Worktree. */
+  sendBack(req: SendBackRequest): Promise<IpcResult>;
+}
+
 /** What the preload exposes to the renderer as `window.orca`. */
-export interface OrcaBridge extends AccountsBridge {
+export interface OrcaBridge extends AccountsBridge, DoneBridge {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   onPopoverOpened(listener: () => void): () => void;

@@ -42,6 +42,7 @@ function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: Con
       return new Promise((resolve) => (answer = resolve));
     },
     answerQuestion: async () => ({ ok: true }),
+    sendBack: async () => ({ ok: true }),
     listAccounts: async () => accounts,
     scanAccounts: async () => [
       { kind: 'claude', dir: WORK.dir, displayDir: '~/.claude-work', sessionCount: 6, suggestedName: 'Work', connected: false },
