@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ApprovalDecideRequest, ApprovalView, InboxSnapshot, IpcResult } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -172,6 +172,58 @@ describe('deciding from a card', () => {
       { id: 'new', decision: 'deny' },
       { id: 'old', decision: 'allow' },
     ]);
+  });
+});
+
+function session(over: Partial<SessionView>): SessionView {
+  return {
+    key: `/Users/me/.claude-work\u0000${over.sessionId ?? 's-1'}`,
+    account: '/Users/me/.claude-work',
+    agent: 'claude',
+    sessionId: 's-1',
+    state: 'running',
+    since: NOW - 12 * 60_000,
+    lastActivityAt: NOW,
+    title: 'Ledger backfill migration',
+    cwd: '/Users/me/code/ledger',
+    branch: 'backfill',
+    ...over,
+  };
+}
+
+describe('Running list', () => {
+  it('lists Running and Waiting Sessions; Waiting ones need a reply in Cursor', async () => {
+    const sessions = [
+      session({ sessionId: 'r', title: 'Ledger backfill migration' }),
+      session({ sessionId: 'w', state: 'waiting', title: 'Shim socket retry', cwd: '/Users/me/code/shim', branch: 'socket-retry' }),
+      session({ sessionId: 'b', state: 'blocked', title: 'Seed staging fixtures' }),
+      session({ sessionId: 'd', state: 'done', title: 'Skills repo README' }),
+    ];
+    await renderApp(fakeHub({ ...snapshotOf(), sessions }));
+
+    const list = screen.getByRole('list', { name: 'Running · 2' });
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]!).getByText('Ledger backfill migration')).toBeTruthy();
+    expect(within(rows[0]!).getByText('ledger · backfill')).toBeTruthy();
+    expect(within(rows[0]!).getByText('running 12m')).toBeTruthy();
+    expect(within(rows[1]!).getByText('Shim socket retry')).toBeTruthy();
+    expect(within(rows[1]!).getByText('Reply in Cursor')).toBeTruthy();
+    expect(screen.queryByText('Seed staging fixtures')).toBeNull();
+    expect(screen.queryByText('Skills repo README')).toBeNull();
+  });
+
+  it('shows below open Asks too, and names untitled Sessions by their Worktree', async () => {
+    await renderApp(fakeHub({ ...snapshotOf(approval({ id: 'a' })), sessions: [session({ title: undefined, branch: undefined })] }));
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    const row = within(screen.getByRole('list', { name: 'Running · 1' })).getByRole('listitem');
+    expect(within(row).getByText('ledger')).toBeTruthy();
+  });
+
+  it('is absent when nothing is running', async () => {
+    await renderApp(fakeHub({ ...snapshotOf(), sessions: [session({ state: 'done' })] }));
+    expect(screen.queryByRole('list')).toBeNull();
+    expect(screen.getByText('Nothing needs you')).toBeTruthy();
   });
 });
 

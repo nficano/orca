@@ -1,7 +1,7 @@
-import type { ApprovalView, InboxSnapshot, IpcResult } from '@orca/protocol';
+import type { ApprovalView, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
-import { badgeText, baseName, waitLabel } from './format';
+import { badgeText, baseName, runningLabel, waitLabel } from './format';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { Spinner } from './Spinner';
 
@@ -60,6 +60,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   const count = inbox.counts.pending;
   const badge = badgeText(count);
+  const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
 
   return (
     <div className="pop">
@@ -84,7 +85,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
         </div>
         <div className="list" ref={listRef}>
           {inbox.pending.length === 0 ? (
-            <div className="empty">
+            <div className={running.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
@@ -97,9 +98,36 @@ export function App({ bridge, now = Date.now }: AppProps) {
               ),
             )
           )}
+          {running.length > 0 && <RunningList sessions={running} now={clock} />}
         </div>
       </section>
     </div>
+  );
+}
+
+/** Running and Waiting Sessions (design 6 · States, empty inbox with running list). */
+function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }) {
+  return (
+    <section className="running">
+      <p className="cap" id="running-cap">
+        Running · {sessions.length}
+      </p>
+      <ul aria-labelledby="running-cap">
+        {sessions.map((s) => {
+          const meta = [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
+          return (
+            <li key={s.key} className="row">
+              <span className="dot" aria-hidden="true" />
+              <span className="row-text">
+                <span className="ellipsis">{s.title ?? (baseName(s.cwd) || 'Session')}</span>
+                {meta && <span className="meta ellipsis">{meta}</span>}
+              </span>
+              <span className="meta">{s.state === 'waiting' ? 'Reply in Cursor' : runningLabel(s.since, now)}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

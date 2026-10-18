@@ -7,7 +7,12 @@ import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'el
 import { join } from 'node:path';
 import { fileDecisionsLog } from './decisions-log';
 import { listenForShims, type HubSocket } from './hub-socket';
+import { withSessions } from './hub-snapshot';
 import { createInbox } from './inbox';
+import { findTailedAccounts } from './sessions/accounts';
+import { probeAgentProcesses } from './sessions/liveness';
+import { createSessions } from './sessions/sessions';
+import { startSessionTracking, type SessionTracking } from './sessions/track';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -19,16 +24,20 @@ app.setName('Orca');
 app.setPath('userData', dataDir);
 
 const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')) });
+const sessions = createSessions();
+/** What the renderer sees: open Asks plus the Sessions from transcripts. */
+const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
+let sessionTracking: SessionTracking | undefined;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
 app.whenReady().then(async () => {
   app.dock?.hide();
 
-  ipcMain.handle(IPC.inboxGet, () => inbox.snapshot());
+  ipcMain.handle(IPC.inboxGet, () => hubSnapshot());
   ipcMain.handle(IPC.approvalDecide, (_e, req: ApprovalDecideRequest): Promise<IpcResult> => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.decide({ id: req.id, decision: req.decision, reason: req.reason });
@@ -52,17 +61,31 @@ app.whenReady().then(async () => {
   );
 
   popover = createPopover();
-  inbox.subscribe((snapshot) => {
+  const publish = () => {
+    const snapshot = hubSnapshot();
     const n = snapshot.counts.pending;
     tray?.setTitle(trayTitle(n));
     tray?.setImage(trayIcon(n > 0));
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
-  });
+  };
+  inbox.subscribe(publish);
 
   hubSocket = await listenForShims({ path: join(dataDir, 'hub.sock'), inbox });
+
+  sessionTracking = await startSessionTracking({
+    // ORCA_ACCOUNTS_HOME points the tailers at a scratch home during development.
+    accounts: await findTailedAccounts({ home: process.env.ORCA_ACCOUNTS_HOME ?? app.getPath('home'), env: process.env }),
+    sessions,
+    probe: () => probeAgentProcesses(),
+  });
+  sessions.subscribe(publish);
+  publish();
 });
 
-app.on('before-quit', () => void hubSocket?.close());
+app.on('before-quit', () => {
+  sessionTracking?.stop();
+  void hubSocket?.close();
+});
 app.on('window-all-closed', () => {
   // A tray app keeps running with no windows.
 });
