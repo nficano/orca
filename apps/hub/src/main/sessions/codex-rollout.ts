@@ -1,4 +1,4 @@
-import { isHandoffTool, isObject, parseLine, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
+import { count, isHandoffTool, isObject, parseLine, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
 
 const STARTED = new Set(['task_started', 'turn_started']);
 const ENDED = new Set(['task_complete', 'turn_complete', 'turn_aborted']);
@@ -13,6 +13,8 @@ const WORKING = new Set(['exec_command_begin', 'patch_apply_begin', 'mcp_tool_ca
 export function createCodexReader(): TranscriptReader {
   let sessionId: string | undefined;
   let subagent = false;
+  /** The running total already counted; token_count events carry the Session's total so far. */
+  let countedTokens = 0;
 
   return (line) => {
     const e = parseLine(line);
@@ -46,6 +48,15 @@ export function createCodexReader(): TranscriptReader {
       const t = p.type as string;
       if (STARTED.has(t)) return [{ ...base, turn: 'started' }];
       if (ENDED.has(t)) return [{ ...base, turn: 'ended' }];
+      if (t === 'token_count') {
+        const usage = isObject(p.info) && isObject(p.info.total_token_usage) ? p.info.total_token_usage : undefined;
+        if (!usage) return [base];
+        const total = Math.max(0, count(usage.total_tokens) - count(usage.cached_input_tokens));
+        const tokens = total - countedTokens;
+        if (tokens <= 0) return [base];
+        countedTokens = total;
+        return [{ ...base, tokens }];
+      }
       if (t === 'user_message') {
         const prompt = str(p.message);
         return [{ ...base, turn: 'working', ...(prompt ? { prompt } : {}) }];

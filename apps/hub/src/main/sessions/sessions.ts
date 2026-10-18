@@ -94,6 +94,7 @@ export function createSessions({ now = Date.now }: SessionsOptions = {}): Sessio
       s.cwds.add(u.cwd);
     }
     if (u.branch) v.branch = u.branch;
+    if (u.tokens) v.tokens = (v.tokens ?? 0) + u.tokens;
     if (u.summary) {
       v.title = clamp(u.summary);
     } else if (u.prompt && !v.title) {

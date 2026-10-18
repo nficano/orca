@@ -1,4 +1,4 @@
-import { isHandoffTool, isObject, parseLine, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
+import { count, isHandoffTool, isObject, parseLine, str, timeOf, type TranscriptReader, type TranscriptUpdate } from './transcript';
 
 const INTERRUPTED = '[Request interrupted by user';
 /** Assistant stop reasons that end the turn; `tool_use` and null (still streaming) don't. */
@@ -14,6 +14,17 @@ const TURN_ENDING_SYSTEM = new Set(['turn_duration', 'stop_hook_summary']);
  */
 export function createClaudeReader(fallbackSessionId: string): TranscriptReader {
   let sessionId = fallbackSessionId;
+  /** Tokens already counted per assistant message id: Claude writes one entry per content block, each with the message's usage. */
+  const counted = new Map<string, number>();
+  const newTokens = (message: unknown): number => {
+    if (!isObject(message) || !isObject(message.usage)) return 0;
+    const u = message.usage;
+    const total = count(u.input_tokens) + count(u.cache_creation_input_tokens) + count(u.output_tokens);
+    const id = str(message.id) ?? '';
+    const before = id ? (counted.get(id) ?? 0) : 0;
+    if (id) counted.set(id, Math.max(before, total));
+    return Math.max(0, total - before);
+  };
 
   return (line) => {
     const e = parseLine(line);
@@ -35,8 +46,10 @@ export function createClaudeReader(fallbackSessionId: string): TranscriptReader 
       }
       case 'user':
         return [{ ...base, ...userTurn(e) }];
-      case 'assistant':
-        return [{ ...base, ...assistantTurn(e) }];
+      case 'assistant': {
+        const tokens = newTokens(e.message);
+        return [{ ...base, ...assistantTurn(e), ...(tokens ? { tokens } : {}) }];
+      }
       case 'system':
         return [{ ...base, ...(TURN_ENDING_SYSTEM.has(e.subtype as string) ? { turn: 'ended' as const } : {}) }];
       default:

@@ -25,4 +25,6 @@ export interface SessionView {
   /** Working directory from the newest transcript entry. */
   cwd?: string;
   branch?: string;
+  /** Tokens the Session has used, from transcript usage (input + cache writes + output). Absent until known. */
+  tokens?: number;
 }
