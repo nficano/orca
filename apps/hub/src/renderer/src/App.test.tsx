@@ -38,6 +38,7 @@ function fakeHub(initial: InboxSnapshot) {
       decisions.push(req);
       return new Promise((resolve) => (answer = resolve));
     },
+    answerQuestion: async () => ({ ok: true }),
   };
   return {
     bridge,
