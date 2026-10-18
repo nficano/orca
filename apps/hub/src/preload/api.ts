@@ -1,4 +1,13 @@
-import type { ApprovalDecideRequest, InboxSnapshot, IpcResult, QuestionAnswerRequest, SessionStopRequest } from '@orca/protocol';
+import type {
+  ApprovalBatchRequest,
+  ApprovalBatchResult,
+  ApprovalDecideRequest,
+  InboxSnapshot,
+  IpcResult,
+  PopoverTarget,
+  QuestionAnswerRequest,
+  SessionStopRequest,
+} from '@orca/protocol';
 import type { AccountChoice, ChooseFolderResult, ConnectedAccount, ConnectResult, FoundAccount, HookChange } from '@orca/protocol';
 import type { ReinstallResult } from '@orca/protocol';
 
@@ -26,8 +35,11 @@ export interface AccountsBridge {
 export interface OrcaBridge extends AccountsBridge, SetupBridge {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
-  onPopoverOpened(listener: () => void): () => void;
+  /** `target` is set when a notification opened the popover for one Ask. */
+  onPopoverOpened(listener: (target?: PopoverTarget) => void): () => void;
   decideApproval(req: ApprovalDecideRequest): Promise<IpcResult>;
+  /** "Approve N" in the batch row: main re-checks each tier and reports what it skipped. Absent: no batch row. */
+  approveBatch?(req: ApprovalBatchRequest): Promise<ApprovalBatchResult>;
   answerQuestion(req: QuestionAnswerRequest): Promise<IpcResult>;
   /** Stop… on a Stalled Session. Optional so bridges without it hide Stop. */
   stopSession?(req: SessionStopRequest): Promise<IpcResult>;

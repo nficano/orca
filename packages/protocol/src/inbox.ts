@@ -32,6 +32,11 @@ export interface ApprovalView {
   risk: RiskTier;
   /** The Approval was raised by a subagent of this Session. */
   viaSubagent: boolean;
+  /**
+   * Its cwd lies in no Worktree (or is unknown), so even a read-only command
+   * reads outside one. The batch row lists it unticked with the reason.
+   */
+  readsOutsideWorktree?: true;
   /** Epoch ms when the shim connected. */
   openedAt: number;
 }

@@ -1,6 +1,7 @@
-import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, ReinstallResult, RiskTier, SessionView } from '@orca/protocol';
+import type { ApprovalBatchResult, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, ReinstallResult, RiskTier, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
+import { BatchReport, BatchRow, batchLines } from './BatchRow';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, plural, runningLabel, waitLabel } from './format';
 import { NeedsALook, StoppedList } from './NeedsALook';
@@ -20,6 +21,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
+  /** What the last "Approve N" skipped, until dismissed. */
+  const [batchReport, setBatchReport] = useState<ApprovalBatchResult | null>(null);
   const inFlight = useRef(new Set<string>());
   const listRef = useRef<HTMLDivElement>(null);
   const clock = useClock(now);
@@ -45,8 +48,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   useEffect(
     () =>
-      bridge.onPopoverOpened(() => {
-        listRef.current?.querySelector<HTMLElement>('article')?.focus();
+      bridge.onPopoverOpened((target) => {
+        // A banner opened the popover for one Ask (Review, or a click): show that one.
+        // Approval detail (design 2) opens on target.view === 'detail' once it exists;
+        // until then Review lands on the card, whose Approve asks for Touch ID.
+        const list = listRef.current;
+        const named = target && list?.querySelector<HTMLElement>(`article[data-ask-id="${CSS.escape(target.askId)}"]`);
+        (named || list?.querySelector<HTMLElement>('article'))?.focus();
       }),
     [bridge],
   );
@@ -75,11 +83,20 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const approveBatch = useCallback(
+    async (ids: string[]) => {
+      const result = await bridge.approveBatch!({ ids }).catch((): ApprovalBatchResult => ({ ok: false, error: 'invalid-request' }));
+      setBatchReport(result);
+      return result;
+    },
+    [bridge],
+  );
   const canStop = typeof bridge.stopSession === 'function';
   const accountName = (dir: string) => accounts?.find((a) => a.dir === dir)?.name ?? baseName(dir);
   const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
 
   const count = inbox.counts.pending;
+  const batch = typeof bridge.approveBatch === 'function' ? batchLines(inbox.pending) : [];
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
   const problems = inbox.setup?.problems.length ?? 0;
@@ -131,6 +148,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
         </div>
         <div className="list" ref={listRef}>
           <SetupBanners setup={inbox.setup} reinstall={reinstall} dismissRestart={dismissRestart} />
+          {batch.length > 0 && <BatchRow lines={batch} sessions={inbox.sessions ?? []} onApprove={approveBatch} />}
           {inbox.pending.length === 0 ? (
             <div className={running.length + stalled.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
@@ -149,6 +167,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
           {running.length > 0 && <RunningList sessions={running} now={clock} />}
           {stopped.length > 0 && <StoppedList sessions={stopped} />}
         </div>
+        {batchReport && <BatchReport result={batchReport} onDismiss={() => setBatchReport(null)} />}
       </section>
     </div>
   );
@@ -227,7 +246,7 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
   const meta = [ask.accountName ?? baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
 
   return (
-    <article className="card" tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
+    <article className="card" data-ask-id={ask.id} tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
       <div className="card-head">
         <RiskChip risk={ask.risk} />
         <h2 className="title">{ask.toolName}</h2>
