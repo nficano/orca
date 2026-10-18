@@ -31,6 +31,8 @@ export interface SessionView {
   /** Working directory from the newest transcript entry. */
   cwd?: string;
   branch?: string;
+  /** The Profile the Account belongs to; absent when it is in none. */
+  profileId?: string;
   /** What the agent last said it was doing, or the last tool it called. */
   lastStep?: string;
   /** Set while the Session is Stalled. */
