@@ -1,4 +1,4 @@
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -59,5 +59,34 @@ describe('startSessionTracking', () => {
     expect(ledgerState()).toBe('waiting');
     await vi.advanceTimersByTimeAsync(1000);
     expect(ledgerState()).toBe('ended');
+  });
+
+  it('flags Sessions Stalled once their transcript stops growing for the stall threshold', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const started = Date.parse('2026-10-18T11:50:00Z');
+    let clock = started + 5 * 60_000;
+    const dir = join(home, '.claude/projects/-Users-me-code-pdf');
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, 'c0ffee00-0000-4000-8000-000000000001.jsonl'),
+      JSON.stringify({ cwd: '/Users/me/code/pdf', sessionId: 'c0ffee00-0000-4000-8000-000000000001', type: 'user', message: { role: 'user', content: 'Render page 3' }, timestamp: new Date(started).toISOString() }) + '\n',
+    );
+    const sessions = createSessions({ now: () => clock });
+    const thresholdFor = vi.fn(() => 8 * 60_000);
+    tracking = await startSessionTracking({
+      accounts: [{ dir: join(home, '.claude'), agent: 'claude' }],
+      sessions,
+      probe: async () => [{ agent: 'claude', pid: 1, cwd: '/Users/me/code/pdf', openFiles: [] }],
+      now: () => clock,
+      probeEveryMs: 1000,
+      stallThresholdFor: thresholdFor,
+    });
+    const pdf = () => sessions.list().find((s) => s.title === 'Render page 3');
+    expect(pdf()?.state).toBe('running');
+
+    clock = started + 8 * 60_000;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(pdf()).toMatchObject({ state: 'stalled', stall: { kind: 'no-progress' } });
+    expect(thresholdFor).toHaveBeenCalledWith(expect.objectContaining({ cwd: '/Users/me/code/pdf' }));
   });
 });

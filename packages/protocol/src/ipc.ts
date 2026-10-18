@@ -5,11 +5,13 @@ export const IPC = {
   approvalDecide: 'approval:decide',
   /** renderer → main (invoke): answer one Question. Returns IpcResult. */
   questionAnswer: 'question:answer',
+  /** renderer → main (invoke): stop one Session's agent process (SIGINT, then SIGTERM after 5s). Returns IpcResult. */
+  sessionStop: 'session:stop',
   /** renderer → main (invoke): the current InboxSnapshot. */
   inboxGet: 'inbox:get',
   /** main → renderer (send): a full InboxSnapshot. */
   inboxSnapshot: 'inbox:snapshot',
-  /** main → renderer (send): the popover was just shown. */
+  /** main → renderer (send, PopoverTarget?): the popover was just shown, optionally for one Ask. */
   popoverOpened: 'popover:opened',
   /** renderer → main (invoke): connected Accounts (ConnectedAccount[]); empty means first run. */
   accountsList: 'accounts:list',
@@ -21,6 +23,16 @@ export const IPC = {
   accountsPreview: 'accounts:preview',
   /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
   accountsConnect: 'accounts:connect',
+  /** main → quick-answer panel (send): the global shortcut just showed the panel. */
+  quickAnswerOpened: 'quick-answer:opened',
+  /** quick-answer panel → main (send): hide the panel. */
+  quickAnswerClose: 'quick-answer:close',
+  /** quick-answer panel → main (send): its content height in px. */
+  quickAnswerResize: 'quick-answer:resize',
+  /** renderer → main (invoke): rebind the quick-answer shortcut. Returns IpcResult; a refusal keeps the old one. */
+  quickAnswerRebind: 'quick-answer:rebind',
+  /** renderer → main (invoke): the quick-answer shortcut's accelerator, or null when none is held. */
+  quickAnswerShortcutGet: 'quick-answer:shortcut',
 } as const;
 
 export interface ApprovalDecideRequest {
@@ -28,7 +40,12 @@ export interface ApprovalDecideRequest {
   decision: 'allow' | 'deny';
   /** Deny message; defaults to "Denied in Orca". */
   reason?: string;
+  /** The surface the decision came from, for decisions.jsonl; defaults to the tray. */
+  via?: DecisionSurface;
 }
+
+/** Where the user decided an Ask. */
+export type DecisionSurface = 'tray' | 'panel' | 'notification';
 
 /** Exactly one of `optionIndex` (a picked option) or `text` (a typed answer). */
 export interface QuestionAnswerRequest {
@@ -37,7 +54,23 @@ export interface QuestionAnswerRequest {
   text?: string;
 }
 
-/** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending. */
-export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved';
+/** Stop… on a Session, keyed by SessionView.key. */
+export interface SessionStopRequest {
+  key: string;
+}
+
+/** `not-approved`: Touch ID failed or was cancelled; the Approval is still pending.
+ *  `shortcut-unavailable`: another app holds that shortcut; the old one stays.
+ *  `session-not-found`: no single live agent process could be matched to the Session. */
+export type IpcError = 'already-resolved' | 'invalid-request' | 'not-approved' | 'shortcut-unavailable' | 'session-not-found';
 
 export type IpcResult = { ok: true } | { ok: false; error: IpcError };
+
+/**
+ * Why the popover opened, when a notification opened it for one Ask: `card`
+ * for a click on the banner, `detail` for Review on a red Approval banner.
+ */
+export interface PopoverTarget {
+  askId: string;
+  view: 'card' | 'detail';
+}

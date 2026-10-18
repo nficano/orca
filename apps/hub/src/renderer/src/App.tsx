@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 're
 import type { OrcaBridge } from '../../preload/api';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, handedBackText, runningLabel, stopsAskingLabel, stopsAskingSpoken, waitGoneWidth, waitLabel } from './format';
+import { NeedsALook, StoppedList } from './NeedsALook';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
 import { Spinner } from './Spinner';
 
@@ -43,8 +44,13 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   useEffect(
     () =>
-      bridge.onPopoverOpened(() => {
-        listRef.current?.querySelector<HTMLElement>('article')?.focus();
+      bridge.onPopoverOpened((target) => {
+        // A banner opened the popover for one Ask (Review, or a click): show that one.
+        // Approval detail (design 2) opens on target.view === 'detail' once it exists;
+        // until then Review lands on the card, whose Approve asks for Touch ID.
+        const list = listRef.current;
+        const named = target && list?.querySelector<HTMLElement>(`article[data-ask-id="${CSS.escape(target.askId)}"]`);
+        (named || list?.querySelector<HTMLElement>('article'))?.focus();
       }),
     [bridge],
   );
@@ -73,9 +79,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
     [bridge, send],
   );
 
+  const canStop = typeof bridge.stopSession === 'function';
+  const accountName = (dir: string) => accounts?.find((a) => a.dir === dir)?.name ?? baseName(dir);
+  const onStop = useCallback((key: string) => bridge.stopSession!({ key }), [bridge]);
+
   const count = inbox.counts.pending;
   const badge = badgeText(count);
   const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
+  const stalled = (inbox.sessions ?? []).filter((s) => s.state === 'stalled');
+  const stopped = (inbox.sessions ?? []).filter((s) => s.state === 'done' && s.stoppedByYou);
 
   return (
     <div className="pop">
@@ -105,7 +117,7 @@ export function App({ bridge, now = Date.now }: AppProps) {
         </div>
         <div className="list" ref={listRef}>
           {inbox.pending.length === 0 ? (
-            <div className={running.length > 0 ? 'empty above-running' : 'empty'}>
+            <div className={running.length + stalled.length > 0 ? 'empty above-running' : 'empty'}>
               <h2>Nothing needs you</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
@@ -120,7 +132,9 @@ export function App({ bridge, now = Date.now }: AppProps) {
               ),
             )
           )}
+          {stalled.length > 0 && <NeedsALook sessions={stalled} now={clock} accountName={accountName} {...(canStop ? { onStop } : {})} />}
           {running.length > 0 && <RunningList sessions={running} now={clock} />}
+          {stopped.length > 0 && <StoppedList sessions={stopped} />}
         </div>
       </section>
     </div>
@@ -195,7 +209,7 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
   const meta = [ask.accountName ?? baseName(ask.account), baseName(ask.cwd)].filter(Boolean);
 
   return (
-    <article className="card" tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
+    <article className="card" data-ask-id={ask.id} tabIndex={-1} aria-busy={busy} aria-label={`${ask.toolName}: ${ask.command}`} onKeyDown={onKeyDown}>
       <div className="card-head">
         <RiskChip risk={ask.risk} />
         <h2 className="title">{ask.toolName}</h2>
@@ -294,7 +308,7 @@ function useClock(now: () => number): number {
 }
 
 /** tokens.css keys the theme off data-theme; Electron's prefers-color-scheme follows nativeTheme. */
-function useSystemTheme() {
+export function useSystemTheme() {
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: light)');
     const apply = () => {

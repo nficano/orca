@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
+import type { ApprovalDecideRequest, ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, PopoverTarget, SessionView } from '@orca/protocol';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
@@ -30,7 +30,7 @@ const WORK: ConnectedAccount = { kind: 'claude', dir: '/Users/me/.claude-work', 
 /** A stand-in for the main process: pushes snapshots, records decisions. */
 function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: ConnectedAccount[] } = {}) {
   const inboxListeners = new Set<(s: InboxSnapshot) => void>();
-  const openedListeners = new Set<() => void>();
+  const openedListeners = new Set<(target?: PopoverTarget) => void>();
   const decisions: ApprovalDecideRequest[] = [];
   let answer: (r: IpcResult) => void = () => {};
   const bridge: OrcaBridge = {
@@ -55,7 +55,7 @@ function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: Con
     bridge,
     decisions,
     push: (s: InboxSnapshot) => act(() => inboxListeners.forEach((l) => l(s))),
-    openPopover: () => act(() => openedListeners.forEach((l) => l())),
+    openPopover: (target?: PopoverTarget) => act(() => openedListeners.forEach((l) => l(target))),
     answer: (r: IpcResult) => act(async () => answer(r)),
   };
 }
@@ -112,6 +112,26 @@ describe('Inbox', () => {
     await renderApp(hub);
 
     hub.openPopover();
+
+    expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
+  });
+
+  it('opens on the Approval a red banner’s Review asked for, ready to approve with Touch ID', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' }), approval({ id: 'red', risk: 'red', command: 'git push --force' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'red', view: 'detail' });
+
+    const red = screen.getAllByRole('article')[1]!;
+    expect(document.activeElement).toBe(red);
+    expect(within(red).getByRole('button', { name: 'Approve with Touch ID' })).toBeTruthy();
+  });
+
+  it('falls back to the oldest card when the Ask a banner named has already resolved', async () => {
+    const hub = fakeHub(snapshotOf(approval({ id: 'old' })));
+    await renderApp(hub);
+
+    hub.openPopover({ askId: 'gone', view: 'card' });
 
     expect(document.activeElement).toBe(screen.getAllByRole('article')[0]);
   });
