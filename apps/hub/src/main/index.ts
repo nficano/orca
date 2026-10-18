@@ -3,11 +3,13 @@
  * tray popover only renders snapshots and sends intents.
  */
 import { IPC, type ApprovalDecideRequest, type IpcResult, type QuestionAnswerRequest } from '@orca/protocol';
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, screen, Tray } from 'electron';
 import { join } from 'node:path';
 import { fileDecisionsLog } from './decisions-log';
+import { electronNotifier } from './electron-notifier';
 import { listenForShims, type HubSocket } from './hub-socket';
 import { createInbox } from './inbox';
+import { startQuestionNotifications } from './question-notifications';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -58,6 +60,11 @@ app.whenReady().then(async () => {
     tray?.setImage(trayIcon(n > 0));
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
   });
+
+  // Question banners: answered from Options / Reply, removed once the Ask resolves anywhere.
+  if (Notification.isSupported()) {
+    startQuestionNotifications({ inbox, notifier: electronNotifier(), onOpen: showPopover });
+  }
 
   hubSocket = await listenForShims({ path: join(dataDir, 'hub.sock'), inbox });
 });
