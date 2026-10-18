@@ -3,11 +3,14 @@
  * tray popover only renders snapshots and sends intents.
  */
 import {
+  CURSOR_IPC,
   IPC,
   type ApprovalBatchRequest,
   type ApprovalBatchResult,
   type ApprovalDecideRequest,
   type IpcResult,
+  type OpenInCursorRequest,
+  type OpenInCursorResult,
   type PopoverTarget,
   type QuestionAnswerRequest,
   type SessionStopRequest,
@@ -16,6 +19,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, s
 import { join } from 'node:path';
 import { createAccounts, DEFAULT_HOOK_TIMEOUT_S } from './accounts/accounts';
 import { accountsIpcHandlers } from './accounts/ipc';
+import { createCursorLink } from './cursor/link';
 import { startApprovalNotifications } from './approval-notifications';
 import { fileDecisionsLog } from './decisions-log';
 import { electronNotifier } from './electron-notifier';
@@ -26,6 +30,8 @@ import { startQuickAnswer } from './quick-answer-electron';
 import { startQuestionNotifications } from './question-notifications';
 import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
+import { setupIpcHandlers } from './setup/ipc';
+import { createSetup } from './setup/setup';
 import { createSessions } from './sessions/sessions';
 import { createStallThresholds, fileStallConfig } from './sessions/stall-threshold';
 import { processSignals, stopSession } from './sessions/stop';
@@ -69,11 +75,26 @@ const inbox = createInbox({
   }),
 });
 const sessions = createSessions();
+const cursor = createCursorLink({
+  home: app.getPath('home'),
+  resources,
+  findAsk: (id) => inbox.snapshot().pending.find((ask) => ask.id === id),
+  findSession: (key) => sessions.list().find((s) => s.key === key),
+});
+/** Hooks missing and the restart banner (Storyboard F9). The shim spools next to the socket. */
+const setup = createSetup({ accounts, home: accountsHome, spoolPath: join(dataDir, 'spool.jsonl') });
 const profiles = createProfiles({ storePath: join(dataDir, 'profiles.json') });
 /** macOS Focus, from the Do Not Disturb database. ORCA_FOCUS_DB points at a scratch copy during development. */
 const focus = createFocusWatcher({ dbDir: process.env.ORCA_FOCUS_DB ?? join(app.getPath('home'), 'Library', 'DoNotDisturb', 'DB') });
-/** What the renderer sees: open Asks plus the Sessions from transcripts, tagged by Profile, less what the Focus filter hides. */
-const hubSnapshot = () => withProfiles(withSessions(inbox.snapshot(), sessions.list()), profiles.config(), focus.current());
+/**
+ * What the renderer sees: open Asks and the Sessions from transcripts, tagged by Profile, less what the Focus filter
+ * hides; setup errors and the Cursor extension.
+ */
+const hubSnapshot = () => ({
+  ...withProfiles(withSessions(inbox.snapshot(), sessions.list()), profiles.config(), focus.current()),
+  setup: setup.view(),
+  cursor: { extension: cursor.extension.status() },
+});
 /** The inbox less what the Focus filter hides, for the surfaces that read it directly: notifications and the quick-answer panel. */
 const shownInbox = focusedInbox(inbox, {
   shows: () => focusFilter(profiles.config(), focus.current()),
@@ -109,7 +130,21 @@ app.whenReady().then(async () => {
     if (!req || typeof req.id !== 'string') return Promise.resolve({ ok: false, error: 'invalid-request' });
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
   });
+  ipcMain.handle(CURSOR_IPC.open, (_e, req: OpenInCursorRequest): Promise<OpenInCursorResult> => {
+    const valid = req && (('id' in req && typeof req.id === 'string') || ('sessionKey' in req && typeof req.sessionKey === 'string'));
+    if (!valid) return Promise.resolve({ ok: false, error: 'not-found' });
+    return cursor.openInCursor.open(req);
+  });
+  ipcMain.handle(CURSOR_IPC.installExtension, () => cursor.extension.install());
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
+    ipcMain.handle(channel, async (_e, arg: unknown) => {
+      const result = await handle(arg);
+      // Newly connected Accounts get their settings files watched too.
+      if (channel === IPC.accountsConnect) await setup.refresh();
+      return result;
+    });
+  }
+  for (const [channel, handle] of Object.entries(setupIpcHandlers(setup))) {
     ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
   }
   await profiles.load();
@@ -155,11 +190,16 @@ app.whenReady().then(async () => {
   if (Notification.isSupported()) {
     const notifier = electronNotifier();
     const openCard = (askId: string) => showPopover({ askId, view: 'card' });
-    startQuestionNotifications({ inbox: shownInbox, notifier, onOpen: openCard });
+    // Click-to-focus: a banner click opens the Cursor window holding the Ask's Worktree, else its card.
+    const openInCursor = (askId: string) =>
+      void cursor.openInCursor.openAsk(askId).then((r) => {
+        if (!r.ok) openCard(askId);
+      });
+    startQuestionNotifications({ inbox: shownInbox, notifier, onOpen: openInCursor });
     startApprovalNotifications({
       inbox: shownInbox,
       notifier,
-      onOpen: openCard,
+      onOpen: openInCursor,
       onReview: (askId) => showPopover({ askId, view: 'detail' }),
     });
   }
@@ -172,7 +212,12 @@ app.whenReady().then(async () => {
     holdOnBlur: () => touchIdSheetUp,
   });
 
-  hubSocket = await listenForShims({ path: socketPath, inbox });
+  hubSocket = await listenForShims({ path: socketPath, inbox, windows: cursor.windows });
+  cursor.extension.subscribe(publish);
+  await cursor.extension.refresh();
+  // After listening: a shim that spools from here on is read on the next start.
+  await setup.start();
+  setup.subscribe(publish);
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
   if (firstRun) {
     if (popover.webContents.isLoading()) popover.webContents.once('did-finish-load', () => showPopover());
@@ -193,6 +238,7 @@ app.whenReady().then(async () => {
 app.on('before-quit', () => {
   sessionTracking?.stop();
   focus.stop();
+  setup.stop();
   void hubSocket?.close();
 });
 app.on('will-quit', () => quickAnswer?.stop());
@@ -232,6 +278,7 @@ function showPopover(target?: PopoverTarget) {
   popover.setBounds(popoverWindowBounds(trayBounds, workArea));
   popover.show();
   popover.focus();
+  void cursor.extension.refresh();
   popover.webContents.send(IPC.popoverOpened, target);
 }
 

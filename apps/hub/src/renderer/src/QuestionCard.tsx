@@ -78,7 +78,14 @@ export function QuestionCard({ ask, now, busy, onAnswer, profileColor }: Questio
   );
 
   return (
-    <article className="card" tabIndex={-1} aria-busy={busy} aria-label={`Question: ${ask.question}`} onKeyDown={onKeyDown}>
+    <article
+      className="card"
+      data-ask-id={ask.id}
+      tabIndex={-1}
+      aria-busy={busy}
+      aria-label={`Question: ${ask.question}`}
+      onKeyDown={onKeyDown}
+    >
       <div className="card-head">
         <span className="chip">
           <QuestionIcon />

@@ -35,6 +35,19 @@ export function isOrcaHook(entry: unknown): boolean {
   return /(?:^|[\s/'"])agentd-hook(?:['"]?)(?:\s|$)/.test(entry.command);
 }
 
+/** True when the settings text registers an Orca `PermissionRequest` hook. Unreadable text has none. */
+export function hasOrcaHook(text: string | undefined): boolean {
+  let settings: Record<string, unknown>;
+  try {
+    settings = parse(text);
+  } catch {
+    return false;
+  }
+  const groups = isObject(settings.hooks) ? settings.hooks.PermissionRequest : undefined;
+  if (!Array.isArray(groups)) return false;
+  return groups.some((g) => isObject(g) && Array.isArray(g.hooks) && g.hooks.some(isOrcaHook));
+}
+
 /**
  * Returns the settings text with exactly one Orca `PermissionRequest` hook,
  * set to `hook`. Other hooks, other events and other keys are kept as they

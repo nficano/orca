@@ -1,11 +1,7 @@
 /* Settings › Profiles. Values from artboard 10 (Settings: account group, Name/Color rows,
  * setting rows and pickers); colors and radii from tokens.css. */
 
-.rail-bottom {
-  margin-top: auto;
-}
-
-.settings {
+.profiles-settings {
   gap: var(--s-8);
   padding: var(--s-12) var(--s-12) var(--s-16);
 }

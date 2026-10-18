@@ -39,6 +39,10 @@ export const IPC = {
   profilesAssign: 'profiles:assign',
   /** renderer → main (invoke, FocusFilterRequest): ProfilesResult. */
   profilesFocusFilter: 'profiles:focus-filter',
+  /** renderer → main (invoke, Account dir): rewrite that Account's hook (ReinstallResult). */
+  setupReinstall: 'setup:reinstall',
+  /** renderer → main (invoke): close the restart banner. */
+  setupDismissRestart: 'setup:dismiss-restart',
   /** main → quick-answer panel (send): the global shortcut just showed the panel. */
   quickAnswerOpened: 'quick-answer:opened',
   /** quick-answer panel → main (send): hide the panel. */
@@ -116,3 +120,19 @@ export interface PopoverTarget {
   askId: string;
   view: 'card' | 'detail';
 }
+
+/** Open in Cursor (⌘O, the card menu, a notification click): focus the window holding the Ask's Worktree. */
+export const CURSOR_IPC = {
+  /** renderer → main (invoke, OpenInCursorRequest): returns OpenInCursorResult. */
+  open: 'cursor:open',
+  /** renderer → main (invoke): install the Orca extension into Cursor. Returns InstallExtensionResult. */
+  installExtension: 'cursor:install-extension',
+} as const;
+
+/** The Ask to show (by id), or a Session (by key) from a Stalled or Done card. */
+export type OpenInCursorRequest = { id: string } | { sessionKey: string };
+
+/** `not-found`: the Ask resolved; `no-worktree`: the Ask has no cwd; `open-failed`: Cursor didn't open. */
+export type OpenInCursorResult = { ok: true } | { ok: false; error: 'not-found' | 'no-worktree' | 'open-failed' };
+
+export type InstallExtensionResult = { ok: true } | { ok: false; message: string };

@@ -3,7 +3,10 @@ import type {
   ApprovalBatchResult,
   ApprovalDecideRequest,
   InboxSnapshot,
+  InstallExtensionResult,
   IpcResult,
+  OpenInCursorRequest,
+  OpenInCursorResult,
   PopoverTarget,
   QuestionAnswerRequest,
   SessionStopRequest,
@@ -18,6 +21,15 @@ import type {
   ProfilesView,
   ProfileUpdateRequest,
 } from '@orca/protocol';
+import type { ReinstallResult } from '@orca/protocol';
+
+/** Setup-error banners (Storyboard F9). Optional so renderer test fakes that aren't about setup can leave them out. */
+export interface SetupBridge {
+  /** The Hooks missing banner's Reinstall: rewrites that Account's hook. */
+  reinstallHooks?(dir: string): Promise<ReinstallResult>;
+  /** Closes the restart banner. */
+  dismissRestart?(): Promise<void>;
+}
 
 /** First run and hook install (Storyboard F1). */
 export interface AccountsBridge {
@@ -43,7 +55,7 @@ export interface ProfilesBridge {
 
 /** What the preload exposes to the renderer as `window.orca`. */
 /** Profiles methods are optional so renderer tests that aren't about Profiles can leave them out. */
-export interface OrcaBridge extends AccountsBridge, Partial<ProfilesBridge> {
+export interface OrcaBridge extends AccountsBridge, SetupBridge, Partial<ProfilesBridge> {
   getInbox(): Promise<InboxSnapshot>;
   onInbox(listener: (snapshot: InboxSnapshot) => void): () => void;
   /** `target` is set when a notification opened the popover for one Ask. */
@@ -52,6 +64,10 @@ export interface OrcaBridge extends AccountsBridge, Partial<ProfilesBridge> {
   /** "Approve N" in the batch row: main re-checks each tier and reports what it skipped. Absent: no batch row. */
   approveBatch?(req: ApprovalBatchRequest): Promise<ApprovalBatchResult>;
   answerQuestion(req: QuestionAnswerRequest): Promise<IpcResult>;
+  /** ⌘O / Open in Cursor: focus the Cursor window holding the Ask's Worktree. Optional so bridges without it hide it. */
+  openInCursor?(req: OpenInCursorRequest): Promise<OpenInCursorResult>;
+  /** The "Cursor extension missing" banner's Install action. */
+  installCursorExtension?(): Promise<InstallExtensionResult>;
   /** Stop… on a Stalled Session. Optional so bridges without it hide Stop. */
   stopSession?(req: SessionStopRequest): Promise<IpcResult>;
 }

@@ -1,4 +1,4 @@
-import { IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
+import { CURSOR_IPC, IPC, type InboxSnapshot, type PopoverTarget } from '@orca/protocol';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type { OrcaBridge, QuickAnswerBridge, ShortcutBridge } from './api';
 
@@ -17,6 +17,8 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   decideApproval: (req) => ipcRenderer.invoke(IPC.approvalDecide, req),
   approveBatch: (req) => ipcRenderer.invoke(IPC.approvalBatch, req),
   answerQuestion: (req) => ipcRenderer.invoke(IPC.questionAnswer, req),
+  openInCursor: (req) => ipcRenderer.invoke(CURSOR_IPC.open, req),
+  installCursorExtension: () => ipcRenderer.invoke(CURSOR_IPC.installExtension),
   onQuickAnswerOpened(listener) {
     const handler = () => listener();
     ipcRenderer.on(IPC.quickAnswerOpened, handler);
@@ -37,6 +39,8 @@ const bridge: OrcaBridge & QuickAnswerBridge & ShortcutBridge = {
   deleteProfile: (req) => ipcRenderer.invoke(IPC.profilesDelete, req),
   assignAccount: (req) => ipcRenderer.invoke(IPC.profilesAssign, req),
   setFocusFilter: (req) => ipcRenderer.invoke(IPC.profilesFocusFilter, req),
+  reinstallHooks: (dir) => ipcRenderer.invoke(IPC.setupReinstall, dir),
+  dismissRestart: () => ipcRenderer.invoke(IPC.setupDismissRestart),
   stopSession: (req) => ipcRenderer.invoke(IPC.sessionStop, req),
 };
 

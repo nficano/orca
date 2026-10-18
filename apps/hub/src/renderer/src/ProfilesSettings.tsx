@@ -64,13 +64,13 @@ export function ProfilesSettings({ bridge }: ProfilesSettingsProps) {
     return true;
   };
 
-  if (!view) return <div className="list settings" aria-busy="true" />;
+  if (!view) return <div className="list profiles-settings" aria-busy="true" />;
 
   const usedColors = new Set(view.profiles.map((p) => p.color));
   const nextColor = PROFILE_COLORS.find((c) => !usedColors.has(c)) ?? 'gray';
 
   return (
-    <div className="list settings">
+    <div className="list profiles-settings">
       <p className="settings-lede">Group Accounts into Profiles, such as Work and Personal.</p>
       {view.profiles.map((p) => (
         <ProfileGroup key={p.id} profile={p} all={view.profiles} accounts={accounts} bridge={bridge} apply={apply} />

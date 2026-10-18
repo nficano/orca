@@ -8,7 +8,7 @@ export type StopIntent = (key: string) => Promise<IpcResult>;
 /**
  * Stalled Sessions (design 6 · States, stalled; Storyboard F8): how long the
  * Session has been quiet and its last step, or the error it keeps hitting.
- * Stop… confirms in a popover first. Open in Cursor comes with #13.
+ * Stop… confirms in a popover first; Open in Cursor focuses its window.
  */
 export interface NeedsALookProps {
   sessions: SessionView[];
@@ -16,9 +16,11 @@ export interface NeedsALookProps {
   /** The Account's name for its config dir. */
   accountName: (dir: string) => string;
   onStop?: StopIntent;
+  /** Focus the Cursor window holding the Session's Worktree. */
+  onOpenInCursor?: (key: string) => void;
 }
 
-export function NeedsALook({ sessions, now, accountName, onStop }: NeedsALookProps) {
+export function NeedsALook({ sessions, now, accountName, onStop, onOpenInCursor }: NeedsALookProps) {
   const label = `Needs a look · ${sessions.length}`;
   return (
     <section className="needs-look" aria-label={label}>
@@ -26,7 +28,14 @@ export function NeedsALook({ sessions, now, accountName, onStop }: NeedsALookPro
         {label}
       </p>
       {sessions.map((s) => (
-        <StalledCard key={s.key} session={s} now={now} account={accountName(s.account)} onStop={onStop} />
+        <StalledCard
+          key={s.key}
+          session={s}
+          now={now}
+          account={accountName(s.account)}
+          onStop={onStop}
+          onOpenInCursor={onOpenInCursor}
+        />
       ))}
     </section>
   );
@@ -37,9 +46,10 @@ interface StalledCardProps {
   now: number;
   account: string;
   onStop?: StopIntent;
+  onOpenInCursor?: (key: string) => void;
 }
 
-function StalledCard({ session: s, now, account, onStop }: StalledCardProps) {
+function StalledCard({ session: s, now, account, onStop, onOpenInCursor }: StalledCardProps) {
   const title = s.title ?? (baseName(s.cwd) || 'Session');
   const [confirming, setConfirming] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -84,18 +94,25 @@ function StalledCard({ session: s, now, account, onStop }: StalledCardProps) {
           Couldn’t find its agent process. Stop it in Cursor.
         </p>
       )}
-      {onStop && (
+      {(onStop || onOpenInCursor) && (
         <div className="actions stop-anchor">
-          <button
-            ref={stopButton}
-            className="btn"
-            disabled={stopping}
-            aria-haspopup="dialog"
-            aria-expanded={confirming}
-            onClick={() => setConfirming((c) => !c)}
-          >
-            Stop…
-          </button>
+          {onStop && (
+            <button
+              ref={stopButton}
+              className="btn"
+              disabled={stopping}
+              aria-haspopup="dialog"
+              aria-expanded={confirming}
+              onClick={() => setConfirming((c) => !c)}
+            >
+              Stop…
+            </button>
+          )}
+          {onOpenInCursor && (
+            <button className="btn primary" onClick={() => onOpenInCursor(s.key)}>
+              Open in Cursor
+            </button>
+          )}
           {confirming && <ConfirmStop title={title} busy={stopping} onCancel={cancel} onStop={stop} />}
         </div>
       )}
