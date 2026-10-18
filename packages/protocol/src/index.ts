@@ -4,3 +4,4 @@ export * from './ipc';
 export * from './accounts';
 export * from './question';
 export * from './sessions';
+export * from './profiles';

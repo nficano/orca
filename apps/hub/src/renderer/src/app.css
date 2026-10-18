@@ -132,15 +132,30 @@ button:focus-visible {
   flex-direction: column;
 }
 
-/* I1 §4 · tabs */
-.tabs {
+/* I1 §4 · tabs. The row holds the Profile tabs and, on the right, the Focus note. */
+.tabs-row {
   height: 52px;
   flex: none;
   display: flex;
   align-items: stretch;
-  gap: var(--s-20);
+  gap: var(--s-12);
   padding: 0 var(--s-20);
   border-bottom: 1px solid var(--border-2);
+}
+.tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: var(--s-20);
+}
+.tab .count {
+  font-weight: 500;
+  color: var(--text-2);
+}
+.focus-note {
+  flex: none;
+  align-self: center;
 }
 .tab {
   position: relative;
@@ -378,10 +393,7 @@ button:focus-visible {
 .row > .meta {
   flex: none;
 }
-/* tokens.css sizes the .dot circle. Profile color once Profiles exist (#15); gray until then. */
-.row > .dot {
-  background: var(--acct-gray);
-}
+/* tokens.css sizes the .dot circle; its color is the Session's Profile color, set inline. */
 
 @media (prefers-reduced-motion: reduce) {
   .spinner {

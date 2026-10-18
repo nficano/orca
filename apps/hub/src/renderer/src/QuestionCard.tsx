@@ -1,6 +1,7 @@
-import type { QuestionAnswerRequest, QuestionView } from '@orca/protocol';
+import type { ProfileColor, QuestionAnswerRequest, QuestionView } from '@orca/protocol';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { baseName, waitLabel } from './format';
+import { profileDot } from './profiles';
 import { Spinner } from './Spinner';
 
 /** Up to 3 short options show as a row of buttons; more, or longer labels, as a numbered list (design 11 §07–08). */
@@ -20,10 +21,12 @@ interface QuestionCardProps {
   now: number;
   busy: boolean;
   onAnswer: (id: string, answer: AnswerIntent) => void;
+  /** The Account's Profile color, for the dot before its name. */
+  profileColor?: ProfileColor;
 }
 
 /** A Question card (design 1 · Main, card 2): pick an option or type an answer. */
-export function QuestionCard({ ask, now, busy, onAnswer }: QuestionCardProps) {
+export function QuestionCard({ ask, now, busy, onAnswer, profileColor }: QuestionCardProps) {
   const freeTextOnly = ask.options.length === 0;
   const [typing, setTyping] = useState(freeTextOnly);
   const [text, setText] = useState('');
@@ -86,6 +89,7 @@ export function QuestionCard({ ask, now, busy, onAnswer }: QuestionCardProps) {
       </div>
       {worktree && account && (
         <div className="meta">
+          {profileColor && <span className="dot" style={profileDot(profileColor)} aria-hidden="true" />}
           <span className="ellipsis">{account}</span>
         </div>
       )}

@@ -1,9 +1,10 @@
-import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, SessionView } from '@orca/protocol';
+import type { ApprovalView, ConnectedAccount, InboxSnapshot, IpcResult, ProfileColor, SessionView } from '@orca/protocol';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { OrcaBridge } from '../../preload/api';
 import { FirstRun } from './FirstRun';
 import { badgeText, baseName, runningLabel, waitLabel } from './format';
 import { QuestionCard, type AnswerIntent } from './QuestionCard';
+import { focusLabel, nextTab, profileDot } from './profiles';
 import { Spinner } from './Spinner';
 
 const EMPTY: InboxSnapshot = { pending: [], counts: { pending: 0 } };
@@ -18,6 +19,8 @@ export function App({ bridge, now = Date.now }: AppProps) {
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   /** Connected Accounts; null until loaded, empty means first run. */
   const [accounts, setAccounts] = useState<ConnectedAccount[] | null>(null);
+  /** The open Profile tab: 'all' or a Profile id. */
+  const [tab, setTab] = useState('all');
   const inFlight = useRef(new Set<string>());
   const listRef = useRef<HTMLDivElement>(null);
   const clock = useClock(now);
@@ -71,7 +74,28 @@ export function App({ bridge, now = Date.now }: AppProps) {
 
   const count = inbox.counts.pending;
   const badge = badgeText(count);
-  const running = (inbox.sessions ?? []).filter((s) => s.state === 'running' || s.state === 'waiting');
+  const profiles = inbox.profiles ?? [];
+  const tabIds = ['all', ...profiles.map((p) => p.id)];
+  // A tab the Focus filter (or a deleted Profile) took away falls back to All.
+  const current = tabIds.includes(tab) ? tab : 'all';
+  const inTab = (x: { profileId?: string }) => current === 'all' || x.profileId === current;
+  const colorOf = (profileId: string | undefined) => profiles.find((p) => p.id === profileId)?.color;
+  const pending = inbox.pending.filter(inTab);
+  const running = (inbox.sessions ?? []).filter((s) => (s.state === 'running' || s.state === 'waiting') && inTab(s));
+  const currentName = profiles.find((p) => p.id === current)?.name;
+
+  // ⌃Tab = next Profile tab, ⌃⇧Tab = previous (spec › Design changes needed).
+  const tabIdsKey = tabIds.join('\u0000');
+  useEffect(() => {
+    const ids = tabIdsKey.split('\u0000');
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Tab' || !e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
+      setTab((t) => nextTab(ids, ids.includes(t) ? t : 'all', e.shiftKey ? -1 : 1));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tabIdsKey]);
 
   return (
     <div className="pop">
@@ -94,27 +118,65 @@ export function App({ bridge, now = Date.now }: AppProps) {
         </section>
       )}
       <section className="main" aria-label="Inbox" hidden={!accounts?.length}>
-        <div className="tabs" role="tablist" aria-label="Profile">
-          <button className="tab on" role="tab" aria-selected="true">
-            All
-          </button>
+        <div className="tabs-row">
+          <div className="tabs" role="tablist" aria-label="Profile">
+            <button className={current === 'all' ? 'tab on' : 'tab'} role="tab" aria-selected={current === 'all'} onClick={() => setTab('all')}>
+              All
+            </button>
+            {profiles.map((p) => {
+              const n = inbox.pending.filter((a) => a.profileId === p.id).length;
+              return (
+                <button
+                  key={p.id}
+                  className={current === p.id ? 'tab on' : 'tab'}
+                  role="tab"
+                  aria-selected={current === p.id}
+                  onClick={() => setTab(p.id)}
+                >
+                  <span className="dot" style={profileDot(p.color)} aria-hidden="true" />
+                  {p.name}
+                  {n > 0 && <span className="count">{n}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {inbox.focus && (
+            <span className="meta focus-note">
+              {focusLabel(inbox.focus.name)}
+              {inbox.focus.hiddenAsks > 0 && ` · ${inbox.focus.hiddenAsks} hidden`}
+            </span>
+          )}
         </div>
         <div className="list" ref={listRef}>
-          {inbox.pending.length === 0 ? (
+          {pending.length === 0 ? (
             <div className={running.length > 0 ? 'empty above-running' : 'empty'}>
-              <h2>Nothing needs you</h2>
+              <h2>{currentName ? `Nothing needs you in ${currentName}` : 'Nothing needs you'}</h2>
               <p>You'll get a notification when an agent asks.</p>
             </div>
           ) : (
-            inbox.pending.map((ask) =>
+            pending.map((ask) =>
               ask.kind === 'question' ? (
-                <QuestionCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onAnswer={answer} />
+                <QuestionCard
+                  key={ask.id}
+                  ask={ask}
+                  now={clock}
+                  busy={busy.has(ask.id)}
+                  onAnswer={answer}
+                  profileColor={colorOf(ask.profileId)}
+                />
               ) : (
-                <ApprovalCard key={ask.id} ask={ask} now={clock} busy={busy.has(ask.id)} onDecide={decide} />
+                <ApprovalCard
+                  key={ask.id}
+                  ask={ask}
+                  now={clock}
+                  busy={busy.has(ask.id)}
+                  onDecide={decide}
+                  profileColor={colorOf(ask.profileId)}
+                />
               ),
             )
           )}
-          {running.length > 0 && <RunningList sessions={running} now={clock} />}
+          {running.length > 0 && <RunningList sessions={running} now={clock} colorOf={colorOf} />}
         </div>
       </section>
     </div>
@@ -122,7 +184,15 @@ export function App({ bridge, now = Date.now }: AppProps) {
 }
 
 /** Running and Waiting Sessions (design 6 · States, empty inbox with running list). */
-function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }) {
+function RunningList({
+  sessions,
+  now,
+  colorOf,
+}: {
+  sessions: SessionView[];
+  now: number;
+  colorOf: (profileId: string | undefined) => ProfileColor | undefined;
+}) {
   return (
     <section className="running">
       <p className="cap" id="running-cap">
@@ -133,7 +203,7 @@ function RunningList({ sessions, now }: { sessions: SessionView[]; now: number }
           const meta = [s.title ? baseName(s.cwd) : '', s.branch ?? ''].filter(Boolean).join(' · ');
           return (
             <li key={s.key} className="row">
-              <span className="dot" aria-hidden="true" />
+              <span className="dot" aria-hidden="true" style={profileDot(colorOf(s.profileId))} />
               <span className="row-text">
                 <span className="ellipsis">{s.title ?? (baseName(s.cwd) || 'Session')}</span>
                 {meta && <span className="meta ellipsis">{meta}</span>}
@@ -152,9 +222,10 @@ interface CardProps {
   now: number;
   busy: boolean;
   onDecide: (id: string, decision: 'allow' | 'deny') => void;
+  profileColor?: ProfileColor;
 }
 
-function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
+function ApprovalCard({ ask, now, busy, onDecide, profileColor }: CardProps) {
   const [pressed, setPressed] = useState<'allow' | 'deny' | null>(null);
   const act = (decision: 'allow' | 'deny') => {
     if (busy) return;
@@ -188,6 +259,7 @@ function ApprovalCard({ ask, now, busy, onDecide }: CardProps) {
       </div>
       {(meta.length > 0 || ask.viaSubagent) && (
         <div className="meta">
+          {profileColor && <span className="dot" style={profileDot(profileColor)} aria-hidden="true" />}
           {meta.map((m, i) => (
             <span key={i} className="meta-part">
               {i > 0 && <span aria-hidden="true">·</span>}

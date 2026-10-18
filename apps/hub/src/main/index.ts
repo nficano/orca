@@ -15,6 +15,10 @@ import { findTailedAccounts } from './sessions/accounts';
 import { probeAgentProcesses } from './sessions/liveness';
 import { createSessions } from './sessions/sessions';
 import { startSessionTracking, type SessionTracking } from './sessions/track';
+import { createFocusWatcher } from './profiles/focus';
+import { profilesIpcHandlers } from './profiles/ipc';
+import { createProfiles } from './profiles/profiles';
+import { withProfiles } from './profiles/snapshot';
 import { popoverWindowBounds, trayTitle } from './tray-popover';
 
 const here = import.meta.dirname;
@@ -40,8 +44,11 @@ const accounts = createAccounts({
 });
 const inbox = createInbox({ log: fileDecisionsLog(join(dataDir, 'decisions.jsonl')), accountName: accounts.nameOf });
 const sessions = createSessions();
-/** What the renderer sees: open Asks plus the Sessions from transcripts. */
-const hubSnapshot = () => withSessions(inbox.snapshot(), sessions.list());
+const profiles = createProfiles({ storePath: join(dataDir, 'profiles.json') });
+/** macOS Focus, from the Do Not Disturb database. ORCA_FOCUS_DB points at a scratch copy during development. */
+const focus = createFocusWatcher({ dbDir: process.env.ORCA_FOCUS_DB ?? join(app.getPath('home'), 'Library', 'DoNotDisturb', 'DB') });
+/** What the renderer sees: open Asks plus the Sessions from transcripts, tagged by Profile, less what the Focus filter hides. */
+const hubSnapshot = () => withProfiles(withSessions(inbox.snapshot(), sessions.list()), profiles.config(), focus.current());
 let tray: Tray | undefined;
 let popover: BrowserWindow | undefined;
 let hubSocket: HubSocket | undefined;
@@ -64,6 +71,10 @@ app.whenReady().then(async () => {
     return inbox.answer({ id: req.id, optionIndex: req.optionIndex, text: req.text });
   });
   for (const [channel, handle] of Object.entries(accountsIpcHandlers(accounts, pickAccountFolder))) {
+    ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
+  }
+  await profiles.load();
+  for (const [channel, handle] of Object.entries(profilesIpcHandlers(profiles, focus.current))) {
     ipcMain.handle(channel, (_e, arg: unknown) => handle(arg));
   }
   // Load connected Accounts before any Ask arrives, so every Ask gets its Account's name.
@@ -91,6 +102,9 @@ app.whenReady().then(async () => {
     popover?.webContents.send(IPC.inboxSnapshot, snapshot);
   };
   inbox.subscribe(publish);
+  profiles.subscribe(publish);
+  focus.subscribe(publish);
+  focus.start();
 
   hubSocket = await listenForShims({ path: socketPath, inbox });
   // First run (Storyboard F1): open the popover so the user can connect Accounts.
@@ -110,6 +124,7 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   sessionTracking?.stop();
+  focus.stop();
   void hubSocket?.close();
 });
 app.on('window-all-closed', () => {

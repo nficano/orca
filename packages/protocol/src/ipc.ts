@@ -21,6 +21,18 @@ export const IPC = {
   accountsPreview: 'accounts:preview',
   /** renderer → main (invoke, AccountChoice[]): write the hooks (ConnectResult). */
   accountsConnect: 'accounts:connect',
+  /** renderer → main (invoke): Profiles, Focus filters and what the hub sees of Focus (ProfilesView). */
+  profilesGet: 'profiles:get',
+  /** renderer → main (invoke, ProfileCreateRequest): ProfilesResult. */
+  profilesCreate: 'profiles:create',
+  /** renderer → main (invoke, ProfileUpdateRequest): rename or recolor (ProfilesResult). */
+  profilesUpdate: 'profiles:update',
+  /** renderer → main (invoke, ProfileDeleteRequest): ProfilesResult. Its Accounts are left in no Profile. */
+  profilesDelete: 'profiles:delete',
+  /** renderer → main (invoke, ProfileAssignRequest): ProfilesResult. */
+  profilesAssign: 'profiles:assign',
+  /** renderer → main (invoke, FocusFilterRequest): ProfilesResult. */
+  profilesFocusFilter: 'profiles:focus-filter',
 } as const;
 
 export interface ApprovalDecideRequest {

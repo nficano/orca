@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrcaBridge } from '../../preload/api';
 import { App } from './App';
+import { noProfilesBridge } from './profiles-bridge.fixture';
 
 const NOW = Date.parse('2026-10-18T10:10:00Z');
 
@@ -33,6 +34,7 @@ function fakeHub(initial: InboxSnapshot, { accounts = [WORK] }: { accounts?: Con
   const decisions: ApprovalDecideRequest[] = [];
   let answer: (r: IpcResult) => void = () => {};
   const bridge: OrcaBridge = {
+    ...noProfilesBridge,
     getInbox: async () => initial,
     onInbox: (l) => (inboxListeners.add(l), () => inboxListeners.delete(l)),
     onPopoverOpened: (l) => (openedListeners.add(l), () => openedListeners.delete(l)),
